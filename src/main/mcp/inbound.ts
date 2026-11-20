@@ -23,7 +23,20 @@ export interface InboundTiming {
   calls: number;
   phases: Record<InboundPhase, number>;
 }
-const store = new AsyncLocalStorage<{ requestId: string | null; timing?: InboundTiming; publication?: OutputPublication; providerRequest: boolean }>();
+const store = new AsyncLocalStorage<{ requestId: string | null; timing?: InboundTiming; publication?: OutputPublication; providerRequest: boolean; client?: McpClientFamily }>();
+
+/**
+ * Which provider's MCP client sent the HTTP request, from its User-Agent. Diagnostic and
+ * presentation only: it never grants identity, ownership or permission (a header can be forged).
+ */
+export type McpClientFamily = 'chatgpt' | 'gemini' | 'other';
+export function mcpClientFamily(userAgent: string | string[] | undefined): McpClientFamily {
+  const ua = Array.isArray(userAgent) ? userAgent.join(' ') : String(userAgent ?? '');
+  if (/\bGoogle\b|Gemini|google-mcp/i.test(ua)) return 'gemini';
+  if (/openai|ChatGPT/i.test(ua)) return 'chatgpt';
+  return 'other';
+}
+export function inboundClient(): McpClientFamily { return store.getStore()?.client ?? 'other'; }
 
 /** Fixed-size, process-local numbers only: no payload, credential, path or chat identity. */
 export function createInboundTiming(): InboundTiming {
@@ -57,8 +70,8 @@ export function formatInboundTiming(timing: InboundTiming): string {
 }
 
 /** Runs `body` with the request id of the HTTP request currently being served. */
-export function withInboundRequestId<T>(requestId: string | null, body: () => T, timing?: InboundTiming, publication?: OutputPublication, providerRequest = false): T {
-  return store.run({ requestId, timing, publication, providerRequest }, body);
+export function withInboundRequestId<T>(requestId: string | null, body: () => T, timing?: InboundTiming, publication?: OutputPublication, providerRequest = false, client?: McpClientFamily): T {
+  return store.run({ requestId, timing, publication, providerRequest, ...(client ? { client } : {}) }, body);
 }
 export function inboundProviderRequest(): boolean { return store.getStore()?.providerRequest === true; }
 

@@ -813,10 +813,19 @@ async function startCloudflared(opts: TunnelStartOptions): Promise<TunnelHandle>
 
   const local = new URL(opts.localUrl);
   const origin = `${local.protocol}//${local.host}`;
+  // cloudflared otherwise loads ~/.cloudflared/config.yml on its own. A named tunnel's ingress
+  // there (typically ending in `service: http_status:404`) overrides --url, and every request
+  // to the quick tunnel is answered 404 by Cloudflare without ever reaching this app. Point it
+  // at a config of our own that names no tunnel and no ingress.
+  const workDir = await createTunnelWorkDir();
+  const configFile = path.join(workDir, 'quick-tunnel.yml');
+  await fs.writeFile(configFile, '# Chat On Steroids quick tunnel: deliberately no named tunnel or ingress.\n', 'utf8');
 
   const args = [
     'tunnel',
     '--no-autoupdate',
+    '--config',
+    configFile,
     '--url',
     origin,
     // Without this the origin would see the public trycloudflare hostname and our
@@ -849,7 +858,7 @@ async function startCloudflared(opts: TunnelStartOptions): Promise<TunnelHandle>
       markStartup('tunnel');
       opts.report({
         state: 'connected',
-        detail: 'Connected. Paste the URL below into ChatGPT as a custom connector.',
+        detail: 'Connected. Paste the URL below into ChatGPT or Gemini as a custom connector.',
         publicUrl
       });
       return;
@@ -864,6 +873,7 @@ async function startCloudflared(opts: TunnelStartOptions): Promise<TunnelHandle>
   child.stderr.on('data', lineReader(handleLine));
 
   child.on('exit', (code) => {
+    void fs.rm(workDir, { recursive: true, force: true }).catch(() => {});
     if (stopped) return;
     settled = true;
     opts.report({

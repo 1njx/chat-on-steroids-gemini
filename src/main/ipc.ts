@@ -29,6 +29,7 @@ import { safeExternalLink } from '../shared/external-link.js';
 import { wakeBrowserWork } from './browser-wake.js';
 import { refreshKeepAwake } from './keep-awake.js';
 import { getChatModels, startChatModelDiscovery, configureChatModelDiscovery } from './chat-models.js';
+import { cancelGeminiCommand, configureGemini, geminiStatus, queueGeminiSend, requestGeminiModes, saveGeminiSettings, stopGemini } from './gemini.js';
 import { releaseSessionFinish, requestSessionFinishGoal } from './session/finish.js';
 import { GOAL_MARKER_INSTRUCTION } from '../shared/goal-templates.js';
 import { validateInputImages } from './session/input-images.js';
@@ -2180,6 +2181,18 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
     return requestSessionFinishGoal(id, expectedTurnId);
   });
   handle('chatModels:get', async () => getChatModels());
+  // Gemini web provider (src/main/gemini.ts). Inputs are validated there; results report what the page proved.
+  handle('gemini:status', async () => geminiStatus());
+  handle('gemini:send', async (payload) => {
+    const queued = queueGeminiSend((payload ?? {}) as Parameters<typeof queueGeminiSend>[0]);
+    if (queued.ok) void startBridge().catch(() => undefined);
+    return queued;
+  });
+  handle('gemini:requestModes', async () => { void startBridge().catch(() => undefined); return requestGeminiModes(); });
+  handle('gemini:stop', async (payload) => stopGemini(z.object({ conversation: z.string().max(80) }).parse(payload).conversation));
+  handle('gemini:cancel', async (payload) => cancelGeminiCommand(z.object({ id: z.string().uuid() }).parse(payload).id));
+  handle('gemini:settings', async (payload) => saveGeminiSettings(payload));
+  handle('gemini:openConnectors', async () => { await openInPreferredBrowser('https://gemini.google.com/customize/connectors', { reveal: true }); return true; });
   handle('browser:preferences', async (payload) => requestBrowserPreferences(payload));
   handle('chatModels:request', async () => startChatModelDiscovery());
   handle('sessions:controls', async (payload) => sessionControlsFor(sessionIdArg.parse(payload).id));
@@ -2863,6 +2876,14 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
       return drafted;
     }, publish);
   });
+  // Page reports arrive every few seconds per Gemini tab; coalesce them into one renderer push.
+  let geminiPush: ReturnType<typeof setTimeout> | null = null;
+  const pushGeminiSoon = (): void => {
+    if (geminiPush) return;
+    geminiPush = setTimeout(() => { geminiPush = null; push('gemini:changed', geminiStatus()); }, 250);
+    geminiPush.unref?.();
+  };
+  configureGemini({ changed: pushGeminiSoon });
   configureChatModelDiscovery({ changed: () => push('chatModels:changed', getChatModels()), wake: async (nonce, allowOpen) => {
     if (!await startBridge()) throw new Error('The browser bridge could not start');
     if (allowOpen) {

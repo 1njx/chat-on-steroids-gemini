@@ -1207,6 +1207,27 @@ describe('surface boundaries', () => {
     expect(read).toContain('Identity notice');
   });
 
+  // Live 2026-11-20: Gemini 4 Neon called `read` through a Gemini custom app and saw only the
+  // appended Identity notice, because Gemini's MCP client (User-Agent "Google") keeps one text part.
+  it('gives Gemini\'s MCP client the whole result in one text part, without the ChatGPT identity notice', async () => {
+    everything();
+    await fs.writeFile(path.join(base, 'workspace', 'PROOF.txt'), 'proof-token: gemini-1234\n');
+    const post = async (userAgent: string) => decode(await rawPost(endpoint.urls.core,
+      JSON.stringify({ jsonrpc: '2.0', id: nextId++, method: 'tools/call', params: { name: 'read', arguments: { paths: ['/workspace/PROOF.txt'] } } }),
+      { 'user-agent': userAgent }));
+    const gemini = (await post('Google')).result;
+    expect(gemini.isError).toBeFalsy();
+    const texts = gemini.content.filter((part: { type: string }) => part.type === 'text');
+    expect(texts).toHaveLength(1);
+    expect(texts[0].text).toContain('proof-token: gemini-1234');
+    expect(texts[0].text).toContain('Recorded under Gemini activity');
+    expect(texts[0].text).not.toContain('Identity notice');
+    // Every other client keeps the existing ChatGPT behavior exactly.
+    const other = (await post('openai-mcp/1.0')).result;
+    expect(other.content.length).toBeGreaterThan(1);
+    expect(JSON.stringify(other.content)).toContain('Identity notice');
+  });
+
   it('describes write_stdin by what it does, never by how its output should be treated', async () => {
     everything();
     // ChatGPT's safety check flagged "including automatic delivery; never reruns work" as a

@@ -3773,6 +3773,7 @@ async function maintainOnce() {
   void revealChats(reply.data.reveals).catch(() => undefined);
   void followChat(reply.data.follow).catch(() => undefined);
   void runImageExports(reply.data.imageExports).catch(() => undefined);
+  void openGeminiPages(reply.data.geminiOpen).catch(() => undefined);
   // Only the app's own list of open messages may call a marked page left over; an older app sends none.
   if (Array.isArray(reply.data.inputOpeningIds)) void closeLeftoverOpenings(observedTabs, liveOpenings,
     new Set((Array.isArray(reply.data.inputs) ? reply.data.inputs : []).map(input => input?.id)),
@@ -4531,7 +4532,59 @@ function approvalQuery(message) {
   return query;
 }
 
+/**
+ * A message from this extension's own Gemini content script in a top-level gemini.google.com
+ * page. Gemini pages are not registered ChatGPT documents, so they prove themselves this way.
+ */
+function geminiSender(sender) {
+  if (!sender || sender.id !== chrome.runtime.id || sender.frameId !== 0 || !Number.isInteger(sender.tab?.id)) return null;
+  try { return new URL(sender.url || sender.tab.url).origin === 'https://gemini.google.com' ? sender.tab.id : null; }
+  catch { return null; }
+}
+
+/** When the app holds Gemini work and no Gemini page could take it, open one quietly (once per URL per 2 min). */
+const geminiOpened = new Map();
+async function openGeminiPages(urls) {
+  if (!Array.isArray(urls)) return;
+  for (const url of urls.slice(0, 2)) {
+    if (typeof url !== 'string' || !/^https:\/\/gemini\.google\.com\/app(\/[0-9a-f]{8,32})?$/.test(url)) continue;
+    if (Date.now() - (geminiOpened.get(url) || 0) < 120_000) continue;
+    geminiOpened.set(url, Date.now());
+    await createChatTab(url, true).catch(() => undefined);
+  }
+}
+
 const HANDLERS = {
+  async gemini_state(message, sender) {
+    const tab = geminiSender(sender);
+    if (tab === null || !message.snapshot || typeof message.snapshot !== 'object') return { ok: false };
+    const reply = await call('/gemini/state', { method: 'POST', body: JSON.stringify({ tab, snapshot: message.snapshot }) });
+    return reply.ok ? { ok: true, commands: Array.isArray(reply.data?.commands) ? reply.data.commands : [] } : { ok: false };
+  },
+  /**
+   * One trusted "@" keystroke into the sender's own Gemini composer, so Gemini opens its connector
+   * menu (it ignores synthetic keys until the page has seen a real one). Only the companion's own
+   * Gemini content script can ask, only for its own tab, and only this one character is typed.
+   */
+  async gemini_type_at(_message, sender) {
+    const tabId = geminiSender(sender);
+    if (tabId === null) return { ok: false };
+    const target = { tabId };
+    try { await chrome.debugger.attach(target, '1.3'); }
+    catch { return { ok: false, error: 'debugger-busy' }; }
+    try {
+      await chrome.debugger.sendCommand(target, 'Input.insertText', { text: '@' });
+      return { ok: true };
+    } catch { return { ok: false }; }
+    finally { await chrome.debugger.detach(target).catch(() => undefined); }
+  },
+  async gemini_result(message, sender) {
+    const tab = geminiSender(sender);
+    if (tab === null || typeof message.id !== 'string') return { ok: false };
+    const { type: _type, ...fields } = message;
+    const reply = await call('/gemini/result', { method: 'POST', body: JSON.stringify({ ...fields, tab }) });
+    return reply.ok ? { ok: true, ...(reply.data || {}) } : { ok: false };
+  },
   // Only the tab this worker opened for that exact request may report on it. Creating the Project
   // navigates that tab to the Project's own page, which drops the marker, so the owner is kept.
   async project_create(message, _sender, source) {
@@ -6366,8 +6419,17 @@ async function restoreOpenChatgptTabs() {
   }
 }
 
+/** Gemini pages opened before an install/update get the companion without a reload. */
+async function restoreOpenGeminiTabs() {
+  for (const tab of await chrome.tabs.query({ url: 'https://gemini.google.com/*' })) {
+    if (!Number.isInteger(tab.id) || tab.discarded) continue;
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['gemini-dom.js', 'gemini-content.js'] }).catch(() => undefined);
+  }
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   void restoreOpenChatgptTabs().then(() => recoverDeferredRevivals()).catch(() => undefined);
+  void restoreOpenGeminiTabs().catch(() => undefined);
   void load()
     .then(() => ensurePaired())
     .catch(() => undefined)

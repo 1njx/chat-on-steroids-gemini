@@ -5,6 +5,7 @@ const fixture = vi.hoisted(() => {
   type Listener = (...args: any[]) => void;
   const children: any[] = [];
   const removedDirectories: string[] = [];
+  const written = new Map<string, string>();
 
   const emitter = () => {
     const listeners = new Map<string, Listener[]>();
@@ -57,7 +58,7 @@ const fixture = vi.hoisted(() => {
     child.emit('close', 0);
   });
 
-  return { children, spawn, health, termination, terminate, removedDirectories };
+  return { children, spawn, health, termination, terminate, removedDirectories, written };
 });
 
 vi.mock('node:child_process', () => ({ spawn: fixture.spawn }));
@@ -74,6 +75,7 @@ vi.mock('node:fs', async (importOriginal) => {
     promises: {
       ...actual.promises,
       mkdtemp: async (prefix: string) => `${prefix}fixture`,
+      writeFile: async (file: string, data: string) => { fixture.written.set(String(file), String(data)); },
       rm: async (_path: string, options?: { recursive?: boolean }) => {
         if (options?.recursive) fixture.removedDirectories.push(_path);
         if (!options?.recursive) fixture.health.url = null;
@@ -542,5 +544,28 @@ describe('OpenAI tunnel process ownership', () => {
     expect(reports.some((report) => report.state === 'offline')).toBe(false);
 
     await handle.stop();
+  });
+});
+
+describe('Cloudflare quick tunnel', () => {
+  // A person's own ~/.cloudflared/config.yml (a named tunnel whose ingress ends in
+  // `http_status:404`) used to override --url: every request got Cloudflare's 404 and never
+  // reached the app, so neither ChatGPT nor Gemini could connect (found 2026-11-20).
+  it('runs cloudflared with an app-owned config that names no tunnel or ingress, and removes it on exit', async () => {
+    fixture.written.clear();
+    const reports: Array<{ state: string; publicUrl?: string | null }> = [];
+    const handle = await startTunnel({ localUrl: 'http://127.0.0.1:4321/mcp/core/token', settings: { ...settings, kind: 'cloudflared' as const, tunnelId: '' }, apiKey: '', report: (r) => { reports.push(r); } });
+    await vi.waitFor(() => expect(fixture.spawn).toHaveBeenCalledOnce(), { timeout: 5_000 });
+    const [, args] = fixture.spawn.mock.calls[0] as unknown as [string, string[]];
+    const config = args[args.indexOf('--config') + 1]!;
+    expect(args.indexOf('--config')).toBeGreaterThan(-1);
+    expect(args.indexOf('--config')).toBeLessThan(args.indexOf('--url'));
+    expect(fixture.written.has(config)).toBe(true);
+    expect(fixture.written.get(config)).not.toMatch(/^\s*(tunnel|ingress|credentials-file)\s*:/m);
+    expect(args.slice(args.indexOf('--url'), args.indexOf('--url') + 2)).toEqual(['--url', 'http://127.0.0.1:4321']);
+    fixture.children[0].stderr.emit('data', Buffer.from('INF |  https://bright-example-words.trycloudflare.com  |\n'));
+    expect(reports.at(-1)).toMatchObject({ state: 'connected', publicUrl: 'https://bright-example-words.trycloudflare.com/mcp/core/token' });
+    await handle.stop();
+    expect(fixture.removedDirectories).toContain(path.dirname(config));
   });
 });

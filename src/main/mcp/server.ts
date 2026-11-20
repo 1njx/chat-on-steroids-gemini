@@ -19,7 +19,21 @@
 
 import { noteConnectorUse } from '../connector-proof.js';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { createInboundTiming, formatInboundTiming, requestIdFromHeader, withInboundRequestId } from './inbound.js';
+import { createInboundTiming, formatInboundTiming, mcpClientFamily, requestIdFromHeader, withInboundRequestId, type McpClientFamily } from './inbound.js';
+
+/** Each distinct MCP client User-Agent is logged once per surface, so Activity shows who connects. */
+const seenAgents = new Set<string>();
+const lastClientAt = new Map<McpClientFamily, number>();
+function noteClientAgent(surface: string, userAgent: string | string[] | undefined, client: McpClientFamily): void {
+  lastClientAt.set(client, Date.now());
+  const ua = (Array.isArray(userAgent) ? userAgent.join(' ') : String(userAgent ?? '')).replace(/[^ -~]/g, '').slice(0, 120);
+  const key = `${surface}|${ua}`;
+  if (seenAgents.has(key) || seenAgents.size > 64) return;
+  seenAgents.add(key);
+  logInfo(`mcp client surface=${surface} family=${client} agent=${JSON.stringify(ua || '(none)')}`);
+}
+/** When an MCP request from this client family last reached any surface (null: never this run). */
+export function lastMcpClientRequestAt(client: McpClientFamily): number | null { return lastClientAt.get(client) ?? null; }
 import http from 'node:http';
 import type { Socket } from 'node:net';
 import { createMcpHandler } from '@modelcontextprotocol/server';
@@ -444,6 +458,8 @@ export async function startMcpServer(
     // it; see inbound.ts for why it cannot be taken from the MCP call context.
     const requestId = requestIdFromHeader(req.headers['x-request-id']);
     if (requestId) noteRouteRequestArrived(requestId);
+    const client = mcpClientFamily(req.headers['user-agent']);
+    noteClientAgent(route.id, req.headers['user-agent'], client);
     const dispatch = async (body?: unknown): Promise<void> => {
       if (stopping || res.destroyed) {
         if (!res.destroyed) {
@@ -476,7 +492,7 @@ export async function startMcpServer(
         }
       }
       if (res.destroyed) return;
-      withInboundRequestId(requestId, () => void route.handler(req, res, body), timing, publication, !selfTest && !tunnelProbe);
+      withInboundRequestId(requestId, () => void route.handler(req, res, body), timing, publication, !selfTest && !tunnelProbe, client);
     };
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       void readBoundedJsonBody(req).then((parsed) => {

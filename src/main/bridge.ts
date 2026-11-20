@@ -1,4 +1,6 @@
 import { modelSelectionDiagnostic, type ModelSelectionDiagnostic } from '../shared/model-selection-diagnostic.js';
+import { completeGeminiCommand, geminiPagesToOpen, observeGeminiPage } from './gemini.js';
+import { geminiNativeId, providerConversationUrl } from '../shared/providers.js';
 import { nextWorkerArchive, onWorkerChatReady, readyForWake, settleWorkerArchive } from './worker-archive.js';
 import { considerTurnRotation, noteRotationDeclined, noteStopFallback, stopFallbackDue, type RotationDeps } from './turn-rotation.js';
 import { armRotationFence, clearRotationFence, FENCE_MS, restoreRotationFences, rotationFenced, rotationFenceTurn } from './rotation-fence.js';
@@ -3430,6 +3432,14 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
     const changed = await noteChatgptProjects(body['projects'] as Array<{ id: unknown; name: unknown }>, Date.now(), body['workspace']);
     return json(res, 200, { ok: true, changed }, origin);
   }
+  if (route === '/gemini/state' && req.method === 'POST') {
+    const reply = observeGeminiPage(await readBody(req));
+    return json(res, reply.ok ? 200 : 400, reply, origin);
+  }
+  if (route === '/gemini/result' && req.method === 'POST') {
+    const reply = await completeGeminiCommand(await readBody(req));
+    return json(res, reply.ok ? 200 : 409, reply, origin);
+  }
   if (route === '/models' && req.method === 'POST') {
     const accepted = observeChatModels(await readBody(req));
     if (accepted) changed();
@@ -3618,6 +3628,8 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
         conversations: live,
         stopTurns: await pendingStopCommands(),
         modelCatalogRequest: otherBrowser ? null : pendingChatModelRequest(),
+        // Gemini work waiting for a page while no Gemini page reports (src/main/gemini.ts).
+        geminiOpen: otherBrowser ? [] : geminiPagesToOpen(),
         // This install's connector names, so the extension recognizes exactly its own traffic.
         connectorNames: connectorNames(getConfig().connectorSuffix),
         // Apps proven to be this install's connectors, so a renamed connector is still recognized.
@@ -7869,6 +7881,8 @@ export function setBrowserOpener(open: ((url: string) => Promise<void>) | null):
 
 /** The one place this app writes a ChatGPT conversation URL. */
 export function chatUrl(conversationId: string): string {
+  // A recorded Gemini chat (`gemini:<id>`) opens on Gemini, never as a ChatGPT /c/ path.
+  if (geminiNativeId(conversationId)) return providerConversationUrl(conversationId);
   return `https://chatgpt.com/c/${encodeURIComponent(conversationId)}`;
 }
 

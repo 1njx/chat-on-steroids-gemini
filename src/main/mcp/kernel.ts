@@ -27,7 +27,7 @@ import { WINDOWS_COMPUTER_STATE_INPUT_METHODS } from '../../shared/windows-compu
 
 import { rawPromises as fs } from '../rawfs.js';
 import { randomUUID } from 'node:crypto';
-import { beginToolTiming, inboundRequestId, inboundPublication, inboundProviderRequest } from './inbound.js';
+import { beginToolTiming, inboundRequestId, inboundPublication, inboundProviderRequest, inboundClient } from './inbound.js';
 import { McpServer, type ServerContext } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { Capabilities, RemoteFolder, Root } from '../../shared/types.js';
@@ -579,6 +579,11 @@ function withUnattributedNotice(
   provisional = false
 ): ToolResult {
   if (conversationId) return result;
+  // Gemini's MCP client keeps only the last text part of a result (live, 2026-11-20: Gemini 4 Neon
+  // read PROOF.txt and saw only the appended Identity notice). Its calls never carry ChatGPT's
+  // request proof, so the ChatGPT attribution notice is meaningless there: return every text part
+  // as one, with a short note, and leave image parts as they are.
+  if (inboundClient() === 'gemini') return singleTextForGemini(result);
   const requestOwnershipNotice =
     'This request id owns its workspace, update_plan, terminals and agents/subagents. Use the process and run ids returned to this request; later exact proof attaches that state to its chat. ';
   if (provisional) return { ...result, content: [...result.content, { type: 'text', text:
@@ -617,6 +622,16 @@ function withUnattributedNotice(
       }
     ]
   };
+}
+
+export const GEMINI_RESULT_NOTE = '\n--- Chat On Steroids ---\nRecorded under Gemini activity. Report the actual tool result above; never repeat a successful change.';
+
+/** Every text part of a result joined into the first text slot, so a client that keeps one part keeps all. */
+export function singleTextForGemini(result: ToolResult): ToolResult {
+  const texts = result.content.filter((part): part is { type: 'text'; text: string } => part.type === 'text' && typeof (part as { text?: unknown }).text === 'string');
+  const others = result.content.filter((part) => part.type !== 'text');
+  const text = [...texts.map((part) => part.text), GEMINI_RESULT_NOTE].join('\n');
+  return { ...result, content: [{ type: 'text', text }, ...others] };
 }
 
 /**

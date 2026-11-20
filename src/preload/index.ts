@@ -4,6 +4,7 @@ import type { WorkspaceTerminalEvent, WorkspaceTerminalInfo } from '../shared/wo
 import type { ApprovalCardView } from '../shared/approval-wait.js';
 import type { DictationEvent } from '../shared/dictation.js';
 import type { ChatModelCatalog } from '../shared/chat-models.js';
+import type { GeminiStatus } from '../shared/gemini.js';
 import type { GoalModel } from '../shared/goal-reasoning.js';
 import type { TaskProgress } from '../shared/task-progress.js';
 import type { BrowserPreferences } from '../shared/browser-preferences.js';
@@ -410,6 +411,19 @@ const api = {
   browserPreferences: (patch: Partial<BrowserPreferences> = {}) => call<BrowserPreferences>('browser:preferences', patch),
   companionDiagnostics: () => call<CompanionDiagnostics | null>('bridge:diagnostics'),
   requestChatModels: () => call<ChatModelCatalog>('chatModels:request'),
+  getGeminiStatus: () => call<GeminiStatus>('gemini:status'),
+  sendToGemini: (request: { prompt: string; modeId?: string | null; thinkingLevel?: string | null; conversation?: string | null; connector?: string | null }) =>
+    call<{ ok: true; id: string } | { ok: false; error: string }>('gemini:send', request),
+  requestGeminiModes: () => call<{ ok: true; id: string }>('gemini:requestModes'),
+  stopGemini: (conversation: string) => call<{ ok: boolean; error?: string }>('gemini:stop', { conversation }),
+  cancelGeminiCommand: (id: string) => call<{ ok: boolean; error?: string }>('gemini:cancel', { id }),
+  saveGeminiSettings: (patch: Partial<GeminiStatus['settings']>) => call<{ ok: boolean; error?: string }>('gemini:settings', patch),
+  openGeminiConnectors: () => call<boolean>('gemini:openConnectors'),
+  onGeminiChanged: (listener: (status: GeminiStatus) => void): (() => void) => {
+    const wrapped = (_event: unknown, status: GeminiStatus): void => listener(status);
+    ipcRenderer.on('gemini:changed', wrapped);
+    return () => ipcRenderer.removeListener('gemini:changed', wrapped);
+  },
   onToolApprovalNotice: (listener: () => void): (() => void) => {
     const wrapped = (): void => listener();
     ipcRenderer.on('setup:toolApprovalNotice', wrapped);
