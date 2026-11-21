@@ -39,6 +39,7 @@ import { playSoundCue } from './sound-cues.js';
 import { inQuietHours } from '../shared/phone-push.js';
 import { collectSettings, initSettingsSearch, searchSettings } from './settings-search.js';
 import { resolveSettingsTab } from './settings-tabs.js';
+import { initGemini, paintGeminiConnector } from './gemini.js';
 import { matchesWords } from './palette.js';
 import type { AppearanceSettings, ThemeChoice } from '../shared/appearance.js';
 import type { BrowserBridgePort } from '../shared/browser-bridge.js';
@@ -1672,6 +1673,7 @@ function apply(next: AppState): void {
   // An older key/status response must not restore a profile retired by a newer switch.
   if ((next.config.tunnel.profileEpoch ?? 0) < (state?.config.tunnel.profileEpoch ?? 0)) return;
   applyPluginsState(next);
+  paintGeminiConnector(next);
   const previousState = state;
   state = next;
   applying = true;
@@ -3179,6 +3181,7 @@ $('updateExtension').addEventListener('click', () => {
 });
 
 api.onStateChanged(apply);
+initGemini(api, toast);
 // Lines logged while the startup snapshot loads arrive live and are in the snapshot too. Hold
 // them until it lands, so each shows once and after the lines that came before it.
 let heldLogLines: LogEntry[] | null = [];

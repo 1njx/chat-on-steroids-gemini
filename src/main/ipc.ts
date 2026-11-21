@@ -96,7 +96,7 @@ import { CHATGPT_PROJECT_ID, PROJECT_COLORS } from '../shared/projects.js';
 import { chatgptProjectChoices } from './chatgpt-project-catalog.js';
 import { bridgePortSelection } from './bridge-ports.js';
 import { clearAllGoalSwitches, draftTaskPlan, listGoalModels, MODEL_PAGE_SIZE, retireGoalDrafts, goalBackendFor, goalSwitchFor, setGoalSwitchNow, setGoalReplyActiveNow, setGoalObjectiveNow } from './goal.js';
-import { forgetExposedSurface } from './mcp/server.js';
+import { forgetExposedSurface, lastMcpClientRequestAt } from './mcp/server.js';
 import { runningToolActivity } from './mcp/call-context.js';
 import { onBackgroundExecChange, runningExecProcesses, stopExecProcess } from './codex/ownership.js';
 import { keychainNoticeReady } from './keychain-notice.js';
@@ -2182,7 +2182,7 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
   });
   handle('chatModels:get', async () => getChatModels());
   // Gemini web provider (src/main/gemini.ts). Inputs are validated there; results report what the page proved.
-  handle('gemini:status', async () => geminiStatus());
+  handle('gemini:status', async () => ({ ...geminiStatus(), connectorSeenAt: lastMcpClientRequestAt('gemini') }));
   handle('gemini:send', async (payload) => {
     const queued = queueGeminiSend((payload ?? {}) as Parameters<typeof queueGeminiSend>[0]);
     if (queued.ok) void startBridge().catch(() => undefined);
@@ -2880,7 +2880,7 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
   let geminiPush: ReturnType<typeof setTimeout> | null = null;
   const pushGeminiSoon = (): void => {
     if (geminiPush) return;
-    geminiPush = setTimeout(() => { geminiPush = null; push('gemini:changed', geminiStatus()); }, 250);
+    geminiPush = setTimeout(() => { geminiPush = null; push('gemini:changed', { ...geminiStatus(), connectorSeenAt: lastMcpClientRequestAt('gemini') }); }, 250);
     geminiPush.unref?.();
   };
   configureGemini({ changed: pushGeminiSoon });

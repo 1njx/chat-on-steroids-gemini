@@ -9,6 +9,47 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.0] — Gemini edition: Google Gemini as a second provider
+
+First release of the Gemini edition fork, built on upstream 2.1.54. Gemini (gemini.google.com)
+can use this app's Core, Desktop and Plugins MCP servers as Gemini custom apps, and Settings has
+a Gemini page to set it up and send messages to Gemini. See [docs/gemini.md](docs/gemini.md).
+
+### 👉 After updating
+
+- Reload the browser extension (it gains a Gemini page script).
+- To use Gemini, follow Settings → Providers → Gemini. ChatGPT works as before.
+
+### ✨ New
+
+- **Gemini as a provider.** Add the Core MCP URL in Gemini → Connectors → Custom; Gemini then
+  reads and edits files, runs commands and uses skills and plugins under the same permissions as
+  ChatGPT. Verified live with Gemini 4 Neon on a Google AI Pro account.
+- **Settings → Gemini.** Shows whether a Gemini page is connected, the account's plan, the models
+  Gemini offers (a model that needs a higher plan is shown as unavailable and never selected),
+  the Core URL to add, and when Gemini last reached the app.
+- **Send to Gemini.** Sends a message into a new or recent Gemini chat through the extension,
+  waits for the answer and records it in the app's history. A send is never repeated: one the
+  page could not confirm is shown as "Outcome unknown".
+- **Roblox Studio.** Roblox's own `StudioMCP.exe` works as a Custom executable plugin; its 39
+  tools reach ChatGPT and Gemini through the Plugins server.
+
+### 🐞 Fixed
+
+- **Cloudflare quick tunnels with a named tunnel on the same computer.** cloudflared loaded
+  `~/.cloudflared/config.yml`, and a named tunnel's catch-all ingress answered every request with
+  404 before it reached the app. The quick tunnel now uses a config of its own.
+- **Tool results in Gemini.** Gemini keeps only one text part of a result, so it saw only the
+  app's ChatGPT identity notice. Gemini now gets the whole result in one part.
+
+### Known limitations
+
+- Goal/Loop, Compact & Resume, worker chats, automatic Continue and recovery still drive ChatGPT
+  pages only; the main composer still sends to ChatGPT.
+- Gemini custom apps: personal US accounts, 18+, history on, English (Google's rules). The OpenAI
+  Secure Tunnel cannot serve Gemini; a quick tunnel's address changes on every start.
+- The release is unsigned like upstream's; verify SHA-256 checksums.
+
 ## [2.1.54] — Goal chats that don't stand idle, a tidier Settings, and faster chat updates
 
 A Goal or Loop chat whose Compact & Resume got stuck now goes on by itself, Settings is easier to move around in, a chat shows new messages sooner, and Review lists the files a chat edited.

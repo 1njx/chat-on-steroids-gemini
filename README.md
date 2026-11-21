@@ -1,12 +1,21 @@
 <p align="center"><img src="docs/images/readme-hero.svg?v=2" width="960" alt="Turn ChatGPT into Codex-style local coding. Chat On Steroids: Your files. Your terminal. Your ChatGPT plan." /></p>
 
+> **Gemini edition.** This is an independent fork of
+> [Chat On Steroids](https://github.com/totec448-spec/chat-on-steroids) (MIT) that adds **Google
+> Gemini** as a second provider: Gemini uses this app's files, terminal, skills, desktop and
+> plugins (including Roblox Studio's MCP server) through Gemini custom apps, and Settings →
+> Gemini sets it up and sends messages to Gemini. Read **[docs/gemini.md](docs/gemini.md)** for
+> setup, the live Gemini 4 Neon verification and the known limitations. Not affiliated with,
+> endorsed by or approved by Google or OpenAI. Everything below describes the upstream app, which
+> this fork keeps unchanged for ChatGPT.
+
 <p align="center">
-  <a href="https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/Chat-On-Steroids-Setup-x64.exe"><img src="docs/images/download-windows.svg" width="208" height="56" alt="Download for Windows x64" /></a>&nbsp;
-  <a href="https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/Chat-On-Steroids-macOS-arm64.dmg"><img src="docs/images/download-macos.svg" width="208" height="56" alt="Download for macOS Apple silicon" /></a>&nbsp;
-  <a href="https://github.com/totec448-spec/chat-on-steroids/releases/latest/download/Chat-On-Steroids-Linux-x64.deb"><img src="docs/images/download-linux.svg" width="208" height="56" alt="Download for Linux x64" /></a>
+  <a href="https://github.com/1njx/chat-on-steroids-gemini/releases/latest/download/Chat-On-Steroids-Setup-x64.exe"><img src="docs/images/download-windows.svg" width="208" height="56" alt="Download for Windows x64" /></a>&nbsp;
+  <a href="https://github.com/1njx/chat-on-steroids-gemini/releases/latest/download/Chat-On-Steroids-macOS-arm64.dmg"><img src="docs/images/download-macos.svg" width="208" height="56" alt="Download for macOS Apple silicon" /></a>&nbsp;
+  <a href="https://github.com/1njx/chat-on-steroids-gemini/releases/latest/download/Chat-On-Steroids-Linux-x64.deb"><img src="docs/images/download-linux.svg" width="208" height="56" alt="Download for Linux x64" /></a>
 </p>
 
-<p align="center"><a href="https://github.com/totec448-spec/chat-on-steroids/releases/latest">All downloads</a></p>
+<p align="center"><a href="https://github.com/1njx/chat-on-steroids-gemini/releases/latest">All downloads</a> · <a href="docs/gemini.md">Gemini setup</a></p>
 
 <p align="center"><sub>Independent beta. Use at your own risk and within your provider's rules. <a href="#responsible-use-and-provider-rules">Read the usage notice</a> before connecting.</sub></p>
 

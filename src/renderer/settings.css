@@ -490,3 +490,11 @@ details.connector[open] > summary .connector-chevron { transform: rotate(90deg);
 .is-found { animation: setting-found 1600ms ease-out; }
 @keyframes setting-found { from, 35% { background-color: var(--accent-wash); box-shadow: 0 0 0 8px var(--accent-wash); } }
 @media (prefers-reduced-motion: reduce) { .is-found { animation: none; background-color: var(--accent-wash); box-shadow: 0 0 0 8px var(--accent-wash); } }
+
+/* Settings → Gemini */
+.gemini-prompt-row { align-items: stretch; flex-wrap: wrap; }
+.gemini-prompt-row textarea { flex: 1 1 100%; min-height: 6em; resize: vertical; font: inherit; }
+.gemini-commands { display: grid; gap: 6px; padding: 4px 0; }
+.gemini-commands:empty { display: none; }
+.gemini-command { display: grid; gap: 2px; padding: 8px 12px; border-radius: 8px; background: var(--surface-2, rgba(127, 127, 127, 0.08)); overflow-wrap: anywhere; }
+.gemini-command[data-stage="failed"] b, .gemini-command[data-stage="unknown"] b { color: var(--warn, #d97706); }

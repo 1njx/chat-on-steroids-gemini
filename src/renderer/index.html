@@ -67,6 +67,10 @@
           <button data-tab="agents-tools" type="button"><i class="ico ph ph-shield-check" aria-hidden="true"></i>Tools &amp; access</button>
           <button data-tab="agents-browser" type="button"><i class="ico ph ph-globe-hemisphere-west" aria-hidden="true"></i>Browser</button>
         </div>
+        <div class="tabs-group" role="group" aria-labelledby="tabsProvidersLabel">
+          <span class="tabs-group-label" id="tabsProvidersLabel">Providers</span>
+          <button data-tab="gemini" type="button"><i class="ico ph ph-sparkle" aria-hidden="true"></i>Gemini</button>
+        </div>
         <div class="tabs-group" role="group" aria-labelledby="tabsInsightLabel">
           <span class="tabs-group-label" id="tabsInsightLabel">Insight</span>
           <button data-tab="usage" type="button"><i class="ico ph ph-chart-line" aria-hidden="true"></i>Usage</button>
@@ -442,6 +446,48 @@
             </section>
             <div class="plugin-section-head"><h2>Library <span id="petsCount" class="plugin-count">Loading…</span></h2></div>
             <div id="petsInstalled" class="pet-library-grid" aria-live="polite"></div>
+          </div>
+        </section>
+        <section class="panel appearance-panel general-panel scroll" data-panel="gemini" aria-labelledby="geminiTitle">
+          <div class="appearance-content settings-page-content">
+            <header class="settings-page-head appearance-page-head">
+              <div><h1 id="geminiTitle">Gemini</h1><p>Use Google Gemini (gemini.google.com) with this app's files, terminal, skills and plugins. Gemini is not affiliated with this app; your Google account's plan, limits and safety decisions apply.</p></div>
+            </header>
+            <section class="appearance-section">
+              <header class="settings-section-head"><div><h2>Connection</h2><p>What the browser extension sees on gemini.google.com. Nothing here reads or stores your Google password or address.</p></div></header>
+              <div class="settings-surface pane appearance-settings-card">
+                <div class="setting"><span class="setting-text"><b>Gemini page</b><em id="geminiPageStatus">Checking…</em></span></div>
+                <div class="setting"><span class="setting-text"><b>Account</b><em id="geminiAccountStatus">Unknown</em></span></div>
+                <div class="setting"><span class="setting-text"><b>Core connector in Gemini</b><em id="geminiConnectorStatus">No call from Gemini yet in this run.</em></span></div>
+                <div class="setting" id="geminiWarnings" hidden><span class="setting-text"><b>Needs attention</b><em id="geminiWarningText"></em></span></div>
+              </div>
+            </section>
+            <section class="appearance-section">
+              <header class="settings-section-head"><div><h2>Add Chat On Steroids to Gemini</h2><p>Gemini reaches this app as a custom MCP app. Gemini needs an https address, so use the Cloudflare tunnel (Setup → Tunnel) or your own HTTPS tunnel; the OpenAI Secure Tunnel only serves ChatGPT. Google currently offers custom apps to personal accounts, 18+, in the US, with Gemini history on, in English.</p></div></header>
+              <div class="settings-surface pane appearance-settings-card">
+                <div class="setting"><span class="setting-text"><b>Core MCP server URL</b><em id="geminiCoreUrl" translate="no">Connect a Cloudflare or HTTPS tunnel first.</em></span><button class="btn" id="geminiCopyUrl" type="button" disabled>Copy</button></div>
+                <div class="setting"><span class="setting-text"><b>Open Gemini connectors</b><em>Click Custom, paste the URL, Next, read Google's notice, tick it and Connect. Gemini lists the app's tools; Connect again to save it.</em></span><button class="btn" id="geminiOpenConnectors" type="button">Open</button></div>
+                <label class="setting"><span class="setting-text"><b>Connector name to mention</b><em>The name Gemini shows for the app (usually “Chat On Steroids Core”). Messages sent from here start with an @-mention of it, which is how Google says to make Gemini use it. Leave empty for no mention.</em></span><input id="geminiConnectorName" type="text" maxlength="80" placeholder="Chat On Steroids Core" /></label>
+                <div class="setting"><span class="setting-text"><b>Tunnel addresses change</b><em>A Cloudflare quick tunnel gets a new address every start, and Gemini cannot edit a custom app's address: delete and add it again. For a lasting address use your own named tunnel and turn on General → For developers → Keep plugin URLs across restarts.</em></span></div>
+              </div>
+            </section>
+            <section class="appearance-section">
+              <header class="settings-section-head"><div><h2>Models</h2><p>The models your Google account offers, read from Gemini's own picker. A model Gemini marks for a higher plan is shown as unavailable and is never selected.</p></div></header>
+              <div class="settings-surface pane appearance-settings-card">
+                <div class="setting"><span class="setting-text"><b>Available models</b><em id="geminiModelList">Not read yet.</em></span><button class="btn" id="geminiRefreshModels" type="button">Refresh</button></div>
+                <label class="setting"><span class="setting-text"><b>Model for messages sent from here</b><em>“As in Gemini” keeps whatever Gemini has selected.</em></span><select id="geminiDefaultMode"><option value="">As in Gemini</option></select></label>
+                <label class="setting"><span class="setting-text"><b>Thinking level</b><em>Offered levels depend on the model.</em></span><select id="geminiThinking"><option value="">As in Gemini</option></select></label>
+              </div>
+            </section>
+            <section class="appearance-section">
+              <header class="settings-section-head"><div><h2>Send to Gemini</h2><p>Starts a new Gemini chat in your browser (or continues one), waits for the answer and records it in this app's history. Gemini asks you itself before a tool that changes something runs.</p></div></header>
+              <div class="settings-surface pane appearance-settings-card">
+                <label class="setting gemini-prompt-row"><span class="setting-text"><b>Message</b><em>Sent once. If the page cannot confirm it was sent, it is reported as unknown and never sent again.</em></span><textarea id="geminiPrompt" rows="4" maxlength="100000"></textarea></label>
+                <label class="setting"><span class="setting-text"><b>Continue chat</b><em>Leave on “New chat” to start a new Gemini chat.</em></span><select id="geminiContinue"><option value="">New chat</option></select></label>
+                <div class="setting"><span class="setting-text"><b>Send</b><em id="geminiSendHint">The extension must be connected and gemini.google.com signed in.</em></span><button class="btn primary" id="geminiSend" type="button">Send to Gemini</button></div>
+                <div class="gemini-commands" id="geminiCommands" aria-live="polite"></div>
+              </div>
+            </section>
           </div>
         </section>
         <section class="panel usage-panel" data-panel="usage">

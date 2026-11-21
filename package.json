@@ -1,10 +1,10 @@
 {
   "name": "chat-on-steroids",
-  "version": "2.1.54",
-  "description": "Local coding bridge for ChatGPT over MCP, with native desktop control and approved-folder capability limits.",
+  "version": "2.2.0",
+  "description": "Local coding bridge for ChatGPT and Google Gemini over MCP, with native desktop control and approved-folder capability limits.",
   "license": "MIT",
   "author": "Chat On Steroids",
-  "homepage": "https://github.com/totec448-spec/chat-on-steroids",
+  "homepage": "https://github.com/1njx/chat-on-steroids-gemini",
   "desktopName": "com.chatonsteroids.app.desktop",
   "main": "out/main/index.js",
   "scripts": {

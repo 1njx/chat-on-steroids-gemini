@@ -7,7 +7,7 @@ const fields = (url: string) => Object.fromEntries(new URL(url).searchParams);
 describe('the prefilled GitHub issue', () => {
   it('opens the bug form with everything the app knows and what the person wrote', () => {
     const { url, trimmed } = feedbackIssueUrl({ kind: 'bug', what: 'The Stop button stays grey.\nIt happens after a reload.', steps: '1. Reload\n2. Send', frequency: 'Sometimes' }, env);
-    expect(url.startsWith('https://github.com/totec448-spec/chat-on-steroids/issues/new?')).toBe(true);
+    expect(url.startsWith('https://github.com/1njx/chat-on-steroids-gemini/issues/new?')).toBe(true);
     expect(fields(url)).toEqual({
       template: 'bug_report.yml', title: 'The Stop button stays grey.', version: '2.1.46', operating_system: 'macOS 15.6',
       architecture: 'ARM64', extension: 'Yes, and its version matches the app', what: 'The Stop button stays grey.\nIt happens after a reload.',

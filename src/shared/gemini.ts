@@ -41,6 +41,8 @@ export interface GeminiStatus {
   catalog: { modes: GeminiMode[]; thinkingLevels: GeminiThinkingLevel[]; observedAt: number } | null;
   settings: { connectorName: string | null; defaultModeId: string | null; defaultThinkingLevel: string | null };
   commands: GeminiCommandSummary[];
+  /** When an MCP request from Gemini's connector client (User-Agent "Google") last arrived this run. */
+  connectorSeenAt?: number | null;
 }
 
 /** Plain-language text for a command error code; unknown codes are shown as Gemini/the page gave them. */

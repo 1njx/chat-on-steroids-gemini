@@ -1833,7 +1833,7 @@ describe('in-app feedback', () => {
     const reply = await handlers.get('feedback:openIssue')!(null, { kind: 'bug', what: 'The Stop button stays grey.', frequency: 'Sometimes' });
     expect(reply).toEqual({ ok: true, data: { trimmed: false } });
     const url = new URL(vi.mocked(shell.openExternal).mock.calls.at(-1)![0] as string);
-    expect(url.origin + url.pathname).toBe('https://github.com/totec448-spec/chat-on-steroids/issues/new');
+    expect(url.origin + url.pathname).toBe('https://github.com/1njx/chat-on-steroids-gemini/issues/new');
     expect(url.searchParams.get('template')).toBe('bug_report.yml');
     expect(url.searchParams.get('version')).toBe('2.1.46');
     expect(url.searchParams.get('operating_system')).toBeTruthy();

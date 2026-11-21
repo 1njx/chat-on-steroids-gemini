@@ -7,7 +7,7 @@ import os from 'node:os';
  * .github/ISSUE_TEMPLATE, and the dropdown answers are their option texts word for word.
  */
 
-const REPOSITORY = 'https://github.com/totec448-spec/chat-on-steroids';
+const REPOSITORY = 'https://github.com/1njx/chat-on-steroids-gemini';
 /** GitHub refuses longer addresses; a little room is kept below its limit. */
 export const MAX_ISSUE_URL = 7800;
 
