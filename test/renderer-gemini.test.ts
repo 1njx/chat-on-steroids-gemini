@@ -78,10 +78,11 @@ describe('Settings → Gemini', () => {
     const doc = dom.window.document;
     let push: (s: GeminiStatus) => void = () => undefined;
     const hooks = { openSetupStep: vi.fn(), addFolder: vi.fn(), useHttpsTunnel: vi.fn() };
-    initGemini({
+    const api = {
       getGeminiStatus: () => new Promise(() => undefined), onGeminiChanged: (fn: typeof push) => { push = fn; },
       writeClipboard: async () => ({ ok: true }), openGemini: vi.fn(), openGeminiConnectors: vi.fn(),
-    } as never, () => undefined, hooks);
+    };
+    initGemini(api as never, () => undefined, hooks);
     const open = () => doc.querySelector<HTMLElement>('#geminiWizard > .step.is-open')!.dataset.geminiStep;
     const progress = () => doc.getElementById('geminiSetupProgressText')!.textContent;
 
@@ -102,6 +103,11 @@ describe('Settings → Gemini', () => {
     doc.querySelector<HTMLElement>('[data-gemini-step="tunnel"] [data-gemini-nav="next"]')!.click();
     expect(open()).toBe('add');
     expect((doc.getElementById('geminiSetupCopy') as HTMLButtonElement).disabled).toBe(true);
+    doc.getElementById('geminiSetupOpenApps')!.click();
+    doc.getElementById('geminiSetupOpenAppsDefault')!.click();
+    expect(api.openGeminiConnectors.mock.calls).toEqual([[], [{ external: true }]]);
+    doc.getElementById('geminiOpenGeminiDefault')!.click();
+    expect(api.openGemini).toHaveBeenCalledWith({ external: true });
 
     paintGeminiConnector(app({ present: true, roots: 1, kind: 'cloudflared', url: 'https://x.trycloudflare.com/mcp/core/t' }));
     push(status({ connectorSeenAt: Date.now() }));

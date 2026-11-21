@@ -254,6 +254,7 @@ export function initGemini(api: AppApi, toast: (message: string) => void, hooks?
     if (url && (await api.writeClipboard(url)).ok) toast('Core URL copied. Treat it like a password.');
   });
   byId('geminiOpenConnectors').addEventListener('click', () => { void api.openGeminiConnectors(); });
+  byId('geminiOpenConnectorsDefault').addEventListener('click', () => { void api.openGeminiConnectors({ external: true }); });
   byId('geminiRefreshModels').addEventListener('click', async () => {
     const reply = await api.requestGeminiModes();
     toast(reply.ok ? 'Reading Gemini\'s model picker in your browser…' : 'Could not ask the browser.');
@@ -314,7 +315,9 @@ function initGeminiSetup(api: AppApi, toast: (message: string) => void, hooks?: 
   byId('geminiAddFolder').addEventListener('click', () => hooks?.addFolder());
   byId('geminiTunnelGo').addEventListener('click', () => hooks?.useHttpsTunnel());
   byId('geminiOpenGemini').addEventListener('click', () => { void api.openGemini(); });
+  byId('geminiOpenGeminiDefault').addEventListener('click', () => { void api.openGemini({ external: true }); });
   byId('geminiSetupOpenApps').addEventListener('click', () => { void api.openGeminiConnectors(); });
+  byId('geminiSetupOpenAppsDefault').addEventListener('click', () => { void api.openGeminiConnectors({ external: true }); });
   byId('geminiSetupCopy').addEventListener('click', async () => {
     const url = appState ? coreHttpsUrl(appState) : null;
     if (url && (await api.writeClipboard(url)).ok) toast('Address copied. Treat it like a password.');

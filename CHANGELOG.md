@@ -9,6 +9,15 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [Unreleased]
+
+### Fixed
+
+- **Gemini pages open in your normal browser.** With the chat browser set to "In Chat On
+  Steroids", Open Gemini and Open custom apps opened the built-in browser, which has no
+  extension and where Google may refuse sign-in. They now open in the system browser, and each
+  has an "Open in default browser" button beside it.
+
 ## [2.2.1] — Gemini edition: Set up Gemini
 
 ### Added

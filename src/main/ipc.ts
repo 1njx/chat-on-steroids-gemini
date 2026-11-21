@@ -2192,8 +2192,16 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
   handle('gemini:stop', async (payload) => stopGemini(z.object({ conversation: z.string().max(80) }).parse(payload).conversation));
   handle('gemini:cancel', async (payload) => cancelGeminiCommand(z.object({ id: z.string().uuid() }).parse(payload).id));
   handle('gemini:settings', async (payload) => saveGeminiSettings(payload));
-  handle('gemini:openConnectors', async () => { await openInPreferredBrowser('https://gemini.google.com/customize/connectors', { reveal: true }); return true; });
-  handle('gemini:open', async () => { await openInPreferredBrowser('https://gemini.google.com/app', { reveal: true }); return true; });
+  // Gemini works only where the extension is, and Google may refuse sign-in in the built-in
+  // browser: so never there. "Default browser" asks for the system's own browser outright.
+  const openGeminiPage = async (url: string, payload: unknown): Promise<boolean> => {
+    const external = z.object({ external: z.boolean().optional() }).optional().parse(payload)?.external === true;
+    if (external || getConfig().ui.chatBrowser === 'cos') await shell.openExternal(url);
+    else await openInPreferredBrowser(url, { reveal: true });
+    return true;
+  };
+  handle('gemini:openConnectors', async (payload) => openGeminiPage('https://gemini.google.com/customize/connectors', payload));
+  handle('gemini:open', async (payload) => openGeminiPage('https://gemini.google.com/app', payload));
   handle('browser:preferences', async (payload) => requestBrowserPreferences(payload));
   handle('chatModels:request', async () => startChatModelDiscovery());
   handle('sessions:controls', async (payload) => sessionControlsFor(sessionIdArg.parse(payload).id));

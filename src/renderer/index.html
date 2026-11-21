@@ -1063,7 +1063,7 @@
                     <h3>Sign in to Gemini</h3>
                     <p class="step-lead">Open gemini.google.com in that browser and sign in with your Google account. The app never sees your password or your email address.</p>
                     <p class="status-pill" id="geminiSigninPill" data-tone="off" role="status"></p>
-                    <div class="step-actions"><button class="btn btn-solid" id="geminiOpenGemini" type="button"><i class="ico ph ph-arrow-square-out" aria-hidden="true"></i>Open Gemini</button></div>
+                    <div class="step-actions"><button class="btn btn-solid" id="geminiOpenGemini" type="button"><i class="ico ph ph-arrow-square-out" aria-hidden="true"></i>Open Gemini</button><button class="btn" id="geminiOpenGeminiDefault" type="button">Open in default browser</button></div>
                     <p class="hint">Google offers custom apps only to accounts that meet all of these:</p>
                     <ul class="gemini-needs">
                       <li>A personal Google account (not a work or school account)</li>
@@ -1104,7 +1104,7 @@
                     <h3>Add the app in Gemini</h3>
                     <p class="step-lead">Copy this address, then add it in Gemini as a custom app.</p>
                     <div class="gemini-copy-row"><code id="geminiSetupUrl" translate="no"></code><button class="btn" id="geminiSetupCopy" type="button" disabled><i class="ico ph ph-copy" aria-hidden="true"></i>Copy URL</button></div>
-                    <div class="step-actions"><button class="btn btn-solid" id="geminiSetupOpenApps" type="button"><i class="ico ph ph-arrow-square-out" aria-hidden="true"></i>Open custom apps</button></div>
+                    <div class="step-actions"><button class="btn btn-solid" id="geminiSetupOpenApps" type="button"><i class="ico ph ph-arrow-square-out" aria-hidden="true"></i>Open custom apps</button><button class="btn" id="geminiSetupOpenAppsDefault" type="button">Open in default browser</button></div>
                     <div class="setup-guide" data-setup-guide="gemini-add"></div>
                     <p class="hint">After Connect, Gemini lists the app's tools under “Save your custom app”. Click Connect there once more to save it.</p>
                     <p class="hint">Treat the address like a password: anyone who has it can use this app within the access you chose.</p>
@@ -1150,7 +1150,7 @@
               <header class="settings-section-head"><div><h2>Add Chat On Steroids to Gemini</h2><p>Gemini reaches this app as a custom MCP app. Gemini needs an https address, so use the Cloudflare tunnel (Setup → Tunnel) or your own HTTPS tunnel; the OpenAI Secure Tunnel only serves ChatGPT. Google currently offers custom apps to personal accounts, 18+, in the US, with Gemini history on, in English.</p></div></header>
               <div class="settings-surface pane appearance-settings-card">
                 <div class="setting"><span class="setting-text"><b>Core MCP server URL</b><em id="geminiCoreUrl" translate="no">Connect a Cloudflare or HTTPS tunnel first.</em></span><button class="btn" id="geminiCopyUrl" type="button" disabled>Copy</button></div>
-                <div class="setting"><span class="setting-text"><b>Open Gemini custom apps</b><em>Click Custom, paste the URL, Next, read Google's notice, tick it and Connect. Gemini lists the app's tools; Connect again to save it.</em></span><button class="btn" id="geminiOpenConnectors" type="button">Open</button></div>
+                <div class="setting"><span class="setting-text"><b>Open Gemini custom apps</b><em>Click Custom, paste the URL, Next, read Google's notice, tick it and Connect. Gemini lists the app's tools; Connect again to save it.</em></span><button class="btn" id="geminiOpenConnectors" type="button">Open</button><button class="btn" id="geminiOpenConnectorsDefault" type="button">Default browser</button></div>
                 <label class="setting"><span class="setting-text"><b>App name to mention</b><em>The name Gemini shows for the app (usually “Chat On Steroids Core”). Messages sent from here start with an @-mention of it, which is how Google says to make Gemini use it. Leave empty for no mention.</em></span><input id="geminiConnectorName" type="text" maxlength="80" placeholder="Chat On Steroids Core" /></label>
                 <div class="setting"><span class="setting-text"><b>Tunnel addresses change</b><em>A Cloudflare quick tunnel gets a new address every start, and Gemini cannot edit a custom app's address: delete and add it again. For a lasting address use your own named tunnel and turn on General → For developers → Keep plugin URLs across restarts.</em></span></div>
               </div>

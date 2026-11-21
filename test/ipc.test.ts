@@ -1919,6 +1919,33 @@ describe('every link the window offers', () => {
     }
   });
 
+  it('opens Gemini pages where the extension is, never in the CoS browser, and in the default browser on request', async () => {
+    const original = getConfig();
+    const apps = 'https://gemini.google.com/customize/connectors';
+    try {
+      await saveConfig({ ...original, ui: { ...original.ui, chatBrowser: 'cos' } });
+      vi.mocked(openInPreferredBrowser).mockClear();
+      vi.mocked(shell.openExternal).mockClear();
+      expect(await handlers.get('gemini:openConnectors')!(null, {})).toEqual({ ok: true, data: true });
+      expect(await handlers.get('gemini:open')!(null, undefined)).toEqual({ ok: true, data: true });
+      expect(shell.openExternal).toHaveBeenNthCalledWith(1, apps);
+      expect(shell.openExternal).toHaveBeenNthCalledWith(2, 'https://gemini.google.com/app');
+      expect(openInPreferredBrowser).not.toHaveBeenCalled();
+
+      await saveConfig({ ...original, ui: { ...original.ui, chatBrowser: 'chrome' } });
+      vi.mocked(shell.openExternal).mockClear();
+      await handlers.get('gemini:openConnectors')!(null, {});
+      expect(openInPreferredBrowser).toHaveBeenCalledWith(apps, { reveal: true });
+      expect(shell.openExternal).not.toHaveBeenCalled();
+      vi.mocked(openInPreferredBrowser).mockClear();
+      await handlers.get('gemini:openConnectors')!(null, { external: true });
+      expect(shell.openExternal).toHaveBeenLastCalledWith(apps);
+      expect(openInPreferredBrowser).not.toHaveBeenCalled();
+    } finally {
+      await saveConfig(original);
+    }
+  });
+
   it("hands Setup's extensions address over by clipboard, because browsers ignore their own pages from outside", async () => {
     const { clipboard } = await import('electron');
     const write = vi.spyOn(clipboard, 'writeText');
