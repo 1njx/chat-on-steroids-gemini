@@ -98,8 +98,9 @@ export function paintGeminiConnector(state: AppState): void {
 
 export function initGemini(api: AppApi, toast: (message: string) => void): void {
   let last: GeminiStatus | null = null;
-  const paint = (status: GeminiStatus): void => { last = status; paintGemini(status); };
-  void api.getGeminiStatus().then(reply => { if (reply.ok) paint(reply.data); });
+  // A reply without a status (an older main process, a harness) leaves the page as it is.
+  const paint = (status: GeminiStatus | null | undefined): void => { if (!status) return; last = status; paintGemini(status); };
+  void api.getGeminiStatus().then(reply => { if (reply?.ok) paint(reply.data); }, () => undefined);
   api.onGeminiChanged(paint);
   setInterval(() => { if (last && !byId('geminiPageStatus').closest('[hidden]')) paintGemini(last); }, 15_000);
 
