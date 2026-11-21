@@ -101,8 +101,10 @@ export function initGemini(api: AppApi, toast: (message: string) => void): void 
   // A reply without a status (an older main process, a harness) leaves the page as it is.
   const paint = (status: GeminiStatus | null | undefined): void => { if (!status) return; last = status; paintGemini(status); };
   void api.getGeminiStatus().then(reply => { if (reply?.ok) paint(reply.data); }, () => undefined);
+  // No repaint timer: status pushes arrive every few seconds while a Gemini page reports, and an
+  // uncleared interval kept every mounted window alive (renderer test workers ran out of memory on macOS CI).
   api.onGeminiChanged(paint);
-  setInterval(() => { if (last && !byId('geminiPageStatus').closest('[hidden]')) paintGemini(last); }, 15_000);
+  byId('geminiRefreshModels').closest('section')?.parentElement?.addEventListener('pointerenter', () => { if (last) paintGemini(last); });
 
   const save = async (patch: Parameters<AppApi['saveGeminiSettings']>[0]): Promise<void> => {
     const reply = await api.saveGeminiSettings(patch);
