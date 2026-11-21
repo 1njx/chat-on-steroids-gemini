@@ -3959,5 +3959,7 @@
   "What a chat edited": "聊天修改了什么",
   "Review lists the files this chat changed and opens each recorded diff.": "审查会列出此聊天更改的文件，并可打开每条已记录的差异。",
   "Steered active turn": "已引导当前轮次",
-  "Worked for {0}{1}s · steered": "已工作 {0}{1} 秒 · 已引导"
+  "Worked for {0}{1}s · steered": "已工作 {0}{1} 秒 · 已引导",
+  "Providers": "提供方",
+  "Gemini": "Gemini"
 }

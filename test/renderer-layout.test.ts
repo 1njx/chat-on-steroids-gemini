@@ -102,7 +102,7 @@ it('keeps recorded DIL surfaces on CoS tokens across themes and high-contrast pa
 
 it('finds settings on every settings page by name, description and section, never a row its page hides', () => {
   const entries = collectSettings(document);
-  expect(new Set(entries.map(entry => entry.tab))).toEqual(new Set(['home', 'setup', 'general', 'appearance', 'agents-goal', 'agents-models', 'agents-workers', 'agents-tools', 'agents-browser', 'usage']));
+  expect(new Set(entries.map(entry => entry.tab))).toEqual(new Set(['home', 'setup', 'general', 'appearance', 'agents-goal', 'agents-models', 'agents-workers', 'agents-tools', 'agents-browser', 'gemini', 'usage']));
   const [finish] = searchSettings(entries, '  SESSION FINISH  ', 'en');
   expect([finish!.title, finish!.page, finish!.section, finish!.tab]).toEqual(['Session finish', 'Goal & Loop', 'Keep the turn open', 'agents-goal']);
   expect(finish!.target.contains(document.getElementById('finishTool'))).toBe(true);
