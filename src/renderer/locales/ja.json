@@ -3961,5 +3961,9 @@
   "Steered active turn": "実行中のターンを方向転換",
   "Worked for {0}{1}s · steered": "作業済み · {0}{1}秒 · 方向転換",
   "Providers": "プロバイダー",
-  "Gemini": "Gemini"
+  "Gemini": "Gemini",
+  "{0} · needs a higher plan": "{0} · 上位プランが必要",
+  "{0} · not available": "{0} · 利用不可",
+  "Gemini is answering…": "Gemini が回答中…",
+  "Gemini gets text only: no files, plans or edits.": "Gemini に送れるのはテキストのみです。ファイル、プラン、編集は送れません。"
 }

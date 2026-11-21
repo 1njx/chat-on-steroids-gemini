@@ -4045,5 +4045,9 @@
   "Steered active turn": "Laufenden Durchlauf umgelenkt",
   "Worked for {0}{1}s · steered": "Gearbeitet · {0}{1} s · umgelenkt",
   "Providers": "Anbieter",
-  "Gemini": "Gemini"
+  "Gemini": "Gemini",
+  "{0} · needs a higher plan": "{0} · erfordert ein höheres Abo",
+  "{0} · not available": "{0} · nicht verfügbar",
+  "Gemini is answering…": "Gemini antwortet …",
+  "Gemini gets text only: no files, plans or edits.": "Gemini erhält nur Text: keine Dateien, Pläne oder Bearbeitungen."
 }

@@ -188,7 +188,8 @@ export async function boot(events: SessionEvent[], selectExisting = true, paused
     HTMLInputElement: w.HTMLInputElement,
     HTMLSelectElement: w.HTMLSelectElement,
     HTMLTextAreaElement: w.HTMLTextAreaElement,
-    HTMLButtonElement: w.HTMLButtonElement
+    HTMLButtonElement: w.HTMLButtonElement,
+    Option: w.Option
   });
   if (!(w.HTMLElement.prototype as any).scrollIntoView) (w.HTMLElement.prototype as any).scrollIntoView = () => {};
   // What an earlier run of the app left in this window's storage.
@@ -231,6 +232,7 @@ export async function boot(events: SessionEvent[], selectExisting = true, paused
   let backgroundProcesses: Array<{ processId: number; incarnation: number; command: string; startedAt: number; tty: boolean }> = [];
   let resolveBackgroundStop: (() => void) | null = null;
   const taskProgressListeners = new Set<(progress: any) => void>();
+  const geminiListeners = new Set<(status: any) => void>();
   const api: any = new Proxy(
     {
       getState: () => ok(state),
@@ -247,6 +249,7 @@ export async function boot(events: SessionEvent[], selectExisting = true, paused
       getSwarm: () => ok({ running: false, runId: null, agents: [], maxWorkers: 2, pendingReports: 0 }),
       onStateChanged: () => () => undefined,
       onTaskProgress: (listener: (progress: any) => void) => { taskProgressListeners.add(listener); return () => taskProgressListeners.delete(listener); },
+      onGeminiChanged: (listener: (status: any) => void) => { geminiListeners.add(listener); return () => geminiListeners.delete(listener); },
       draftGoalOpening: (text: string) => ok({ reply: `Start: ${text}`, model: 'fixture' }),
       onLogEntry: () => () => undefined,
       onSwarmChanged: () => () => undefined,
@@ -357,6 +360,7 @@ export async function boot(events: SessionEvent[], selectExisting = true, paused
     notifySession: () => sessionListener({ allTranscripts: true }),
     writeSession: (id: string) => writeSessionListener(id),
     progress: (value: any) => { for (const listener of taskProgressListeners) listener(value); },
+    async gemini(status: any) { for (const listener of geminiListeners) listener(status); await settle(); },
     resolveBackgroundStop: () => { const resolve = resolveBackgroundStop; resolveBackgroundStop = null; resolve?.(); },
     async publishBackgroundProcesses(rows: Array<{ processId: number; incarnation: number; command: string; startedAt: number; tty: boolean }>) {
       backgroundProcesses = structuredClone(rows);

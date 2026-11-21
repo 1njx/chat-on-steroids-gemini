@@ -1027,3 +1027,47 @@ it('jumps between your own messages with Alt+↑ / Alt+↓, marked like a search
   await settle();
   expect(read).toHaveBeenCalledWith(expect.any(String), { before: 11, limit: 30 });
 });
+
+describe('sending to Gemini from the composer', () => {
+  const geminiChat = { ...summary([]), id: 'gemini-session', title: 'Gemini chat', conversationId: 'gemini:abcdef0123456789', chatIds: ['gemini:abcdef0123456789'], selectedModel: undefined };
+  const status = (commands: unknown[] = []) => ({
+    pages: 1, signIn: 'signed-in', account: null, selectedMode: null, localized: false, errors: [], quotaLimited: false, settings: { connectorName: 'Chat On Steroids Core', defaultModeId: null, defaultThinkingLevel: null }, commands,
+    catalog: { observedAt: 1, thinkingLevels: [{ label: 'Low', selected: false, available: true }, { label: 'High', selected: true, available: true }], modes: [
+      { id: 'hydrogen', title: 'Everyday help', model: 'Gemini 4 Hydrogen', available: true, selected: true, reason: null },
+      { id: 'neon', title: 'Deeper analysis', model: 'Gemini 4 Neon', available: true, selected: false, reason: null },
+    ] },
+  });
+  const command = (id: string, stage: string, fields: object = {}) => ({ id, kind: 'send', stage, error: null, createdAt: 1, updatedAt: 2, conversation: null, sessionId: null, modeId: 'neon', promptPreview: 'x', answerChars: null, ...fields });
+
+  it('sends a new chat with a picked Gemini model to Gemini, opens the recorded chat and continues it there', async () => {
+    const app = await boot([], false, [], [], { sessions: [summary([]), geminiChat] });
+    const { w, live } = app;
+    const sendToGemini = vi.fn(async () => ({ ok: true, data: { ok: true, id: `cmd-${sendToGemini.mock.calls.length}` } }));
+    (w as any).api.sendToGemini = sendToGemini;
+    await app.gemini(status());
+    const doc = w.document;
+    doc.querySelector<HTMLButtonElement>('[data-gemini-mode="neon"]')!.click();
+    expect(doc.getElementById('composerModelLabel')!.textContent).toBe('Gemini 4 Neon · High');
+    const field = doc.getElementById('chatInput') as HTMLTextAreaElement;
+    const submit = () => doc.getElementById('composer')!.dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true }));
+    field.value = 'Hello Gemini'; submit(); await settle();
+    expect(sendToGemini).toHaveBeenLastCalledWith({ prompt: 'Hello Gemini', conversation: null, modeId: 'neon', thinkingLevel: 'High' });
+    expect(live.sent).toEqual([]);
+    expect(field.value).toBe('');
+    expect(doc.getElementById('composerStatus')!.textContent).toBe('Gemini is answering…');
+
+    // Gemini answered and main recorded the chat: the composer opens it.
+    await app.gemini(status([command('cmd-1', 'completed', { sessionId: 'gemini-session', conversation: 'gemini:abcdef0123456789' })]));
+    await waitFor(() => expect(doc.querySelector('#sessionList [data-id="gemini-session"]')!.outerHTML).toMatch(/is-sel|aria-current|aria-selected="true"/));
+    expect(doc.getElementById('composerStatus')!.textContent).toBe('');
+    // In a Gemini chat the picker lists only Gemini's models, and Send continues that chat.
+    expect(doc.querySelector('#composerModelOptions [data-model]')).toBeNull();
+    expect(doc.getElementById('composerModelLabel')!.textContent).toBe('Gemini 4 Hydrogen · High');
+    field.value = 'And now?'; submit(); await settle();
+    expect(sendToGemini).toHaveBeenLastCalledWith({ prompt: 'And now?', conversation: 'gemini:abcdef0123456789', modeId: 'hydrogen', thinkingLevel: 'High' });
+    // A failure says why in Gemini's words.
+    await app.gemini(status([command('cmd-2', 'failed', { error: 'send-not-accepted' })]));
+    expect(doc.querySelector('.toast')!.textContent).toContain('Gemini did not accept the message.');
+    expect(live.sent).toEqual([]);
+  });
+});

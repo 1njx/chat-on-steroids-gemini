@@ -3,6 +3,8 @@ import type { ChatModelCatalog } from '../shared/chat-models.js';
 import { chatModelDisplayLabel, DEFAULT_HELPER_CHAT_MODEL, resolveChatModel } from '../shared/chat-models.js';
 import type { Config } from '../shared/types.js';
 import type { ReasoningEffort } from '../shared/session.js';
+import type { GeminiStatus } from '../shared/gemini.js';
+import type { ProviderId } from '../shared/providers.js';
 import { $, el, icon, run } from './dom.js';
 
 let catalog: ChatModelCatalog = { state: 'unknown', requestedAt: null, observedAt: null, models: [] };
@@ -12,7 +14,32 @@ const catalogWaiters = new Set<() => void>();
 let discovery: Promise<void> | null = null;
 let catalogSubscribed = false;
 type ObservedSelection = { model: string; reasoningEffort?: ReasoningEffort; observedAt: number };
-let composerContext: { scope: string | null; observation: ObservedSelection | null; edited: boolean; automatic?: boolean } | null = null;
+/** A Gemini model (mode) and thinking level picked in the composer; Send then goes to Gemini. */
+export type GeminiChoice = { modeId: string; thinkingLevel: string | null };
+let composerContext: { scope: string | null; observation: ObservedSelection | null; edited: boolean; automatic?: boolean;
+  /** Whose chat this is; a new chat (no scope) may go to either. */
+  provider?: ProviderId; gemini?: GeminiChoice | null } | null = null;
+/** The models Gemini's own picker showed (src/main/gemini.ts); null until a Gemini page reported them. */
+let gemini: Pick<GeminiStatus, 'catalog' | 'settings' | 'pages'> | null = null;
+const geminiLevels = (): string[] => gemini?.catalog?.thinkingLevels.filter(level => level.available).map(level => level.label) ?? [];
+const geminiModeLabel = (modeId: string): string => {
+  const mode = gemini?.catalog?.modes.find(item => item.id === modeId);
+  return mode ? mode.model ?? mode.title : 'Gemini';
+};
+/** The saved Gemini default, else what Gemini has selected, else its first available model. */
+function geminiDefault(): GeminiChoice | null {
+  const modes = gemini?.catalog?.modes.filter(mode => mode.available) ?? [];
+  const mode = modes.find(item => item.id === gemini?.settings.defaultModeId) ?? modes.find(item => item.selected) ?? modes[0];
+  if (!mode) return null;
+  const levels = geminiLevels(), saved = gemini?.settings.defaultThinkingLevel;
+  const level = saved && levels.includes(saved) ? saved
+    : gemini?.catalog?.thinkingLevels.find(item => item.selected && item.available)?.label ?? levels.at(-1) ?? null;
+  return { modeId: mode.id, thinkingLevel: level };
+}
+/** The Gemini choice Send uses: the picked one, or in a Gemini chat the default. */
+export function composerGeminiChoice(): GeminiChoice | null {
+  return composerContext?.gemini ?? (composerContext?.provider === 'gemini' ? geminiDefault() : null);
+}
 let ordinaryDefaults: { model: string; reasoningEffort: string } = { model: '', reasoningEffort: '' };
 /**
  * Automatic: send with whatever model ChatGPT already has selected, switching nothing.
@@ -38,7 +65,7 @@ function automaticApplies(): boolean {
 }
 /** The person chose Automatic (from the menu, or instead of an unavailable exact model). */
 function chooseAutomatic(): void {
-  if (composerContext) { composerContext.edited = true; composerContext.automatic = true; }
+  if (composerContext) { composerContext.edited = true; composerContext.automatic = true; composerContext.gemini = null; }
   else composerContext = { scope: null, observation: null, edited: true, automatic: true };
   paintPair('composerModel', 'composerReasoning', '', '');
   paintStatus();
@@ -78,9 +105,9 @@ function paintComposerContext(): void {
 }
 
 /** Scope comes from the caller's session + selection generation; no browser mutation. */
-export function applyComposerSessionModel(scope: string | null, observation: ObservedSelection | null): void {
+export function applyComposerSessionModel(scope: string | null, observation: ObservedSelection | null, provider?: ProviderId): void {
   if (!composerContext || composerContext.scope !== scope) {
-    composerContext = { scope, observation, edited: false };
+    composerContext = { scope, observation, edited: false, ...(scope !== null && provider ? { provider } : {}) };
   } else if (observation && (!composerContext.observation || observation.observedAt >= composerContext.observation.observedAt)) {
     composerContext.observation = observation;
   }
@@ -226,7 +253,16 @@ function paintEffortShortcut(supported: readonly ReasoningEffort[]): void {
 /** What the open menu shows; the same value means the live slider is kept, not rebuilt. */
 function choicesSignature(choices: ReturnType<typeof composerModels>): string {
   return JSON.stringify([catalog.state, choices, $<HTMLSelectElement>('composerModel').value,
-    $<HTMLSelectElement>('composerReasoning').value, automaticApplies()]);
+    $<HTMLSelectElement>('composerReasoning').value, automaticApplies(), gemini?.catalog, composerContext?.provider, composerGeminiChoice()]);
+}
+
+/** Pick a Gemini model (keeping a chosen thinking level it still offers); Send then goes to Gemini. */
+function chooseGemini(modeId: string): void {
+  const level = composerGeminiChoice()?.thinkingLevel ?? null;
+  const choice = { modeId, thinkingLevel: level && geminiLevels().includes(level) ? level : geminiDefault()?.thinkingLevel ?? null };
+  if (composerContext) Object.assign(composerContext, { edited: true, automatic: false, gemini: choice });
+  else composerContext = { scope: null, observation: null, edited: true, gemini: choice };
+  paintStatus();
 }
 
 function paintComposerChoices(): void {
@@ -240,15 +276,28 @@ function paintComposerChoices(): void {
   const signature = choicesSignature(choices);
   if (models.dataset.signature === signature) return;
   models.dataset.signature = signature;
-  const supported = choices.find(choice => choice.id === selected.value)?.efforts ?? [];
+  // A Gemini chat continues on Gemini and a ChatGPT chat on ChatGPT; a new chat offers both.
+  const geminiChat = composerContext?.provider === 'gemini';
+  const chatgptChoices = geminiChat ? [] : choices;
+  const geminiModes = composerContext?.provider === 'chatgpt' ? [] : gemini?.catalog?.modes ?? [];
+  const picked = composerGeminiChoice();
+  const supported = picked ? [] : choices.find(choice => choice.id === selected.value)?.efforts ?? [];
   paintEffortShortcut(supported);
   modelOptions.replaceChildren();
   powers.replaceChildren();
   const title = document.getElementById('composerPowerTitle');
   const subtitle = document.getElementById('composerPowerModel');
   const toggle = document.getElementById('composerModelToggle') as HTMLButtonElement | null;
-  if (toggle) toggle.disabled = !choices.length;
-  if (!choices.length) {
+  if (toggle) toggle.disabled = !chatgptChoices.length && !geminiModes.length;
+  if (geminiChat && !geminiModes.length) {
+    // No Gemini list yet: Send uses Gemini's saved default; Reload asks an open Gemini page.
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    models.hidden = true; models.inert = true;
+    if (title) title.textContent = 'Gemini';
+    if (subtitle) ui(subtitle, 'textContent', () => t("Reload models"));
+    return;
+  }
+  if (!chatgptChoices.length && !geminiModes.length) {
     if (toggle) toggle.setAttribute('aria-expanded', 'false');
     models.hidden = true;
     models.inert = true;
@@ -267,43 +316,87 @@ function paintComposerChoices(): void {
     powers.append(use);
     return;
   }
-  {
+  if (!geminiChat) {
     // Automatic sits first in the list, as a deliberate choice that switches nothing.
     const button = el('button', 'model-choice') as HTMLButtonElement;
     button.type = 'button'; button.dataset.keepMenu = 'true'; button.dataset.model = '';
-    const auto = composerContext?.automatic === true;
+    const auto = composerContext?.automatic === true && !picked;
     button.setAttribute('aria-pressed', String(auto));
     button.append(el('span', '', () => t("Automatic")), icon('i-check'));
     button.addEventListener('click', event => {
       event.stopPropagation();
-      if (composerContext?.automatic) return;
+      if (auto) return;
       const focused = document.activeElement === button;
       chooseAutomatic();
       if (focused) models.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus();
     });
     modelOptions.append(button);
   }
-  for (const choice of distinctModelChoices(choices)) {
+  for (const choice of distinctModelChoices(chatgptChoices)) {
     const button = el('button', 'model-choice') as HTMLButtonElement;
     button.type = 'button'; button.dataset.keepMenu = 'true'; button.dataset.model = choice.id;
-    button.setAttribute('aria-pressed', String(choice.id === selected.value));
+    button.setAttribute('aria-pressed', String(!picked && choice.id === selected.value));
     button.append(el('span', '', choice.label), icon('i-check'));
     button.addEventListener('click', event => {
       // Repainting the choices detaches this button before the document listener.
       // Keep the model menu open without giving it a second selection authority.
       event.stopPropagation();
-      if (selected.value === choice.id) return;
+      if (selected.value === choice.id && !picked) return;
       const focused = document.activeElement === button;
+      if (composerContext) composerContext.gemini = null;
       selected.value = choice.id;
       selected.dispatchEvent(new window.Event('change', { bubbles: true }));
       if (focused) models.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus();
     });
     modelOptions.append(button);
   }
+  if (geminiModes.length) {
+    // Every model Gemini's own picker showed; one that needs a higher plan is listed, not offered.
+    if (!geminiChat) modelOptions.append(el('div', 'model-group', 'Gemini'));
+    for (const mode of geminiModes) {
+      const name = mode.model ?? mode.title;
+      const button = el('button', 'model-choice') as HTMLButtonElement;
+      button.append(el('span', '', mode.available ? name
+        : mode.reason === 'requires-upgrade' ? () => t('{0} · needs a higher plan', [name]) : () => t('{0} · not available', [name])));
+      button.type = 'button'; button.dataset.keepMenu = 'true'; button.dataset.geminiMode = mode.id;
+      button.disabled = !mode.available;
+      if (mode.model && mode.title) button.title = mode.title;
+      button.setAttribute('aria-pressed', String(picked?.modeId === mode.id));
+      button.append(icon('i-check'));
+      button.addEventListener('click', event => {
+        event.stopPropagation();
+        if (picked?.modeId === mode.id && composerContext?.gemini) return;
+        const focused = document.activeElement === button;
+        chooseGemini(mode.id);
+        if (focused) models.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.focus();
+      });
+      modelOptions.append(button);
+    }
+  }
+  if (picked) {
+    const levels = geminiLevels();
+    if (title) ui(title, 'textContent', () => picked.thinkingLevel ?? 'Gemini');
+    if (subtitle) ui(subtitle, 'textContent', () => geminiModeLabel(picked.modeId));
+    if (levels.length < 2) return;
+    paintPowerSlider(powers, levels, levels.indexOf(picked.thinkingLevel ?? ''), level => level, () => picked.thinkingLevel ?? '', level => {
+      if (composerContext) Object.assign(composerContext, { edited: true, gemini: { modeId: picked.modeId, thinkingLevel: level } });
+      picked.thinkingLevel = level;
+      if (title) ui(title, 'textContent', () => level);
+      paintComposerLabel();
+      models.dataset.signature = choicesSignature(choices);
+    });
+    return;
+  }
   const current = supported.findIndex(power => power === effort.value);
-  if (composerContext?.automatic) {
+  if (composerContext?.automatic || (!chatgptChoices.length && automaticApplies())) {
     if (title) ui(title, 'textContent', () => t("Automatic"));
     if (subtitle) ui(subtitle, 'textContent', () => t("Sent without choosing a model"));
+    return;
+  }
+  if (!chatgptChoices.length) {
+    // Only Gemini's list is readable; ChatGPT's choices are still loading or unavailable.
+    if (title) ui(title, 'textContent', () => catalog.state === 'pending' ? t("Loading models…") : t("Models unavailable"));
+    if (subtitle) ui(subtitle, 'textContent', () => catalog.state === 'pending' ? t("Reading your ChatGPT account") : t("Reload models"));
     return;
   }
   if (title) ui(title, 'textContent', () => current < 0 ? t('Previous selection unavailable') : effortLabel(effort.value));
@@ -329,6 +422,12 @@ function paintComposerChoices(): void {
     powers.append(use);
     return;
   }
+  paintPowerSlider(powers, supported, current, effortLabel, () => effort.value, choose);
+}
+
+/** The thinking slider: one stop per offered value, `current` the chosen one (-1: none). */
+function paintPowerSlider(powers: HTMLElement, supported: readonly string[], current: number, labelOf: (value: string) => string,
+  chosen: () => string, choose: (value: string) => void): void {
   const last = supported.length - 1;
   const track = el('div', 'power-track');
   // The thumb follows the pointer continuously and settles on the nearest effort when released;
@@ -337,7 +436,7 @@ function paintComposerChoices(): void {
   ui(slider, 'aria-label', () => t('Thinking effort'));
   const nearest = (): number => Math.max(0, Math.min(last, Math.round(Number(slider.value))));
   const paintPosition = (value: number): void => { track.style.setProperty('--power-fraction', String(value / last)); };
-  const announce = (index: number): void => { ui(slider, 'aria-valuetext', () => effortLabel(supported[index]!)); };
+  const announce = (index: number): void => { ui(slider, 'aria-valuetext', () => labelOf(supported[index]!)); };
   for (let index = 0; index <= last; index++) {
     const stop = el('span', 'power-stop'); stop.style.setProperty('--power-stop', String(index / last)); track.append(stop);
   }
@@ -348,7 +447,7 @@ function paintComposerChoices(): void {
   else ui(slider, 'aria-valuetext', () => t('Choose an available model and effort'));
   const pick = (index: number): void => {
     announce(index);
-    if (index !== shown || effort.value !== supported[index]) { shown = index; choose(supported[index]!); }
+    if (index !== shown || chosen() !== supported[index]) { shown = index; choose(supported[index]!); }
   };
   // Test DOMs and hidden windows may lack animation frames; settling then just lands at once.
   const frame = (callback: FrameRequestCallback): number => typeof requestAnimationFrame === 'function' ? requestAnimationFrame(callback) : (callback(performance.now() + 1000), 0);
@@ -381,7 +480,7 @@ function paintComposerChoices(): void {
   // the existing send authority, and no separate model selection state is introduced.
   track.append(slider);
   const endpoints = el('div', 'effort-endpoints');
-  endpoints.append(el('span', '', () => effortLabel(supported[0]!)), el('span', '', () => effortLabel(supported[last]!)));
+  endpoints.append(el('span', '', () => labelOf(supported[0]!)), el('span', '', () => labelOf(supported[last]!)));
   powers.append(track, endpoints);
 }
 
@@ -401,6 +500,16 @@ export function confirmedComposerModel(): { model: string; reasoningEffort: Reas
 }
 
 function paintComposerLabel(): void {
+  const picked = composerGeminiChoice();
+  if (picked || composerContext?.provider === 'gemini') {
+    const node = $('composerModelLabel');
+    const name = picked ? geminiModeLabel(picked.modeId) : 'Gemini';
+    node.replaceChildren(el('strong', '', name));
+    if (picked?.thinkingLevel) node.append(` · ${picked.thinkingLevel}`);
+    node.title = picked?.thinkingLevel ? `${name} · ${picked.thinkingLevel}` : name;
+    onComposerPaint?.();
+    return;
+  }
   // Display the same admission decision as Send, including discovery and removed efforts.
   const confirmed = confirmedComposerModel();
   const modelLabel = confirmed ? catalog.models.find(model => model.id === confirmed.model)!.label : '';
@@ -604,6 +713,17 @@ export function initChatModels(onPaint?: () => void): void {
     });
   }
   for (const id of ['refreshChatModels', 'refreshComposerModels']) document.getElementById(id)?.addEventListener('click', () => { void discoverModels(); });
+  // Gemini's list is read only from a Gemini page that is already open; Reload never opens one.
+  document.getElementById('refreshComposerModels')?.addEventListener('click', () => { if (gemini?.pages) void window.api.requestGeminiModes?.(); });
+  const takeGemini = (status: GeminiStatus | null | undefined): void => {
+    if (!status) return;
+    const next = { catalog: status.catalog, settings: status.settings, pages: status.pages };
+    const repaint = JSON.stringify([gemini?.catalog, gemini?.settings]) !== JSON.stringify([next.catalog, next.settings]);
+    gemini = next;
+    if (repaint) paintStatus();
+  };
+  window.api.onGeminiChanged?.(takeGemini);
+  void window.api.getGeminiStatus?.().then(reply => takeGemini(reply?.ok ? reply.data : null), () => undefined);
   for (const [modelId, effortId, allowEmpty] of pairs) paintPair(modelId, effortId, undefined, undefined, allowEmpty);
   paintReviewer();
   paintStatus();

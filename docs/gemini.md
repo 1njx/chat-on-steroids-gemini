@@ -71,6 +71,15 @@ Desktop and Plugins URLs the same way (Plugins page and Setup show them).
 
 ### Sending from the app
 
+**From the chat composer.** The composer's model menu lists every model Gemini's own picker
+showed (Refresh in Settings → Gemini, or the menu's reload button while a Gemini page is open),
+under a **Gemini** heading below ChatGPT's. A model that needs a higher plan is listed greyed out
+with that reason. Pick one and the thinking slider offers Gemini's thinking levels (for example
+Low, Medium, High). Send then goes to Gemini instead of ChatGPT: a new Gemini chat opens in the
+app once Gemini has answered, and its messages keep going to that Gemini chat. In a Gemini chat
+the menu lists only Gemini's models; in a ChatGPT chat only ChatGPT's. Gemini gets text only:
+files, plans and edits are refused with a message.
+
 **Settings → Gemini → Send to Gemini** sends a message into a new (or a recent) Gemini chat in
 your browser through the extension, waits for the answer and records the turn in the app's
 history as a `gemini:<id>` chat. It:
@@ -136,7 +145,8 @@ the plugin at the new folder (Roblox's own `mcp.bat` resolves it, but the app do
   turn rotation, automatic Continue and recovery drive ChatGPT pages only. Gemini can *call* the
   tools behind them (`agents`, `update_plan`, …), but the app does not drive Gemini chats for
   them. Worker chats the `agents` tool opens are ChatGPT chats.
-- **The main composer still sends to ChatGPT.** Gemini messages are sent from Settings → Gemini.
+- **Composer sends to Gemini are plain text.** No files, plans, edits, Goal/Loop or queued delivery.
+  The chat shows your message and Gemini's answer together once Gemini has finished.
 - **Attachments** are not sent to Gemini from the app.
 - **Streaming**: the app records Gemini's final answer, not token-by-token progress.
 - **Unattributed recording**: Gemini's tool calls are filed under Unattributed activity, not inside

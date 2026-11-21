@@ -4213,5 +4213,9 @@
   "Steered active turn": "Перенаправил активный ход",
   "Worked for {0}{1}s · steered": "Завершил работу — {0}{1} с · перенаправлен",
   "Providers": "Провайдеры",
-  "Gemini": "Gemini"
+  "Gemini": "Gemini",
+  "{0} · needs a higher plan": "{0} · нужен тариф выше",
+  "{0} · not available": "{0} · недоступно",
+  "Gemini is answering…": "Gemini отвечает…",
+  "Gemini gets text only: no files, plans or edits.": "Gemini получает только текст: без файлов, планов и правок."
 }

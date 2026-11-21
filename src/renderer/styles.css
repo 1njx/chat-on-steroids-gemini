@@ -4511,6 +4511,8 @@ select option::checkmark { order: 1; margin-inline-start: auto; color: var(--ink
 #composerModelChoices .model-choice[aria-pressed=true] { background: var(--control-selected); }
 #composerModelChoices .model-choice .ico { visibility: hidden; }
 #composerModelChoices .model-choice[aria-pressed=true] .ico { visibility: visible; }
+#composerModelChoices .model-choice:disabled { opacity: .55; cursor: default; }
+#composerModelOptions .model-group { padding: 10px 12px 2px; color: var(--soft); font-size: calc(12px * var(--text-scale, 1)); }
 #composerModelStatus { font-size: calc(12px * var(--text-scale, 1)); padding: 4px 10px; line-height: 1.5; }
 .power-header { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; align-items: start; gap: 4px; padding: 4px 4px 12px; }
 .model-menu .power-spark { position: relative; width: 32px; height: 32px; padding: 0; justify-content: center; overflow: visible; }

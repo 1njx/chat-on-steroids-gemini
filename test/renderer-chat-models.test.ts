@@ -773,3 +773,64 @@ it('offers Off, the Goal chat\'s own model and this account\'s models for the st
   expect(reviewer.selectedOptions[0]!.disabled).toBe(true);
   expect(reviewer.selectedOptions[0]!.textContent).toBe('retired-model · not verified');
 });
+
+it('offers every model Gemini web showed beside ChatGPT\'s in a new chat, only Gemini\'s in a Gemini chat, and none in a ChatGPT chat', async () => {
+  dom = new JSDOM(await readFile('src/renderer/index.html', 'utf8'));
+  vi.stubGlobal('window', dom.window); vi.stubGlobal('document', dom.window.document);
+  let pushGemini: (status: unknown) => void = () => undefined;
+  const requestGeminiModes = vi.fn();
+  const geminiStatus = (defaultModeId: string | null) => ({
+    pages: 1, settings: { connectorName: null, defaultModeId, defaultThinkingLevel: null },
+    catalog: { observedAt: 1, thinkingLevels: [{ label: 'Low', selected: false, available: true }, { label: 'High', selected: true, available: true }], modes: [
+      { id: 'hydrogen', title: 'Everyday help', model: 'Gemini 4 Hydrogen', available: true, selected: true, reason: null },
+      { id: 'neon', title: 'Deeper analysis', model: 'Gemini 4 Neon', available: true, selected: false, reason: null },
+      { id: 'carbon', title: 'Code & complex work', model: 'Gemini 4 Carbon', available: false, selected: false, reason: 'requires-upgrade' },
+    ] },
+  });
+  Object.assign(dom.window, { api: {
+    getChatModels: async () => ({ ok: true, data: { state: 'ready', observedAt: 2, models: [{ id: 'sol', label: 'GPT-6', efforts: ['none', 'high'] }] } }),
+    getGeminiStatus: async () => ({ ok: true, data: geminiStatus(null) }), onGeminiChanged: (fn: typeof pushGemini) => { pushGemini = fn; },
+    requestChatModels: vi.fn(), requestGeminiModes,
+  } });
+  const { initChatModels, applyChatModels, applyComposerSessionModel, composerGeminiChoice, composerSendModel } = await import('../src/renderer/chat-models.js');
+  initChatModels(); applyChatModels({ multiAgent: {}, goal: {} } as Config); await Promise.resolve(); await Promise.resolve();
+  const doc = dom.window.document;
+  const list = () => [...doc.querySelectorAll<HTMLButtonElement>('#composerModelOptions .model-choice')].map(button => button.textContent!.trim());
+  const gemini = (id: string) => doc.querySelector<HTMLButtonElement>(`[data-gemini-mode="${id}"]`)!;
+  const label = () => doc.getElementById('composerModelLabel')!.textContent;
+
+  applyComposerSessionModel(null, null);
+  expect(list()).toEqual(['Automatic', 'GPT-6', 'Gemini 4 Hydrogen', 'Gemini 4 Neon', 'Gemini 4 Carbon · needs a higher plan']);
+  expect(doc.querySelector('#composerModelOptions .model-group')!.textContent).toBe('Gemini');
+  expect(gemini('carbon').disabled).toBe(true);
+  expect(composerGeminiChoice()).toBeNull();
+  gemini('neon').click();
+  expect(composerGeminiChoice()).toEqual({ modeId: 'neon', thinkingLevel: 'High' });
+  expect(gemini('neon').getAttribute('aria-pressed')).toBe('true');
+  expect(doc.querySelector('[data-model="sol"]')!.getAttribute('aria-pressed')).toBe('false');
+  expect(label()).toBe('Gemini 4 Neon · High');
+  expect(doc.getElementById('composerPowerModel')!.textContent).toBe('Gemini 4 Neon');
+  // The thinking slider offers Gemini's levels for a Gemini model.
+  const slider = doc.querySelector('#composerPowerChoices input') as HTMLInputElement;
+  expect(slider.value).toBe('1');
+  slider.value = '0'; slider.dispatchEvent(new dom.window.Event('change'));
+  expect(composerGeminiChoice()).toEqual({ modeId: 'neon', thinkingLevel: 'Low' });
+  expect(label()).toBe('Gemini 4 Neon · Low');
+  // Picking a ChatGPT model again sends to ChatGPT.
+  doc.querySelector<HTMLButtonElement>('[data-model="sol"]')!.click();
+  expect(composerGeminiChoice()).toBeNull();
+  expect(composerSendModel()).toEqual({ model: 'sol', reasoningEffort: 'high' });
+
+  applyComposerSessionModel('chatgpt-chat:1', null, 'chatgpt');
+  expect(list()).toEqual(['Automatic', 'GPT-6']);
+
+  // A Gemini chat continues on Gemini: its saved default first, and only Gemini's models.
+  pushGemini(geminiStatus('neon'));
+  applyComposerSessionModel('gemini-chat:2', null, 'gemini');
+  expect(list()).toEqual(['Gemini 4 Hydrogen', 'Gemini 4 Neon', 'Gemini 4 Carbon · needs a higher plan']);
+  expect(composerGeminiChoice()).toEqual({ modeId: 'neon', thinkingLevel: 'High' });
+  gemini('hydrogen').click();
+  expect(composerGeminiChoice()).toEqual({ modeId: 'hydrogen', thinkingLevel: 'High' });
+  doc.getElementById('refreshComposerModels')!.click();
+  expect(requestGeminiModes).toHaveBeenCalledOnce();
+});

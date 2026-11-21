@@ -4129,5 +4129,9 @@
   "Steered active turn": "Redirecionou o turno ativo",
   "Worked for {0}{1}s · steered": "Trabalhou por {0}{1}s · redirecionado",
   "Providers": "Provedores",
-  "Gemini": "Gemini"
+  "Gemini": "Gemini",
+  "{0} · needs a higher plan": "{0} · requer um plano superior",
+  "{0} · not available": "{0} · indisponível",
+  "Gemini is answering…": "O Gemini está respondendo…",
+  "Gemini gets text only: no files, plans or edits.": "O Gemini recebe só texto: sem arquivos, planos nem edições."
 }

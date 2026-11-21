@@ -17,7 +17,10 @@ import { createWorkspaceDocks } from './workspace-docks.js';
 import { currentLanguage, ui, t, tn } from './i18n.js';
 import { APP_COMMANDS, initSkills } from './skills.js';
 import { imageStorageButton } from './image-storage.js';
-import { applyChatModels, applyComposerSessionModel, initChatModels, confirmedComposerModel, composerSendModel, ensureComposerModel, chatModelName } from './chat-models.js';
+import { applyChatModels, applyComposerSessionModel, initChatModels, confirmedComposerModel, composerSendModel, ensureComposerModel, chatModelName, composerGeminiChoice, type GeminiChoice } from './chat-models.js';
+import { geminiErrorText } from './gemini.js';
+import type { GeminiCommandSummary } from '../shared/gemini.js';
+import { providerOfConversation } from '../shared/providers.js';
 import { marked, Marked, type TokenizerAndRendererExtension } from 'marked';
 import { safeExternalLink } from '../shared/external-link.js';
 import { AGENT_STATE_WORDS, createAgentPanel, workerName, workerSlotLimit } from './agent-panel.js';
@@ -6974,7 +6977,7 @@ function paintDetail(followBottom = historyBefore === null): void {
   paintStateLine();
   paintBackgroundProcesses();
   const summary = sessions.find((s) => s.id === selectedId) ?? null;
-  applyComposerSessionModel(selectedId ? `${selectedId}:${selectionGeneration}` : null, composerSessionSelection(summary) ?? null);
+  applyComposerSessionModel(selectedId ? `${selectedId}:${selectionGeneration}` : null, composerSessionSelection(summary) ?? null, providerOfConversation(summary?.conversationId));
   const config = deps.state()?.config;
   if (config) paintContextMeter(summary, config, confirmedComposerModel());
   const project = selectedLocalProject();
@@ -9864,6 +9867,13 @@ async function sendComposer(delivery?: 'finish' | 'auto' | 'after-turn', plan?: 
     }
     return;
   }
+  // A Gemini chat, or a Gemini model picked for a new chat, goes to Gemini web, not ChatGPT.
+  const shownConversation = selectedId ? sessions.find(row => row.id === selectedId)?.conversationId ?? null : null;
+  const geminiChoice = composerGeminiChoice();
+  if (providerOfConversation(shownConversation) === 'gemini' || geminiChoice) {
+    const editing = !!selectedId && editingQuestion?.sessionId === selectedId;
+    return sendComposerToGemini(text, images.length > 0 || !!plan || editing, geminiChoice, shownConversation);
+  }
   const discoveryGeneration = ++composerDiscoveryGeneration;
   const discoverySelection = selectionGeneration, discoverySession = selectedId, discoveryDraft = authoredComposerText();
   const modelSettings = composerSendModel() ?? await ensureComposerModel();
@@ -9960,6 +9970,47 @@ async function sendComposer(delivery?: 'finish' | 'auto' | 'after-turn', plan?: 
   } finally { cancelledStarts.delete(id); forgetStartingInput(id); paintDeliveryControls(); void refreshInputQueue(); }
 }
 
+/** Gemini sends from the composer, until main reports how they ended. */
+const geminiSends = new Map<string, { sessionId: string | null; generation: number }>();
+const GEMINI_ANSWERING = () => t('Gemini is answering…');
+/**
+ * Queues one text message for Gemini web (src/main/gemini.ts sends it at most once through the
+ * extension and records the turn). Files, plans and edits are ChatGPT-only, so they are refused.
+ */
+async function sendComposerToGemini(text: string, extras: boolean, choice: GeminiChoice | null, conversation: string | null): Promise<boolean> {
+  if (extras) { toast(t('Gemini gets text only: no files, plans or edits.')); return false; }
+  const key = draftKey(), sessionId = selectedId, generation = selectionGeneration;
+  const reply = await run(api.sendToGemini({ prompt: text, conversation, ...(choice ? { modeId: choice.modeId, thinkingLevel: choice.thinkingLevel } : {}) }));
+  if (!reply) return false;
+  if (!reply.ok) { toast(geminiErrorText(reply.error)); return false; }
+  geminiSends.set(reply.id, { sessionId, generation });
+  if (draftKey() === key) { replaceComposerDraft(); $<HTMLTextAreaElement>('chatInput').value = ''; skillPicker?.restore(); }
+  inputDrafts.delete(key);
+  paintGeminiSends();
+  return true;
+}
+function paintGeminiSends(): void {
+  const status = $('composerStatus');
+  const answering = [...geminiSends.values()].some(send => send.sessionId === selectedId && (selectedId !== null || send.generation === selectionGeneration));
+  if (answering) status.textContent = GEMINI_ANSWERING();
+  else if (status.textContent === GEMINI_ANSWERING()) status.textContent = '';
+}
+/** A Gemini send ended: say why if it failed, and open a new chat's recorded session. */
+async function geminiSendsChanged(commands: GeminiCommandSummary[]): Promise<void> {
+  for (const command of commands) {
+    const send = geminiSends.get(command.id);
+    if (!send || !['completed', 'failed', 'cancelled', 'unknown'].includes(command.stage)) continue;
+    geminiSends.delete(command.id);
+    if (command.stage !== 'completed') toast(geminiErrorText(command.error));
+    if (!command.sessionId || send.sessionId !== null || selectedId !== null || !newChatSelected || send.generation !== selectionGeneration) continue;
+    const summary = sessions.find(row => row.id === command.sessionId) ?? (await run(api.getSession(command.sessionId, { limit: 1 })))?.summary;
+    if (!summary || selectedId !== null || send.generation !== selectionGeneration) continue;
+    mergeSessionRows([summary]);
+    selectSession(summary.id);
+  }
+  paintGeminiSends();
+}
+
 // ------------------------------------------------------------------- wiring
 
 /** Opens the search dialog, as ⌘K / Ctrl+K does (the View menu). */
@@ -10020,7 +10071,7 @@ function selectSession(id: string): void {
   selectedId = id;
   refreshBackgroundProcesses();
   const selected = sessions.find(row => row.id === id);
-  applyComposerSessionModel(`${id}:${selectionGeneration}`, composerSessionSelection(selected) ?? null);
+  applyComposerSessionModel(`${id}:${selectionGeneration}`, composerSessionSelection(selected) ?? null, providerOfConversation(selected?.conversationId));
   const parent = selected?.origin?.kind === 'worker' ? selected.origin.fromSessionId : null;
   if (parent) expandedWorkers.add(parent);
   selectedProjectId = projectGroup(parent ? sessions.find(row => row.id === parent)?.projectId : selected?.projectId);
@@ -10988,6 +11039,7 @@ export function initChat(next: Deps): void {
   });
 
   api.onSessionChanged(scheduleReload);
+  api.onGeminiChanged?.(status => { void geminiSendsChanged(status.commands); });
   api.onBackgroundProcessesChanged(refreshBackgroundProcesses);
   api.onTaskProgress(progress => {
     if (!goalProgress || progress.requestId !== goalProgress.requestId || goalProgress.selection !== selectionGeneration) return;

@@ -4045,5 +4045,9 @@
   "Steered active turn": "Etkin turu yönlendirdi",
   "Worked for {0}{1}s · steered": "{0}{1} sn · Çalıştı · yönlendirildi",
   "Providers": "Sağlayıcılar",
-  "Gemini": "Gemini"
+  "Gemini": "Gemini",
+  "{0} · needs a higher plan": "{0} · daha üst bir plan gerekir",
+  "{0} · not available": "{0} · kullanılamıyor",
+  "Gemini is answering…": "Gemini yanıtlıyor…",
+  "Gemini gets text only: no files, plans or edits.": "Gemini yalnızca metin alır: dosya, plan veya düzenleme yok."
 }

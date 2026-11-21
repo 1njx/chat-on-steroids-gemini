@@ -3961,5 +3961,9 @@
   "Steered active turn": "已引导当前轮次",
   "Worked for {0}{1}s · steered": "已工作 {0}{1} 秒 · 已引导",
   "Providers": "提供方",
-  "Gemini": "Gemini"
+  "Gemini": "Gemini",
+  "{0} · needs a higher plan": "{0} · 需要更高级的套餐",
+  "{0} · not available": "{0} · 不可用",
+  "Gemini is answering…": "Gemini 正在回答…",
+  "Gemini gets text only: no files, plans or edits.": "Gemini 只接收文字：不支持文件、计划或编辑。"
 }

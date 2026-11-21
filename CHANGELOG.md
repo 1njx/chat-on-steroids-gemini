@@ -9,6 +9,17 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.3] — Gemini edition: pick Gemini models in the chat composer
+
+### Added
+
+- **Gemini models in the composer.** The chat composer's model menu lists every model Gemini's
+  own picker showed, under a Gemini heading below ChatGPT's; one that needs a higher plan is
+  listed greyed out with that reason. The thinking slider offers Gemini's thinking levels. With
+  a Gemini model picked, Send goes to Gemini web through the extension; the new Gemini chat
+  opens in the app once Gemini answers, and its messages keep going to that Gemini chat. Gemini
+  gets text only: files, plans and edits are refused with a message.
+
 ## [2.2.2] — Gemini edition: Gemini pages open in your normal browser
 
 ### Fixed
