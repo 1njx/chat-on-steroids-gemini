@@ -9,7 +9,7 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
-## [Unreleased]
+## [2.2.1] — Gemini edition: Set up Gemini
 
 ### Added
 
