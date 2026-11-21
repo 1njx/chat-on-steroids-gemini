@@ -1,11 +1,12 @@
 /**
- * Settings → Gemini: connection status, connector setup, the account's models and a send box.
+ * Settings → Gemini: a setup wizard like Setup's, connection status, the account's models and a send box.
  * Projection only: every fact comes from the main process (src/main/gemini.ts) and every action
  * goes back through it. The page is English-only, like Gemini's own custom apps.
  */
 import type { AppApi } from '../preload/index.js';
 import type { AppState } from '../shared/types.js';
 import { GEMINI_ERRORS, type GeminiCommandSummary, type GeminiStatus } from '../shared/gemini.js';
+import { el, icon } from './dom.js';
 
 const byId = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -85,21 +86,159 @@ function fillSelect(select: HTMLSelectElement, empty: string, options: Array<[st
   select.value = options.some(([v]) => v === value) ? value : '';
 }
 
-export function paintGeminiConnector(state: AppState): void {
-  const core = state.status.surfaces.find(s => s.id === 'core');
-  const url = core?.publicUrl ?? null;
-  const https = !!url && url.startsWith('https://');
-  byId('geminiCoreUrl').textContent = https ? url
-    : state.config.tunnel.kind === 'openai' ? 'The OpenAI Secure Tunnel only serves ChatGPT. Choose Cloudflare or your own HTTPS tunnel in Setup for Gemini.'
-      : 'Connect a Cloudflare or HTTPS tunnel first (Setup → Tunnel).';
-  byId<HTMLButtonElement>('geminiCopyUrl').disabled = !https;
-  byId('geminiCopyUrl').dataset.url = https ? url : '';
+/** The Core MCP address Gemini can use: only an https one (Gemini refuses anything else). */
+function coreHttpsUrl(state: AppState): string | null {
+  const url = state.status.surfaces.find(s => s.id === 'core')?.publicUrl ?? null;
+  return url && url.startsWith('https://') ? url : null;
 }
 
-export function initGemini(api: AppApi, toast: (message: string) => void): void {
+/** What the wizard's buttons ask of the rest of the app: Setup's own steps and the connection. */
+export interface GeminiSetupHooks {
+  openSetupStep(step: 'browser' | 'access'): void;
+  addFolder(): void;
+  /** Cloudflare quick tunnel if the method only serves ChatGPT, then connect if not connected. */
+  useHttpsTunnel(): void;
+}
+
+export const GEMINI_SETUP_STEPS = ['browser', 'signin', 'folder', 'tunnel', 'add', 'try'] as const;
+type TaskStep = typeof GEMINI_SETUP_STEPS[number];
+type SetupStep = TaskStep | 'ready';
+const STEP_LABELS: Record<TaskStep, string> = {
+  browser: 'Browser extension connected', signin: 'Signed in to Gemini', folder: 'Folder shared', tunnel: 'https address ready',
+  add: 'App added in Gemini', try: 'Gemini ran one of the app\'s tools',
+};
+let appState: AppState | null = null;
+let geminiState: GeminiStatus | null = null;
+/** The step the user opened by hand; null follows progress (the first unfinished step). */
+let pickedStep: SetupStep | null = null;
+
+function pill(id: string, tone: 'ok' | 'wait' | 'off' | 'bad', text: string): void {
+  const node = byId(id);
+  node.dataset.tone = tone;
+  node.textContent = text;
+}
+
+/** Which setup steps are done, judged only from what the app itself sees. */
+export function geminiSetupDone(state: AppState, status: GeminiStatus | null): Set<TaskStep> {
+  const done = new Set<TaskStep>();
+  if (state.bridge.present) done.add('browser');
+  if (status?.signIn === 'signed-in') done.add('signin');
+  if (state.config.roots.length > 0) done.add('folder');
+  if (state.status.state === 'connected' && coreHttpsUrl(state)) done.add('tunnel');
+  if (status?.connectorSeenAt) done.add('add');
+  if (status?.toolCallSeenAt) done.add('try');
+  return done;
+}
+
+export function paintGeminiSetup(now = Date.now()): void {
+  const state = appState;
+  if (!state || !document.getElementById('geminiWizard')) return;
+  const status = geminiState;
+  const done = geminiSetupDone(state, status);
+  const current = GEMINI_SETUP_STEPS.find(name => !done.has(name)) ?? null;
+  const isDone = (name: SetupStep): boolean => name === 'ready' ? current === null : done.has(name);
+  // Picking the first unfinished step is following progress, so the page moves on when it is done.
+  if (pickedStep === current) pickedStep = null;
+  const open: SetupStep = pickedStep ?? current ?? 'ready';
+  const path: SetupStep[] = [...GEMINI_SETUP_STEPS, 'ready'];
+  for (const name of path) {
+    const node = document.querySelector<HTMLElement>(`[data-gemini-step="${name}"]`)!;
+    node.classList.toggle('is-open', name === open);
+    node.classList.toggle('is-done', isDone(name));
+    node.classList.toggle('is-current', name === current);
+    const button = document.querySelector<HTMLElement>(`[data-gemini-rail="${name}"]`)!;
+    const item = button.closest('li')!;
+    item.classList.toggle('is-done', isDone(name));
+    item.classList.toggle('is-current', name === current);
+    if (name === open) button.setAttribute('aria-current', 'step'); else button.removeAttribute('aria-current');
+    const nav = node.querySelector<HTMLElement>(':scope > .step-body > .step-nav');
+    if (nav) {
+      const at = path.indexOf(name);
+      nav.querySelector<HTMLElement>('[data-gemini-nav="back"]')!.hidden = at === 0;
+      nav.querySelector<HTMLElement>('[data-gemini-nav="next"]')!.hidden = at === path.length - 1;
+      nav.classList.toggle('is-ready', isDone(name));
+    }
+  }
+  const finished = GEMINI_SETUP_STEPS.filter(name => done.has(name)).length;
+  const progress = byId('geminiSetupProgress');
+  progress.setAttribute('aria-valuenow', String(finished));
+  progress.classList.toggle('is-complete', current === null);
+  byId('geminiSetupProgressText').textContent = current === null
+    ? `All ${GEMINI_SETUP_STEPS.length} steps done` : `${finished} of ${GEMINI_SETUP_STEPS.length} steps done`;
+
+  pill('geminiBrowserPill', done.has('browser') ? 'ok' : state.bridge.paired ? 'wait' : 'off', done.has('browser')
+    ? 'Extension connected' : state.bridge.paired ? 'Set up, but not connected now: open your browser' : 'Waiting for the extension…');
+  pill('geminiSigninPill', done.has('signin') ? 'ok' : status?.signIn === 'signed-out' ? 'bad' : status?.pages ? 'wait' : 'off', done.has('signin')
+    ? `Signed in${status?.account?.plan ? ` · Google AI ${status.account.plan}` : ''}`
+    : status?.signIn === 'signed-out' ? 'Signed out: sign in on the Gemini page'
+      : status?.pages ? 'Gemini page open; waiting for it to report…' : 'No Gemini page open yet');
+  const signinWarn = status?.localized ? 'This Gemini page is not in English. Set Gemini to English: custom apps are offered in English only.' : '';
+  byId('geminiSigninWarn').hidden = !signinWarn;
+  byId('geminiSigninWarn').textContent = signinWarn;
+  const roots = state.config.roots.length;
+  pill('geminiFolderPill', roots ? 'ok' : 'off', roots ? `${roots} folder${roots === 1 ? '' : 's'} shared` : 'No folder shared yet');
+
+  const kind = state.config.tunnel.kind;
+  const connected = state.status.state === 'connected';
+  const busy = state.status.state === 'starting-server' || state.status.state === 'connecting-tunnel' || state.status.state === 'disconnecting';
+  pill('geminiTunnelPill', done.has('tunnel') ? 'ok' : busy ? 'wait' : 'off', done.has('tunnel') ? 'Connected with an https address'
+    : busy ? 'Connecting…' : kind === 'manual' && connected ? 'Connected, but your own tunnel has no https address yet (Setup → Advanced)' : 'Not connected');
+  byId('geminiTunnelWarn').hidden = kind !== 'openai';
+  byId('geminiTunnelGoLabel').textContent = kind === 'openai' ? 'Switch to Cloudflare and connect' : 'Connect';
+  byId<HTMLButtonElement>('geminiTunnelGo').disabled = done.has('tunnel') || busy || (kind !== 'openai' && connected);
+
+  const url = coreHttpsUrl(state);
+  byId('geminiSetupUrl').textContent = url ?? 'Finish the Tunnel step first.';
+  byId<HTMLButtonElement>('geminiSetupCopy').disabled = !url;
+  pill('geminiAddPill', done.has('add') ? 'ok' : 'off', status?.connectorSeenAt ? `Gemini reached the app ${ago(status.connectorSeenAt, now)}`
+    : 'Waiting for Gemini to reach the app. After a restart a quick tunnel has a new address: add the app again with it.');
+  const name = status?.settings.connectorName || 'Chat On Steroids Core';
+  byId('geminiTryPrompt').textContent = `@${name} list the files in my shared folder`;
+  pill('geminiTryPill', done.has('try') ? 'ok' : 'off', status?.toolCallSeenAt ? `Gemini ran one of the app's tools ${ago(status.toolCallSeenAt, now)}`
+    : 'Waiting for Gemini to run one of the app\'s tools…');
+
+  byId('geminiReadyChecks').replaceChildren(...GEMINI_SETUP_STEPS.map(step => {
+    const row = el('li', `ready-check${done.has(step) ? ' is-passed' : ''}`);
+    row.append(icon(done.has(step) ? 'i-check-circle' : 'i-warning'), el('span', '', STEP_LABELS[step]));
+    if (!done.has(step)) {
+      const go = el('button', 'ready-go', 'Go to step');
+      go.setAttribute('type', 'button');
+      go.addEventListener('click', () => openStep(step));
+      row.append(go);
+    }
+    return row;
+  }));
+  byId('geminiReadyTitle').textContent = current === null ? 'Gemini is set up' : 'Almost there';
+}
+
+function openStep(name: SetupStep): void {
+  pickedStep = name;
+  paintGeminiSetup();
+  document.querySelector('.gemini-setup .setup-track')?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+}
+
+export function paintGeminiConnector(state: AppState): void {
+  appState = state;
+  paintGeminiSetup();
+  const url = coreHttpsUrl(state);
+  byId('geminiCoreUrl').textContent = url ?? (state.config.tunnel.kind === 'openai'
+    ? 'The OpenAI Secure Tunnel only serves ChatGPT. Use the Tunnel step of Set up Gemini above.'
+    : 'Connect first: the Tunnel step of Set up Gemini above.');
+  byId<HTMLButtonElement>('geminiCopyUrl').disabled = !url;
+  byId('geminiCopyUrl').dataset.url = url ?? '';
+}
+
+export function initGemini(api: AppApi, toast: (message: string) => void, hooks?: GeminiSetupHooks): void {
   let last: GeminiStatus | null = null;
   // A reply without a status (an older main process, a harness) leaves the page as it is.
-  const paint = (status: GeminiStatus | null | undefined): void => { if (!status) return; last = status; paintGemini(status); };
+  const paint = (status: GeminiStatus | null | undefined): void => {
+    if (!status) return;
+    last = status;
+    geminiState = status;
+    paintGemini(status);
+    paintGeminiSetup();
+  };
+  initGeminiSetup(api, toast, hooks);
   void api.getGeminiStatus().then(reply => { if (reply?.ok) paint(reply.data); }, () => undefined);
   // No repaint timer: status pushes arrive every few seconds while a Gemini page reports, and an
   // uncleared interval kept every mounted window alive (renderer test workers ran out of memory on macOS CI).
@@ -138,5 +277,49 @@ export function initGemini(api: AppApi, toast: (message: string) => void): void 
     if (!reply.data.ok) { toast(geminiErrorText(reply.data.error)); return; }
     prompt.value = '';
     toast('Queued for Gemini.');
+  });
+}
+
+/** The wizard's Back/Next, rail and buttons, wired once. */
+function initGeminiSetup(api: AppApi, toast: (message: string) => void, hooks?: GeminiSetupHooks): void {
+  const wizard = document.getElementById('geminiWizard');
+  if (!wizard) return;
+  for (const body of wizard.querySelectorAll<HTMLElement>(':scope > .step > .step-body')) {
+    const nav = el('div', 'step-nav');
+    const back = el('button', 'btn step-back');
+    back.setAttribute('type', 'button');
+    back.dataset.geminiNav = 'back';
+    back.append(icon('i-arrow-left'), el('span', '', 'Back'));
+    const next = el('button', 'btn step-next');
+    next.setAttribute('type', 'button');
+    next.dataset.geminiNav = 'next';
+    next.append(el('span', '', 'Next'), icon('i-arrow-right'));
+    nav.append(back, next);
+    body.append(nav);
+  }
+  const path: SetupStep[] = [...GEMINI_SETUP_STEPS, 'ready'];
+  wizard.addEventListener('click', event => {
+    const nav = (event.target as HTMLElement).closest<HTMLElement>('[data-gemini-nav]');
+    const here = nav?.closest<HTMLElement>('[data-gemini-step]')?.dataset.geminiStep as SetupStep | undefined;
+    if (!nav || !here) return;
+    const to = path[path.indexOf(here) + (nav.dataset.geminiNav === 'next' ? 1 : -1)];
+    if (to) openStep(to);
+  });
+  document.querySelector('.gemini-setup .setup-rail')?.addEventListener('click', event => {
+    const button = (event.target as HTMLElement).closest<HTMLElement>('[data-gemini-rail]');
+    if (button) openStep(button.dataset.geminiRail as SetupStep);
+  });
+  byId('geminiBrowserSetup').addEventListener('click', () => hooks?.openSetupStep('browser'));
+  byId('geminiAccess').addEventListener('click', () => hooks?.openSetupStep('access'));
+  byId('geminiAddFolder').addEventListener('click', () => hooks?.addFolder());
+  byId('geminiTunnelGo').addEventListener('click', () => hooks?.useHttpsTunnel());
+  byId('geminiOpenGemini').addEventListener('click', () => { void api.openGemini(); });
+  byId('geminiSetupOpenApps').addEventListener('click', () => { void api.openGeminiConnectors(); });
+  byId('geminiSetupCopy').addEventListener('click', async () => {
+    const url = appState ? coreHttpsUrl(appState) : null;
+    if (url && (await api.writeClipboard(url)).ok) toast('Address copied. Treat it like a password.');
+  });
+  byId('geminiTryCopy').addEventListener('click', async () => {
+    if ((await api.writeClipboard(byId('geminiTryPrompt').textContent ?? '')).ok) toast('Copied. Paste it in a new Gemini chat.');
   });
 }

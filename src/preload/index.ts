@@ -419,6 +419,7 @@ const api = {
   cancelGeminiCommand: (id: string) => call<{ ok: boolean; error?: string }>('gemini:cancel', { id }),
   saveGeminiSettings: (patch: Partial<GeminiStatus['settings']>) => call<{ ok: boolean; error?: string }>('gemini:settings', patch),
   openGeminiConnectors: () => call<boolean>('gemini:openConnectors'),
+  openGemini: () => call<boolean>('gemini:open'),
   onGeminiChanged: (listener: (status: GeminiStatus) => void): (() => void) => {
     const wrapped = (_event: unknown, status: GeminiStatus): void => listener(status);
     ipcRenderer.on('gemini:changed', wrapped);

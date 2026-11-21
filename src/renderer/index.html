@@ -448,48 +448,6 @@
             <div id="petsInstalled" class="pet-library-grid" aria-live="polite"></div>
           </div>
         </section>
-        <section class="panel appearance-panel general-panel scroll" data-panel="gemini" aria-labelledby="geminiTitle" translate="no">
-          <div class="appearance-content settings-page-content">
-            <header class="settings-page-head appearance-page-head">
-              <div><h1 id="geminiTitle">Gemini</h1><p>Use Google Gemini (gemini.google.com) with this app's files, terminal, skills and plugins. Gemini is not affiliated with this app; your Google account's plan, limits and safety decisions apply.</p></div>
-            </header>
-            <section class="appearance-section">
-              <header class="settings-section-head"><div><h2>Connection</h2><p>What the browser extension sees on gemini.google.com. Nothing here reads or stores your Google password or address.</p></div></header>
-              <div class="settings-surface pane appearance-settings-card">
-                <div class="setting"><span class="setting-text"><b>Gemini page</b><em id="geminiPageStatus">Checking…</em></span></div>
-                <div class="setting"><span class="setting-text"><b>Account</b><em id="geminiAccountStatus">Unknown</em></span></div>
-                <div class="setting"><span class="setting-text"><b>Core app in Gemini</b><em id="geminiConnectorStatus">No call from Gemini yet in this run.</em></span></div>
-                <div class="setting" id="geminiWarnings" hidden><span class="setting-text"><b>Needs attention</b><em id="geminiWarningText"></em></span></div>
-              </div>
-            </section>
-            <section class="appearance-section">
-              <header class="settings-section-head"><div><h2>Add Chat On Steroids to Gemini</h2><p>Gemini reaches this app as a custom MCP app. Gemini needs an https address, so use the Cloudflare tunnel (Setup → Tunnel) or your own HTTPS tunnel; the OpenAI Secure Tunnel only serves ChatGPT. Google currently offers custom apps to personal accounts, 18+, in the US, with Gemini history on, in English.</p></div></header>
-              <div class="settings-surface pane appearance-settings-card">
-                <div class="setting"><span class="setting-text"><b>Core MCP server URL</b><em id="geminiCoreUrl" translate="no">Connect a Cloudflare or HTTPS tunnel first.</em></span><button class="btn" id="geminiCopyUrl" type="button" disabled>Copy</button></div>
-                <div class="setting"><span class="setting-text"><b>Open Gemini custom apps</b><em>Click Custom, paste the URL, Next, read Google's notice, tick it and Connect. Gemini lists the app's tools; Connect again to save it.</em></span><button class="btn" id="geminiOpenConnectors" type="button">Open</button></div>
-                <label class="setting"><span class="setting-text"><b>App name to mention</b><em>The name Gemini shows for the app (usually “Chat On Steroids Core”). Messages sent from here start with an @-mention of it, which is how Google says to make Gemini use it. Leave empty for no mention.</em></span><input id="geminiConnectorName" type="text" maxlength="80" placeholder="Chat On Steroids Core" /></label>
-                <div class="setting"><span class="setting-text"><b>Tunnel addresses change</b><em>A Cloudflare quick tunnel gets a new address every start, and Gemini cannot edit a custom app's address: delete and add it again. For a lasting address use your own named tunnel and turn on General → For developers → Keep plugin URLs across restarts.</em></span></div>
-              </div>
-            </section>
-            <section class="appearance-section">
-              <header class="settings-section-head"><div><h2>Models</h2><p>The models your Google account offers, read from Gemini's own picker. A model Gemini marks for a higher plan is shown as unavailable and is never selected.</p></div></header>
-              <div class="settings-surface pane appearance-settings-card">
-                <div class="setting"><span class="setting-text"><b>Available models</b><em id="geminiModelList">Not read yet.</em></span><button class="btn" id="geminiRefreshModels" type="button">Refresh</button></div>
-                <label class="setting"><span class="setting-text"><b>Model for messages sent from here</b><em>“As in Gemini” keeps whatever Gemini has selected.</em></span><select id="geminiDefaultMode"><option value="">As in Gemini</option></select></label>
-                <label class="setting"><span class="setting-text"><b>Thinking level</b><em>Offered levels depend on the model.</em></span><select id="geminiThinking"><option value="">As in Gemini</option></select></label>
-              </div>
-            </section>
-            <section class="appearance-section">
-              <header class="settings-section-head"><div><h2>Send to Gemini</h2><p>Starts a new Gemini chat in your browser (or continues one), waits for the answer and records it in this app's history. Gemini asks you itself before a tool that changes something runs.</p></div></header>
-              <div class="settings-surface pane appearance-settings-card">
-                <label class="setting gemini-prompt-row"><span class="setting-text"><b>Message</b><em>Sent once. If the page cannot confirm it was sent, it is reported as unknown and never sent again.</em></span><textarea id="geminiPrompt" rows="4" maxlength="100000"></textarea></label>
-                <label class="setting"><span class="setting-text"><b>Continue chat</b><em>Leave on “New chat” to start a new Gemini chat.</em></span><select id="geminiContinue"><option value="">New chat</option></select></label>
-                <div class="setting"><span class="setting-text"><b>Send</b><em id="geminiSendHint">The extension must be connected and gemini.google.com signed in.</em></span><button class="btn primary" id="geminiSend" type="button">Send to Gemini</button></div>
-                <div class="gemini-commands" id="geminiCommands" aria-live="polite"></div>
-              </div>
-            </section>
-          </div>
-        </section>
         <section class="panel usage-panel" data-panel="usage">
           <div class="settings-page-content usage-content">
             <header class="settings-page-head">
@@ -1063,6 +1021,159 @@
           </div>
         </section>
 
+        <section class="panel appearance-panel general-panel scroll" data-panel="gemini" aria-labelledby="geminiTitle" translate="no">
+          <div class="appearance-content settings-page-content">
+            <header class="settings-page-head appearance-page-head">
+              <div><h1 id="geminiTitle">Gemini</h1><p>Use Google Gemini (gemini.google.com) with this app's files, terminal, skills and plugins. Gemini is not affiliated with this app; your Google account's plan, limits and safety decisions apply.</p></div>
+            </header>
+            <!-- Gemini's own setup, built like Setup: a rail of steps, one open at a time, each marked done
+                 by what the app itself sees (the extension, the page, the tunnel, Gemini's calls). -->
+            <section class="appearance-section gemini-setup" aria-labelledby="geminiSetupTitle">
+              <header class="settings-section-head"><div><h2 id="geminiSetupTitle">Set up Gemini</h2><p>Six short steps. Each one turns green by itself as soon as the app sees it done.</p></div></header>
+              <div class="setup-track">
+                <nav class="setup-rail" aria-label="Gemini setup steps">
+                  <ol>
+                    <li><button type="button" data-gemini-rail="browser"><span class="setup-rail-mark" aria-hidden="true"><i class="ico ph ph-check"></i></span><span class="setup-rail-label">Browser</span></button></li>
+                    <li><button type="button" data-gemini-rail="signin"><span class="setup-rail-mark" aria-hidden="true"><i class="ico ph ph-check"></i></span><span class="setup-rail-label">Sign in</span></button></li>
+                    <li><button type="button" data-gemini-rail="folder"><span class="setup-rail-mark" aria-hidden="true"><i class="ico ph ph-check"></i></span><span class="setup-rail-label">Folder</span></button></li>
+                    <li><button type="button" data-gemini-rail="tunnel"><span class="setup-rail-mark" aria-hidden="true"><i class="ico ph ph-check"></i></span><span class="setup-rail-label">Tunnel</span></button></li>
+                    <li><button type="button" data-gemini-rail="add"><span class="setup-rail-mark" aria-hidden="true"><i class="ico ph ph-check"></i></span><span class="setup-rail-label">Add app</span></button></li>
+                    <li><button type="button" data-gemini-rail="try"><span class="setup-rail-mark" aria-hidden="true"><i class="ico ph ph-check"></i></span><span class="setup-rail-label">Try it</span></button></li>
+                    <li class="setup-rail-ready"><button type="button" data-gemini-rail="ready"><span class="setup-rail-mark" aria-hidden="true"><i class="ico ph ph-check"></i></span><span class="setup-rail-label">Ready</span></button></li>
+                  </ol>
+                </nav>
+                <div class="setup-progress" id="geminiSetupProgress" role="progressbar" aria-labelledby="geminiSetupTitle" aria-valuemin="0" aria-valuenow="0" aria-valuemax="6">
+                  <span class="setup-progress-text" id="geminiSetupProgressText"></span>
+                </div>
+              </div>
+              <ol class="wizard" id="geminiWizard">
+                <li class="step" data-gemini-step="browser">
+                  <div class="step-mark"><i class="ico tick ph ph-check" aria-hidden="true"></i></div>
+                  <div class="step-body">
+                    <h3>Connect your browser</h3>
+                    <p class="step-lead">Gemini runs in your own browser. The Chat On Steroids extension lets this app read the Gemini page and send messages there.</p>
+                    <p class="status-pill" id="geminiBrowserPill" data-tone="off" role="status"></p>
+                    <div class="step-actions"><button class="btn btn-solid" id="geminiBrowserSetup" type="button"><i class="ico ph ph-puzzle-piece" aria-hidden="true"></i>Install the extension</button></div>
+                    <p class="hint">It is the same extension ChatGPT uses: if you set it up for ChatGPT, this step is already done. The button opens Setup's browser step, with pictures for Chrome, Edge, Brave and Firefox. Come back here when it shows Connected.</p>
+                  </div>
+                </li>
+                <li class="step" data-gemini-step="signin">
+                  <div class="step-mark"><i class="ico tick ph ph-check" aria-hidden="true"></i></div>
+                  <div class="step-body">
+                    <h3>Sign in to Gemini</h3>
+                    <p class="step-lead">Open gemini.google.com in that browser and sign in with your Google account. The app never sees your password or your email address.</p>
+                    <p class="status-pill" id="geminiSigninPill" data-tone="off" role="status"></p>
+                    <div class="step-actions"><button class="btn btn-solid" id="geminiOpenGemini" type="button"><i class="ico ph ph-arrow-square-out" aria-hidden="true"></i>Open Gemini</button></div>
+                    <p class="hint">Google offers custom apps only to accounts that meet all of these:</p>
+                    <ul class="gemini-needs">
+                      <li>A personal Google account (not a work or school account)</li>
+                      <li>18 or older, in the United States</li>
+                      <li>Gemini Apps Activity (chat history) turned on</li>
+                      <li>Gemini set to English</li>
+                    </ul>
+                    <p class="hint is-warn" id="geminiSigninWarn" hidden></p>
+                  </div>
+                </li>
+                <li class="step" data-gemini-step="folder">
+                  <div class="step-mark"><i class="ico tick ph ph-check" aria-hidden="true"></i></div>
+                  <div class="step-body">
+                    <h3>Pick a folder to share</h3>
+                    <p class="step-lead">Gemini can only work inside the folders you share. They are the same folders ChatGPT uses.</p>
+                    <p class="status-pill" id="geminiFolderPill" data-tone="off" role="status"></p>
+                    <div class="step-actions">
+                      <button class="btn btn-solid" id="geminiAddFolder" type="button"><i class="ico ph ph-folder" aria-hidden="true"></i>Add folder</button>
+                      <button class="btn" id="geminiAccess" type="button">Choose what it can do</button>
+                    </div>
+                    <p class="hint">What the app may do there (full access, files and terminal, or read only) is shared with ChatGPT. Read only works with Gemini too, but then it can't change files or run commands.</p>
+                  </div>
+                </li>
+                <li class="step" data-gemini-step="tunnel">
+                  <div class="step-mark"><i class="ico tick ph ph-check" aria-hidden="true"></i></div>
+                  <div class="step-body">
+                    <h3>Turn on an https address</h3>
+                    <p class="step-lead">Gemini reaches this app over the internet, so it needs an https address. The free Cloudflare tunnel makes one in one click, without an account.</p>
+                    <p class="status-pill" id="geminiTunnelPill" data-tone="off" role="status"></p>
+                    <p class="hint is-warn" id="geminiTunnelWarn" hidden>The app uses the OpenAI Secure Tunnel now, and it only serves ChatGPT. Switching to Cloudflare stops your ChatGPT plugins that use a tunnel ID until you switch back in Setup → Advanced.</p>
+                    <div class="step-actions"><button class="btn btn-solid" id="geminiTunnelGo" type="button"><i class="ico ph ph-plug" aria-hidden="true"></i><span id="geminiTunnelGoLabel">Use Cloudflare tunnel</span></button></div>
+                    <p class="hint">A Cloudflare quick tunnel gets a new address every time it starts. When that happens, add the app in Gemini again with the new address (next step). For an address that lasts, run your own named tunnel and choose “Local only” in Setup → Advanced.</p>
+                  </div>
+                </li>
+                <li class="step" data-gemini-step="add">
+                  <div class="step-mark"><i class="ico tick ph ph-check" aria-hidden="true"></i></div>
+                  <div class="step-body">
+                    <h3>Add the app in Gemini</h3>
+                    <p class="step-lead">Copy this address, then add it in Gemini as a custom app.</p>
+                    <div class="gemini-copy-row"><code id="geminiSetupUrl" translate="no"></code><button class="btn" id="geminiSetupCopy" type="button" disabled><i class="ico ph ph-copy" aria-hidden="true"></i>Copy URL</button></div>
+                    <div class="step-actions"><button class="btn btn-solid" id="geminiSetupOpenApps" type="button"><i class="ico ph ph-arrow-square-out" aria-hidden="true"></i>Open custom apps</button></div>
+                    <div class="setup-guide" data-setup-guide="gemini-add"></div>
+                    <p class="hint">After Connect, Gemini lists the app's tools under “Save your custom app”. Click Connect there once more to save it.</p>
+                    <p class="hint">Treat the address like a password: anyone who has it can use this app within the access you chose.</p>
+                    <p class="status-pill" id="geminiAddPill" data-tone="off" role="status"></p>
+                  </div>
+                </li>
+                <li class="step" data-gemini-step="try">
+                  <div class="step-mark"><i class="ico tick ph ph-check" aria-hidden="true"></i></div>
+                  <div class="step-body">
+                    <h3>Try it in a chat</h3>
+                    <p class="step-lead">In a new Gemini chat, type @, pick the app, and ask for something in your folder. Mentioning the app is how Gemini knows to use it.</p>
+                    <div class="gemini-copy-row"><code id="geminiTryPrompt" translate="no"></code><button class="btn" id="geminiTryCopy" type="button"><i class="ico ph ph-copy" aria-hidden="true"></i>Copy</button></div>
+                    <div class="setup-guide" data-setup-guide="gemini-try"></div>
+                    <p class="hint">Before a tool that changes something, Gemini asks first: choose Allow once, or Always allow for this app. Tools that only read run without asking.</p>
+                    <p class="status-pill" id="geminiTryPill" data-tone="off" role="status"></p>
+                  </div>
+                </li>
+                <li class="step step-ready" data-gemini-step="ready">
+                  <div class="step-mark"><i class="ico tick ph ph-check" aria-hidden="true"></i></div>
+                  <div class="step-body">
+                    <div class="ready-hero">
+                      <span class="ready-badge" aria-hidden="true"><i class="ph ph-check"></i></span>
+                      <div>
+                        <h3 id="geminiReadyTitle">Gemini is set up</h3>
+                        <p class="step-lead">Gemini can now work in your folders. Mention the app in any Gemini chat, or send a message from this page below.</p>
+                      </div>
+                    </div>
+                    <ul class="ready-checks" id="geminiReadyChecks"></ul>
+                  </div>
+                </li>
+              </ol>
+            </section>
+            <section class="appearance-section">
+              <header class="settings-section-head"><div><h2>Connection</h2><p>What the browser extension sees on gemini.google.com. Nothing here reads or stores your Google password or address.</p></div></header>
+              <div class="settings-surface pane appearance-settings-card">
+                <div class="setting"><span class="setting-text"><b>Gemini page</b><em id="geminiPageStatus">Checking…</em></span></div>
+                <div class="setting"><span class="setting-text"><b>Account</b><em id="geminiAccountStatus">Unknown</em></span></div>
+                <div class="setting"><span class="setting-text"><b>Core app in Gemini</b><em id="geminiConnectorStatus">No call from Gemini yet in this run.</em></span></div>
+                <div class="setting" id="geminiWarnings" hidden><span class="setting-text"><b>Needs attention</b><em id="geminiWarningText"></em></span></div>
+              </div>
+            </section>
+            <section class="appearance-section">
+              <header class="settings-section-head"><div><h2>Add Chat On Steroids to Gemini</h2><p>Gemini reaches this app as a custom MCP app. Gemini needs an https address, so use the Cloudflare tunnel (Setup → Tunnel) or your own HTTPS tunnel; the OpenAI Secure Tunnel only serves ChatGPT. Google currently offers custom apps to personal accounts, 18+, in the US, with Gemini history on, in English.</p></div></header>
+              <div class="settings-surface pane appearance-settings-card">
+                <div class="setting"><span class="setting-text"><b>Core MCP server URL</b><em id="geminiCoreUrl" translate="no">Connect a Cloudflare or HTTPS tunnel first.</em></span><button class="btn" id="geminiCopyUrl" type="button" disabled>Copy</button></div>
+                <div class="setting"><span class="setting-text"><b>Open Gemini custom apps</b><em>Click Custom, paste the URL, Next, read Google's notice, tick it and Connect. Gemini lists the app's tools; Connect again to save it.</em></span><button class="btn" id="geminiOpenConnectors" type="button">Open</button></div>
+                <label class="setting"><span class="setting-text"><b>App name to mention</b><em>The name Gemini shows for the app (usually “Chat On Steroids Core”). Messages sent from here start with an @-mention of it, which is how Google says to make Gemini use it. Leave empty for no mention.</em></span><input id="geminiConnectorName" type="text" maxlength="80" placeholder="Chat On Steroids Core" /></label>
+                <div class="setting"><span class="setting-text"><b>Tunnel addresses change</b><em>A Cloudflare quick tunnel gets a new address every start, and Gemini cannot edit a custom app's address: delete and add it again. For a lasting address use your own named tunnel and turn on General → For developers → Keep plugin URLs across restarts.</em></span></div>
+              </div>
+            </section>
+            <section class="appearance-section">
+              <header class="settings-section-head"><div><h2>Models</h2><p>The models your Google account offers, read from Gemini's own picker. A model Gemini marks for a higher plan is shown as unavailable and is never selected.</p></div></header>
+              <div class="settings-surface pane appearance-settings-card">
+                <div class="setting"><span class="setting-text"><b>Available models</b><em id="geminiModelList">Not read yet.</em></span><button class="btn" id="geminiRefreshModels" type="button">Refresh</button></div>
+                <label class="setting"><span class="setting-text"><b>Model for messages sent from here</b><em>“As in Gemini” keeps whatever Gemini has selected.</em></span><select id="geminiDefaultMode"><option value="">As in Gemini</option></select></label>
+                <label class="setting"><span class="setting-text"><b>Thinking level</b><em>Offered levels depend on the model.</em></span><select id="geminiThinking"><option value="">As in Gemini</option></select></label>
+              </div>
+            </section>
+            <section class="appearance-section">
+              <header class="settings-section-head"><div><h2>Send to Gemini</h2><p>Starts a new Gemini chat in your browser (or continues one), waits for the answer and records it in this app's history. Gemini asks you itself before a tool that changes something runs.</p></div></header>
+              <div class="settings-surface pane appearance-settings-card">
+                <label class="setting gemini-prompt-row"><span class="setting-text"><b>Message</b><em>Sent once. If the page cannot confirm it was sent, it is reported as unknown and never sent again.</em></span><textarea id="geminiPrompt" rows="4" maxlength="100000"></textarea></label>
+                <label class="setting"><span class="setting-text"><b>Continue chat</b><em>Leave on “New chat” to start a new Gemini chat.</em></span><select id="geminiContinue"><option value="">New chat</option></select></label>
+                <div class="setting"><span class="setting-text"><b>Send</b><em id="geminiSendHint">The extension must be connected and gemini.google.com signed in.</em></span><button class="btn primary" id="geminiSend" type="button">Send to Gemini</button></div>
+                <div class="gemini-commands" id="geminiCommands" aria-live="polite"></div>
+              </div>
+            </section>
+          </div>
+        </section>
         <!-- ============================================================ Chat -->
         <section class="panel is-active" data-panel="chat">
           <!-- --------------------------------------------------- sessions -->

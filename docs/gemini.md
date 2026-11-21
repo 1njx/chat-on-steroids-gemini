@@ -41,16 +41,33 @@ Gemini needs an **https** MCP address:
 
 ## Setup
 
-1. Install the app and finish **Setup** steps 1–3 (extension, folder, access) as for ChatGPT.
-2. In **Setup → Tunnel** choose **Cloudflare** (or your own HTTPS tunnel) and press **Connect**.
-3. Open **Settings → Providers → Gemini**. Copy the **Core MCP server URL** (treat it like a
-   password: anyone with it can call the tools you enabled).
-4. Press **Open** next to "Open Gemini connectors" (or go to gemini.google.com → Connectors).
-   Click **Custom**, paste the URL, **Next**, read Google's notice, tick it and **Connect**.
-   Gemini lists the server's tools; press **Connect** again to save it. Gemini names it
-   "Chat On Steroids Core".
-5. In a Gemini chat, type `@`, choose **Chat On Steroids Core**, then your request.
-6. Optional: repeat with the Desktop and Plugins URLs (Plugins page and Setup show them).
+Open **Settings → Providers → Gemini**. **Set up Gemini** at the top of the page walks through
+six steps, like ChatGPT's Setup: one step at a time, with pictures of Gemini's own pages, and
+each step turns green by itself when the app sees it done.
+
+1. **Browser** — the Chat On Steroids extension, the same one ChatGPT uses. "Install the
+   extension" opens Setup's browser step. Done when the extension is connected.
+2. **Sign in** — "Open Gemini" opens gemini.google.com in that browser. Lists Google's
+   requirements (personal account, 18+, US, Gemini Apps Activity on, English). Done when the
+   Gemini page reports a signed-in account.
+3. **Folder** — "Add folder" shares a folder (the same folders and access as ChatGPT). Done
+   when at least one folder is shared.
+4. **Tunnel** — Gemini needs an https address. "Switch to Cloudflare and connect" changes the
+   method from the OpenAI Secure Tunnel (ChatGPT only) to a Cloudflare quick tunnel and
+   connects. Done when connected with an https Core address. Switching stops ChatGPT plugins
+   that use a tunnel ID until you switch back in Setup → Advanced.
+5. **Add app** — "Copy URL" copies the Core MCP address (treat it like a password), "Open
+   custom apps" opens Gemini's connectors page. Pictures show: **+ Custom** → paste the
+   address → **Next** → tick Google's notice → **Connect**; then **Connect** again under
+   "Save your custom app". Done when Gemini's MCP client reaches the app (in this run: a quick
+   tunnel's address is new on every start, so add the app again after a restart).
+6. **Try it** — in a new Gemini chat type `@`, pick **Chat On Steroids Core** and ask for
+   something in your folder (a ready prompt can be copied). Gemini asks **Allow once** /
+   **Always allow** before a tool that changes something. Done when Gemini calls one of the
+   app's tools.
+
+**Ready** lists every check, with a way back to any step that is not done. Optional: add the
+Desktop and Plugins URLs the same way (Plugins page and Setup show them).
 
 ### Sending from the app
 

@@ -9,6 +9,16 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [Unreleased]
+
+### Added
+
+- **Set up Gemini**: Settings → Gemini opens with a step-by-step setup like ChatGPT's Setup
+  (browser, sign in, folder, tunnel, add the app, try it, ready). Each step has one main
+  button, pictures of Gemini's pages where there is something to click, and turns green by
+  itself when the app sees it done; the tunnel step switches to a Cloudflare tunnel and
+  connects in one click.
+
 ## [2.2.0] — Gemini edition: Google Gemini as a second provider
 
 First release of the Gemini edition fork, built on upstream 2.1.54. Gemini (gemini.google.com)

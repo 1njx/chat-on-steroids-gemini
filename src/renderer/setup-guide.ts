@@ -76,6 +76,31 @@ const guides: Record<string, Array<Page | Still>> = {
     { src: new URL('./setup-images/tool-approval.jpg', import.meta.url).href, spots: [
       { text: 'First tool call: allow it, always for this plugin', box: [85.5, 79.6, 12.2, 14.6] }
     ] }
+  ],
+  // Gemini's pages are English-only (Google offers custom apps in English), so are their moves.
+  // Redacted captures: placeholder address and email, no account name or picture.
+  'gemini-add': [
+    { src: new URL('./setup-images/gemini-connectors.webp', import.meta.url).href, spots: [
+      { text: () => 'Click “+ Custom”', box: [81, 31.6, 13.8, 9.1], pin: 'bottom-left' }
+    ] },
+    { src: new URL('./setup-images/gemini-app-url.webp', import.meta.url).href, spots: [
+      { text: () => 'Paste the address you copied', box: [15.7, 32.2, 68.6, 10.3] },
+      { text: () => 'Click “Next”', box: [73.9, 77.3, 10.7, 9.2], pin: 'bottom-left' }
+    ] },
+    { src: new URL('./setup-images/gemini-app-consent.webp', import.meta.url).href, spots: [
+      { text: () => 'Read Google’s notice, then tick the box', box: [12, 81.6, 76, 4.8] },
+      { text: () => 'Click “Connect”', box: [75.8, 88.8, 13.5, 4.3], pin: 'bottom-left' }
+    ] }
+  ],
+  'gemini-try': [
+    { src: new URL('./setup-images/gemini-mention.webp', import.meta.url).href, spots: [
+      { text: () => 'Type @ in a new chat', box: [11.8, 14.4, 6.9, 10.8] },
+      { text: () => 'Pick “Chat On Steroids Core” under Connectors', box: [8.6, 59, 83.9, 32] }
+    ] },
+    { src: new URL('./setup-images/gemini-model.webp', import.meta.url).href, spots: [
+      { text: () => 'Optional: open the model picker', box: [79.8, 20.7, 14.3, 8.6], pin: 'bottom-left' },
+      { text: () => 'Pick a model your plan offers', box: [62.7, 54.3, 30.2, 11.3], pin: 'bottom-left' }
+    ] }
   ]
 };
 

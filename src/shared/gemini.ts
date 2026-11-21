@@ -43,6 +43,8 @@ export interface GeminiStatus {
   commands: GeminiCommandSummary[];
   /** When an MCP request from Gemini's connector client (User-Agent "Google") last arrived this run. */
   connectorSeenAt?: number | null;
+  /** When Gemini last called one of this app's tools in this run (null: never). */
+  toolCallSeenAt?: number | null;
 }
 
 /** Plain-language text for a command error code; unknown codes are shown as Gemini/the page gave them. */

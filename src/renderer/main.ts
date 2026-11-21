@@ -3181,7 +3181,20 @@ $('updateExtension').addEventListener('click', () => {
 });
 
 api.onStateChanged(apply);
-initGemini(api, toast);
+initGemini(api, toast, {
+  openSetupStep,
+  addFolder: () => void addFolder(),
+  // Gemini needs https: the OpenAI tunnel only serves ChatGPT, so switch to Cloudflare, then connect.
+  useHttpsTunnel: () => void (async () => {
+    if (!state) return;
+    const kind = $<HTMLSelectElement>('tunnelKind');
+    if (state.config.tunnel.kind === 'openai') {
+      kind.value = 'cloudflared';
+      if (!(await save())) return;
+    }
+    if (state && !isRunning(state.status.state)) await toggleConnection();
+  })()
+});
 // Lines logged while the startup snapshot loads arrive live and are in the snapshot too. Hold
 // them until it lands, so each shows once and after the lines that came before it.
 let heldLogLines: LogEntry[] | null = [];
