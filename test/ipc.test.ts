@@ -1418,6 +1418,28 @@ describe('settings writes from more than one UI', () => {
     }
   });
 
+  it("keeps Gemini's own tunnel token in the secret store, taken from Cloudflare's install command", async () => {
+    const base = defaultConfig(); await saveConfig(base);
+    const { geminiStatus } = await import('../src/main/gemini.js');
+    const { getSecret } = await import('../src/main/secrets.js');
+    const token = `eyJ${'a'.repeat(120)}`;
+    const named = handlers.get('gemini:namedTunnel')!;
+    try {
+      expect(await named(null, { host: 'gemini.example.com' })).toEqual({ ok: true, data: { ok: false, error: 'token-required' } });
+      expect(await named(null, { host: 'gemini.example.com', token: 'not a token!' })).toEqual({ ok: true, data: { ok: false, error: 'invalid-token' } });
+      expect(await named(null, { host: 'https://Gemini.Example.com/', token: `cloudflared.exe service install ${token}` })).toEqual({ ok: true, data: { ok: true } });
+      expect(geminiStatus().settings.namedTunnelHost).toBe('gemini.example.com');
+      expect(await getSecret('geminiTunnelToken')).toBe(token);
+      // Neither the token nor the hostname lands in the settings file.
+      expect(await fs.readFile(path.join(dir, 'config.json'), 'utf8')).not.toContain(token);
+      expect(await named(null, { host: null })).toEqual({ ok: true, data: { ok: true } });
+      expect(await getSecret('geminiTunnelToken')).toBeNull();
+      expect(geminiStatus().settings.namedTunnelHost).toBeNull();
+    } finally {
+      await named(null, { host: null });
+    }
+  });
+
   it('saves the Gemini tunnel switch without touching the app tunnel', async () => {
     const base = defaultConfig(); await saveConfig(base);
     const { geminiStatus } = await import('../src/main/gemini.js');

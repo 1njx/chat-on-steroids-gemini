@@ -29,7 +29,7 @@ import { safeExternalLink } from '../shared/external-link.js';
 import { wakeBrowserWork } from './browser-wake.js';
 import { refreshKeepAwake } from './keep-awake.js';
 import { getChatModels, startChatModelDiscovery, configureChatModelDiscovery } from './chat-models.js';
-import { cancelGeminiCommand, configureGemini, geminiStatus, geminiWantsHttpsTunnel, queueGeminiSend, requestGeminiModes, saveGeminiSettings, stopGemini } from './gemini.js';
+import { cancelGeminiCommand, configureGemini, geminiNamedTunnelHost, geminiStatus, geminiWantsHttpsTunnel, queueGeminiFill, queueGeminiSend, requestGeminiModes, saveGeminiSettings, stopGemini } from './gemini.js';
 import { releaseSessionFinish, requestSessionFinishGoal } from './session/finish.js';
 import { GOAL_MARKER_INSTRUCTION } from '../shared/goal-templates.js';
 import { validateInputImages } from './session/input-images.js';
@@ -116,7 +116,7 @@ import { addProject, addRemoteProject, createChatgptProjectFor, linkChatgptProje
 import { createProjectEntry, listProjectDirectory, previewProjectFile, projectFileTarget, renameProjectEntry, revalidateProjectFileTarget, saveProjectTextFile, serverFileSnapshot } from './project-files.js';
 import { ProjectFileWatchSet } from './project-file-watcher.js';
 import { ProjectGitWatchSet, readProjectGitDiff, readProjectGitSnapshot } from './project-git.js';
-import { hasSecret, isEncryptionAvailable, readSecretsFor, secureStorageStatus, setAsideUnreadableSecrets, setSecret, setSecrets, storedSecretsUnreadable, type SecretKey } from './secrets.js';
+import { clearSecret, hasSecret, isEncryptionAvailable, readSecretsFor, secureStorageStatus, setAsideUnreadableSecrets, setSecret, setSecrets, storedSecretsUnreadable, type SecretKey } from './secrets.js';
 import { BackupError, buildBackup, changedSettings, widerAccess, exportableSecret, openSecrets, overlaySettings, passphraseLongEnough, pickByShape, readBackup, settingsForBackup, type ParsedBackup } from './settings-backup.js';
 import { setupApiKeySlot } from '../shared/setup-profile.js';
 import { addSetupProfile, removeSetupProfile, switchSetupProfile } from './setup-profiles.js';
@@ -2193,8 +2193,33 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
   handle('gemini:cancel', async (payload) => cancelGeminiCommand(z.object({ id: z.string().uuid() }).parse(payload).id));
   handle('gemini:settings', async (payload) => {
     const saved = saveGeminiSettings(payload);
-    if (saved.ok && payload && typeof payload === 'object' && 'httpsTunnel' in payload) await applyGeminiTunnel();
+    if (saved.ok && payload && typeof payload === 'object' && ('httpsTunnel' in payload || 'namedTunnelHost' in payload)) await applyGeminiTunnel();
     return saved;
+  });
+  // The person's own Cloudflare tunnel for Gemini: the hostname is a setting, the token a secret.
+  handle('gemini:namedTunnel', async (payload) => {
+    const { host, token } = z.object({ host: z.string().max(253).nullable(), token: z.string().max(8000).optional() }).strict().parse(payload);
+    if (host === null) {
+      await clearSecret('geminiTunnelToken');
+      const saved = saveGeminiSettings({ namedTunnelHost: null });
+      await applyGeminiTunnel();
+      return saved;
+    }
+    // Cloudflare shows the token inside an install command: keep only its last word.
+    const word = token?.trim().split(/\s+/).pop() ?? '';
+    if (word && !/^[A-Za-z0-9+/=_-]{40,4000}$/.test(word)) return { ok: false, error: 'invalid-token' };
+    if (!word && !(await hasSecret('geminiTunnelToken'))) return { ok: false, error: 'token-required' };
+    const cleanHost = host.trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
+    const check = saveGeminiSettings({ namedTunnelHost: cleanHost });
+    if (!check.ok) return { ok: false, error: 'invalid-host' };
+    if (word) await setSecret('geminiTunnelToken', word);
+    await applyGeminiTunnel();
+    return { ok: true };
+  });
+  handle('gemini:fillApp', async (payload) => {
+    const queued = queueGeminiFill(z.object({ url: z.string().max(600) }).parse(payload).url);
+    if (queued.ok) void startBridge().catch(() => undefined);
+    return queued;
   });
   // Gemini works only where the extension is, and Google may refuse sign-in in the built-in
   // browser: so never there. "Default browser" asks for the system's own browser outright.
@@ -2897,7 +2922,7 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
     geminiPush.unref?.();
   };
   configureGemini({ changed: pushGeminiSoon });
-  configureGeminiTunnel(geminiWantsHttpsTunnel);
+  configureGeminiTunnel(geminiWantsHttpsTunnel, geminiNamedTunnelHost);
   configureChatModelDiscovery({ changed: () => push('chatModels:changed', getChatModels()), wake: async (nonce, allowOpen) => {
     if (!await startBridge()) throw new Error('The browser bridge could not start');
     if (allowOpen) {

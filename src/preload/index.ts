@@ -418,6 +418,8 @@ const api = {
   stopGemini: (conversation: string) => call<{ ok: boolean; error?: string }>('gemini:stop', { conversation }),
   cancelGeminiCommand: (id: string) => call<{ ok: boolean; error?: string }>('gemini:cancel', { id }),
   saveGeminiSettings: (patch: Partial<GeminiStatus['settings']>) => call<{ ok: boolean; error?: string }>('gemini:settings', patch),
+  saveGeminiNamedTunnel: (tunnel: { host: string | null; token?: string }) => call<{ ok: boolean; error?: string }>('gemini:namedTunnel', tunnel),
+  fillGeminiApp: (url: string) => call<{ ok: true; id: string } | { ok: false; error: string }>('gemini:fillApp', { url }),
   openGeminiConnectors: (options: { external?: boolean } = {}) => call<boolean>('gemini:openConnectors', options),
   openGemini: (options: { external?: boolean } = {}) => call<boolean>('gemini:open', options),
   onGeminiChanged: (listener: (status: GeminiStatus) => void): (() => void) => {

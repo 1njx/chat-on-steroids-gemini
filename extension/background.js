@@ -4547,7 +4547,7 @@ const geminiOpened = new Map();
 async function openGeminiPages(urls) {
   if (!Array.isArray(urls)) return;
   for (const url of urls.slice(0, 2)) {
-    if (typeof url !== 'string' || !/^https:\/\/gemini\.google\.com\/app(\/[0-9a-f]{8,32})?$/.test(url)) continue;
+    if (typeof url !== 'string' || !/^https:\/\/gemini\.google\.com\/(app(\/[0-9a-f]{8,32})?|customize\/connectors)$/.test(url)) continue;
     if (Date.now() - (geminiOpened.get(url) || 0) < 120_000) continue;
     geminiOpened.set(url, Date.now());
     await createChatTab(url, true).catch(() => undefined);

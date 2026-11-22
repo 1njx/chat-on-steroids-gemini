@@ -15,6 +15,11 @@
  *   · mode picker: `[data-test-id="bard-mode-menu-button"]` and its `gem-menu-item[role=menuitemradio]`
  *     options, each with a stable `data-mode-id`; an `upsell_*` id is a model the account cannot use
  *   · account: the Google Account button's aria-label, and the plan badge under the side-nav avatar
+ *   · custom apps (/customize/connectors, observed 2026-11-22): a "Custom apps" section of
+ *     `customize-card`s whose `button.card-primary-action` carries the app name as aria-label; its
+ *     details page lists `dt` "MCP URL" / `dd` value and a "More options" menu (Use now, Disconnect,
+ *     Delete: no edit); "Create custom app" opens a `mat-dialog-container` with `input[name=url]`,
+ *     optional `clientId`/`clientSecret`, and Cancel / Next
  *
  * Aria labels are English. Gemini custom MCP apps are themselves English-only (Google's help page),
  * so the integration requires the English UI; `localized()` reports when the page is not.
@@ -334,6 +339,89 @@ var CLF_GEMINI_DOM = (() => {
     return safe(() => { const lang = (document.documentElement.lang || '').toLowerCase(); return !!lang && !lang.startsWith('en'); }, false);
   }
 
+  // ---- custom apps page (never presses Next, Connect, Disconnect or Delete)
+
+  const CREATE_APP = 'button[aria-label="Create custom app"]';
+  const onCustomApps = () => safe(() => /\/customize\/connectors\/?$/.test(location.pathname), false);
+  async function waitFor(find, ms = 8000) {
+    for (const end = Date.now() + ms; Date.now() < end; await sleep(250)) {
+      const found = safe(find, null);
+      if (found) return found;
+    }
+    return null;
+  }
+  const visibleCreate = () => [...document.querySelectorAll(CREATE_APP)].find(visible) || null;
+
+  /** The listed custom app with this exact name, or null. */
+  function customAppCard(name) {
+    return safe(() => [...document.querySelectorAll('button.card-primary-action')]
+      .find(b => (b.getAttribute('aria-label') || '').trim() === name) || null, null);
+  }
+
+  /** The "MCP URL" shown on the open app's details page, or null. */
+  function detailsUrl() {
+    return safe(() => {
+      const label = [...document.querySelectorAll('dt')].find(dt => text(dt) === 'MCP URL');
+      const value = text(label?.nextElementSibling);
+      return /^https:\/\/\S+$/.test(value) ? value : null;
+    }, null);
+  }
+
+  /** Opens the named app's details page and reads its address. Null when unreadable. */
+  async function readCustomAppUrl(name, ms = 6000) {
+    const card = customAppCard(name);
+    if (!card) return null;
+    card.click();
+    return waitFor(detailsUrl, ms);
+  }
+
+  function backToList() {
+    safe(() => document.querySelector('button[aria-label="Back to Connectors"]')?.click(), null);
+  }
+
+  /** The open details page's "More options" button (where Gemini's own Delete is). */
+  function detailsMoreOptions() {
+    return safe(() => [...document.querySelectorAll('button[aria-label="More options"]')]
+      .find(b => visible(b) && !b.closest('customize-card')) || null, null);
+  }
+
+  /** Opens "Create custom app" and fills the MCP Server URL. Returns the Next button, or null if the form was not recognized. */
+  async function fillCreateForm(url, ms = 6000) {
+    const create = await waitFor(visibleCreate, ms);
+    if (!create) return null;
+    create.click();
+    const input = await waitFor(() => document.querySelector('mat-dialog-container input[name="url"], [role="dialog"] input[name="url"]'), ms);
+    if (!input) return null;
+    input.focus();
+    // Angular's form listens for input events; the native setter makes it see the new value.
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, url);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    input.dispatchEvent(new Event('blur', { bubbles: true }));
+    const dialog = input.closest('mat-dialog-container, [role="dialog"]') || document;
+    const next = await waitFor(() => [...dialog.querySelectorAll('button')].find(b => text(b) === 'Next' && !b.disabled) || null, Math.min(ms, 3000));
+    return input.value === url ? next : null;
+  }
+
+  /** Points the person at the control they press themselves; never clicks it. */
+  function highlight(node, note) {
+    safe(() => {
+      node.style.outline = '3px solid #f5a524';
+      node.style.outlineOffset = '3px';
+      node.scrollIntoView?.({ block: 'center' });
+      document.getElementById('clf-gemini-note')?.remove();
+      const box = document.createElement('div');
+      box.id = 'clf-gemini-note';
+      box.setAttribute('role', 'status');
+      box.textContent = note;
+      Object.assign(box.style, { position: 'fixed', zIndex: '2147483647', left: '50%', bottom: '24px', transform: 'translateX(-50%)',
+        maxWidth: '520px', padding: '12px 16px', borderRadius: '10px', background: '#1f1f1f', color: '#fff',
+        border: '2px solid #f5a524', font: '14px/1.4 system-ui, sans-serif', boxShadow: '0 6px 24px rgba(0,0,0,.4)' });
+      document.body.append(box);
+      setTimeout(() => box.remove(), 60_000);
+    }, null);
+  }
+
   /** One compact snapshot the content script reports to the app. */
   function snapshot() {
     const all = turns();
@@ -359,5 +447,6 @@ var CLF_GEMINI_DOM = (() => {
     selectThinkingLevel, insertPrompt, composerText, mentionOptions, mentionConnector, appendPrompt,
     send, stopGeneration, turns, errors,
     localized, snapshot, parseOption,
+    onCustomApps, customAppCard, readCustomAppUrl, backToList, detailsMoreOptions, fillCreateForm, highlight, waitFor, visibleCreate,
   };
 })();

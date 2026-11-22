@@ -35,8 +35,13 @@ Gemini needs an **https** MCP address:
 - **Cloudflare quick tunnel** (Setup → Tunnel → Cloudflare): works, but the address changes every
   time the app starts, and Gemini cannot edit a custom app's address. Delete the app in Gemini
   and add it again after each start.
-- **Your own HTTPS tunnel** (for example a named Cloudflare tunnel) plus **General → For developers
-  → Keep plugin URLs across restarts**: a lasting address. Recommended.
+- **Your own Cloudflare tunnel for Gemini** (Set up Gemini → Tunnel → "Keep the same address"):
+  a lasting address. Enter its public hostname and token; the app runs it next to ChatGPT's tunnel
+  and turns on **Keep plugin URLs across restarts**, so the path and local port stay too. In
+  Cloudflare, point the public hostname at the `http://localhost:<port>` the step shows. The token
+  is kept in the system's secure storage. Recommended.
+- **Your own HTTPS tunnel** for the whole app ("Local only" in Setup → Advanced) plus **Keep plugin
+  URLs across restarts**: also lasting.
 - The **OpenAI Secure MCP Tunnel only serves ChatGPT.** Gemini cannot use it. With it, Gemini gets
   its own Cloudflare quick tunnel that runs next to it (Set up Gemini, Tunnel step), so ChatGPT
   keeps working on the OpenAI tunnel.
@@ -61,8 +66,17 @@ each step turns green by itself when the app sees it done.
    or own tunnel, "Connect" is enough. If the whole app was switched to Cloudflare (what 2.2.0 to
    2.2.3 did here), "Switch ChatGPT back to the OpenAI tunnel" switches back and keeps Gemini's
    own tunnel; when no tunnel ID is saved, Setup asks for it. Done when connected with an https
-   Core address.
-5. **Add app** — "Copy URL" copies the Core MCP address (treat it like a password), "Open
+   Core address. "Keep the same address" runs your own Cloudflare tunnel instead of a quick one.
+5. **Add app** — "Fill in Gemini for me" uses the extension on your signed-in Gemini page: it opens
+   custom apps and, when **Chat On Steroids Core** is already there, reads its address. Same
+   address: nothing to do. Old address: Gemini cannot edit one, so it highlights **More options**
+   for you to choose **Delete**, then press the button again. Otherwise it opens **Create custom
+   app**, fills in the address and highlights **Next**. It never presses Next, Connect or Delete,
+   and stores no Google password or cookie. A page it does not recognize gets nothing filled in, and
+   the step says to add the app by hand. The step remembers a fingerprint of the address Gemini
+   last got (copied, filled in or read there), never the address, so after a restart it says
+   "Your Gemini custom app has an old address. Update it to …" instead of "not added".
+   "Copy URL" copies the Core MCP address (treat it like a password), "Open
    custom apps" opens Gemini's connectors page. Pictures show: **+ Custom** → paste the
    address → **Next** → tick Google's notice → **Connect**; then **Connect** again under
    "Save your custom app". Done when Gemini's MCP client reaches the app (in this run: a quick

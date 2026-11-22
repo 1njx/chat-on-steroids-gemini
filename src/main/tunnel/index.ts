@@ -82,6 +82,11 @@ export interface TunnelStartOptions {
    * without it every line appeared twice with nothing to say which one it was about.
    */
   label?: string;
+  /**
+   * cloudflared only: run the person's own (remotely managed) Cloudflare tunnel instead of a quick
+   * tunnel. Its public hostname and the local address it serves are set in Cloudflare's dashboard.
+   */
+  named?: { host: string; token: string };
   report: (report: TunnelReport) => void;
 }
 
@@ -821,18 +826,22 @@ async function startCloudflared(opts: TunnelStartOptions): Promise<TunnelHandle>
   const configFile = path.join(workDir, 'quick-tunnel.yml');
   await fs.writeFile(configFile, '# Chat On Steroids quick tunnel: deliberately no named tunnel or ingress.\n', 'utf8');
 
-  const args = [
-    'tunnel',
-    '--no-autoupdate',
-    '--config',
-    configFile,
-    '--url',
-    origin,
-    // Without this the origin would see the public trycloudflare hostname and our
-    // loopback Host check would reject the request.
-    '--http-host-header',
-    local.host
-  ];
+  const named = opts.named ?? null;
+  const args = named
+    // The token goes in the environment, not the command line other programs can read.
+    ? ['tunnel', '--no-autoupdate', '--config', configFile, 'run']
+    : [
+      'tunnel',
+      '--no-autoupdate',
+      '--config',
+      configFile,
+      '--url',
+      origin,
+      // Without this the origin would see the public trycloudflare hostname and our
+      // loopback Host check would reject the request.
+      '--http-host-header',
+      local.host
+    ];
 
   opts.report({ state: 'connecting-tunnel', detail: 'Starting cloudflared…' });
 
@@ -842,7 +851,7 @@ async function startCloudflared(opts: TunnelStartOptions): Promise<TunnelHandle>
     stdio: ['ignore', 'pipe', 'pipe'],
     // Tunnel providers need the ordinary OS environment, never credentials inherited
     // from a terminal that happened to launch Electron.
-    env: childEnv()
+    env: childEnv(named ? { TUNNEL_TOKEN: named.token } : undefined)
   });
 
   let settled = false;
@@ -850,7 +859,9 @@ async function startCloudflared(opts: TunnelStartOptions): Promise<TunnelHandle>
   let lastError = '';
 
   const handleLine = (line: string): void => {
-    const match = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/i.exec(line);
+    const match = named
+      ? /Registered tunnel connection/i.test(line) ? [`https://${named.host}`] : null
+      : /https:\/\/[a-z0-9-]+\.trycloudflare\.com/i.exec(line);
     if (match && !settled) {
       settled = true;
       const publicUrl = `${match[0]}${local.pathname}`;

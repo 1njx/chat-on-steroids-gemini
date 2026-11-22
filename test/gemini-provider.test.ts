@@ -6,8 +6,9 @@ import { defaultConfig, initConfigPath, saveConfig } from '../src/main/config.js
 import { flushDurable, initDurableStore, readDurable, resetDurableForTests } from '../src/main/durable.js';
 import {
   cancelGeminiCommand, completeGeminiCommand, configureGemini, geminiPagesToOpen, geminiStatus, observeGeminiPage,
-  queueGeminiSend, requestGeminiModes, resetGeminiForTests, restoreGemini, saveGeminiSettings, sweep,
+  queueGeminiFill, queueGeminiSend, requestGeminiModes, resetGeminiForTests, restoreGemini, saveGeminiSettings, sweep,
 } from '../src/main/gemini.js';
+import { geminiUrlFingerprint } from '../src/shared/gemini.js';
 import { flushRecorder, resetRecorderForTests } from '../src/main/session/recorder.js';
 import { findSessionByConversation, flushSessions, initSessionStore, readEvents, resetSessionStoreForTests, unsetSessionRootForTests } from '../src/main/session/store.js';
 import { geminiConversationKey, geminiNativeId, providerConversationUrl, providerOfConversation } from '../src/shared/providers.js';
@@ -213,5 +214,50 @@ describe('Gemini provider', () => {
     for (let i = 0; i < 60; i += 1) { const r = queueGeminiSend({ prompt: `p${i}` }) as { id: string }; cancelGeminiCommand(r.id); }
     sweep();
     expect(geminiStatus().commands.length).toBeLessThanOrEqual(20);
+  });
+
+  it('fills the custom app form through one page and keeps only a fingerprint of the address', async () => {
+    const url = `https://merit-totally-iowa-billion.trycloudflare.com/mcp/core/${'a'.repeat(43)}`;
+    const old = `https://old-name.trycloudflare.com/mcp/core/${'b'.repeat(43)}`;
+    expect(queueGeminiFill('http://localhost:1234/mcp/core/x')).toEqual({ ok: false, error: 'invalid-url' });
+    expect(geminiPagesToOpen()).toEqual([]);
+    const { id } = queueGeminiFill(url) as { id: string };
+    // With no Gemini page reporting, the extension opens the custom apps page itself.
+    expect(geminiPagesToOpen()).toEqual(['https://gemini.google.com/customize/connectors']);
+    // Any idle signed-in page takes it, composer or not; a busy one does not.
+    expect(observeGeminiPage({ tab: 2, snapshot: page({ generating: true }) }).commands).toEqual([]);
+    const handed = observeGeminiPage({ tab: 1, snapshot: page({ url: 'https://gemini.google.com/customize/connectors', composerReady: false }) }).commands;
+    expect(handed).toEqual([expect.objectContaining({ id, kind: 'fill-app', url })]);
+    // The page found the app with another address: remembered as that address, so the app can say it is old.
+    expect(await completeGeminiCommand({ id, tab: 1, stage: 'completed', outcome: 'old', existingUrl: old })).toEqual({ ok: true });
+    const after = geminiStatus();
+    expect(after.settings.givenUrlHash).toBe(geminiUrlFingerprint(old));
+    expect(after.commands.at(-1)).toMatchObject({ kind: 'fill-app', stage: 'completed', outcome: 'old' });
+    expect(JSON.stringify(after)).not.toContain('old-name');
+    await flushDurable();
+    expect(JSON.stringify(await readDurable('gemini'))).not.toContain('trycloudflare');
+
+    // Filled in: the address given is the new one.
+    const second = queueGeminiFill(url) as { id: string };
+    observeGeminiPage({ tab: 1, snapshot: page({ composerReady: false }) });
+    expect(await completeGeminiCommand({ id: second.id, tab: 1, stage: 'completed', outcome: 'filled' })).toEqual({ ok: true });
+    expect(geminiStatus().settings.givenUrlHash).toBe(geminiUrlFingerprint(url));
+
+    // A page that reports no outcome filled nothing: that is the layout fallback, never a success.
+    const third = queueGeminiFill(url) as { id: string };
+    observeGeminiPage({ tab: 1, snapshot: page() });
+    await completeGeminiCommand({ id: third.id, tab: 1, stage: 'completed' });
+    expect(geminiStatus().commands.at(-1)).toMatchObject({ stage: 'failed', error: 'custom-apps-layout-unknown' });
+  });
+
+  it('keeps one fill request at a time and refuses a bad fingerprint or hostname', () => {
+    const url = `https://gemini.example.com/mcp/core/${'c'.repeat(43)}`;
+    const first = queueGeminiFill(url) as { id: string };
+    queueGeminiFill(url);
+    expect(geminiStatus().commands.find(c => c.id === first.id)?.stage).toBe('cancelled');
+    expect(saveGeminiSettings({ givenUrlHash: url })).toEqual({ ok: false, error: 'invalid-settings' });
+    expect(saveGeminiSettings({ namedTunnelHost: 'https://x' })).toEqual({ ok: false, error: 'invalid-settings' });
+    expect(saveGeminiSettings({ namedTunnelHost: 'Gemini.Example.com' })).toEqual({ ok: true });
+    expect(geminiStatus().settings.namedTunnelHost).toBe('gemini.example.com');
   });
 });

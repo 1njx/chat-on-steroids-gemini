@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { GeminiStatus } from '../src/shared/gemini.js';
+import { geminiUrlFingerprint, type GeminiStatus } from '../src/shared/gemini.js';
 
 const html = readFileSync(new URL('../src/renderer/index.html', import.meta.url), 'utf8');
 let dom: JSDOM;
@@ -77,7 +77,7 @@ describe('Settings → Gemini', () => {
     const { initGemini, paintGeminiConnector } = await import('../src/renderer/gemini.js');
     const doc = dom.window.document;
     let push: (s: GeminiStatus) => void = () => undefined;
-    const hooks = { openSetupStep: vi.fn(), addFolder: vi.fn(), useHttpsTunnel: vi.fn(), stopHttpsTunnel: vi.fn(), switchBackToOpenAi: vi.fn() };
+    const hooks = { openSetupStep: vi.fn(), addFolder: vi.fn(), useHttpsTunnel: vi.fn(), stopHttpsTunnel: vi.fn(), switchBackToOpenAi: vi.fn(), useNamedTunnel: vi.fn() };
     const api = {
       getGeminiStatus: () => new Promise(() => undefined), onGeminiChanged: (fn: typeof push) => { push = fn; },
       writeClipboard: async () => ({ ok: true }), openGemini: vi.fn(), openGeminiConnectors: vi.fn(),
@@ -130,7 +130,7 @@ describe('Settings → Gemini', () => {
     const { initGemini, paintGeminiConnector } = await import('../src/renderer/gemini.js');
     const doc = dom.window.document;
     let push: (s: GeminiStatus) => void = () => undefined;
-    const hooks = { openSetupStep: vi.fn(), addFolder: vi.fn(), useHttpsTunnel: vi.fn(), stopHttpsTunnel: vi.fn(), switchBackToOpenAi: vi.fn() };
+    const hooks = { openSetupStep: vi.fn(), addFolder: vi.fn(), useHttpsTunnel: vi.fn(), stopHttpsTunnel: vi.fn(), switchBackToOpenAi: vi.fn(), useNamedTunnel: vi.fn() };
     const api = { getGeminiStatus: () => new Promise(() => undefined), onGeminiChanged: (fn: typeof push) => { push = fn; },
       writeClipboard: async () => ({ ok: true }), openGemini: vi.fn(), openGeminiConnectors: vi.fn() };
     initGemini(api as never, () => undefined, hooks);
@@ -163,6 +163,35 @@ describe('Settings → Gemini', () => {
     expect(doc.getElementById('geminiTunnelOff')!.hidden).toBe(true);
     doc.getElementById('geminiTunnelBack')!.click();
     expect(hooks.switchBackToOpenAi).toHaveBeenCalledOnce();
+  });
+});
+
+describe('Gemini custom app address', () => {
+  const url = `https://new-name.trycloudflare.com/mcp/core/${'a'.repeat(43)}`;
+  const old = `https://old-name.trycloudflare.com/mcp/core/${'b'.repeat(43)}`;
+  const withGiven = (given: string | null, extra: Partial<GeminiStatus> = {}) =>
+    status({ settings: { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, givenUrlHash: given ? geminiUrlFingerprint(given) : null }, ...extra });
+
+  it('says the custom app has an old address, with the new one, instead of "not added"', async () => {
+    const { addPill } = await import('../src/renderer/gemini.js');
+    const [tone, text] = addPill(withGiven(old), url);
+    expect(tone).toBe('bad');
+    expect(text).toContain(`Your Gemini custom app has an old address. Update it to ${url}`);
+    expect(addPill(withGiven(url), url)).toEqual(['wait', expect.stringContaining('Gemini has this address')]);
+    expect(addPill(withGiven(null), url)[1]).toContain('A quick tunnel gets a new address at each start');
+    // Only a call from Gemini proves it is added, whatever was given before.
+    expect(addPill(withGiven(old, { connectorSeenAt: Date.now() }), url)[0]).toBe('ok');
+  });
+
+  it('falls back to the manual steps in plain words when the custom apps page is not recognized', async () => {
+    const { fillPill } = await import('../src/renderer/gemini.js');
+    const base = { id: 'x', kind: 'fill-app', createdAt: 1, updatedAt: 1, conversation: null, sessionId: null, modeId: null, promptPreview: null, answerChars: null } as const;
+    const [tone, text] = fillPill({ ...base, stage: 'failed', error: 'custom-apps-layout-unknown', outcome: null }, url);
+    expect(tone).toBe('bad');
+    expect(text).toBe("Gemini's custom apps page did not look as expected, so nothing was filled in. Add the app by hand: click Custom, paste the address, then Next.");
+    expect(fillPill({ ...base, stage: 'completed', error: null, outcome: 'filled' }, url)[1]).toContain('click the highlighted Next');
+    expect(fillPill({ ...base, stage: 'completed', error: null, outcome: 'old' }, url)[1]).toContain('choose Delete');
+    expect(fillPill({ ...base, stage: 'failed', error: 'signed-out', outcome: null }, url)[1]).toContain('Add the app by hand');
   });
 });
 

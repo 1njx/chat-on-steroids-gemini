@@ -59,6 +59,7 @@ vi.mock('../src/main/config.js', () => ({
 vi.mock('../src/main/logger.js', () => ({ logError: vi.fn(), logInfo: vi.fn(), logWarn: vi.fn() }));
 
 vi.mock('../src/main/mcp/server.js', () => ({
+  allowTunnelHost: vi.fn(),
   lastRequestAt: () => null,
   tunnelProbeHeaders: () => ({}),
   startMcpServer: vi.fn(async (getContext: () => unknown) => {
@@ -979,6 +980,42 @@ describe('connection surface state', () => {
     } finally {
       await connection.disconnect();
       Object.assign(mocks.config.tunnel, { tunnelId: '', binaryPath: '' });
+    }
+  });
+
+  it("runs the person's own Cloudflare tunnel for Gemini with its token, and its lasting address", async () => {
+    const connection = await import('../src/main/connection.js');
+    const { startTunnel } = await import('../src/main/tunnel/index.js');
+    const { getSecret } = await import('../src/main/secrets.js');
+    const { allowTunnelHost } = await import('../src/main/mcp/server.js');
+    const original = vi.mocked(getSecret).getMockImplementation()!;
+    let host: string | null = 'gemini.example.com';
+    let token: string | null = 'eyJ-token';
+    vi.mocked(getSecret).mockImplementation(async (key) => key === 'geminiTunnelToken' ? token : original(key));
+    connection.configureGeminiTunnel(() => true, () => host);
+    try {
+      // On the Cloudflare path too: a quick tunnel's address changes, the person's own does not.
+      await connection.connect();
+      const gemini = vi.mocked(startTunnel).mock.calls.map(([options]) => options).find(options => options.label === 'gemini')!;
+      expect(gemini.named).toEqual({ host: 'gemini.example.com', token: 'eyJ-token' });
+      expect(gemini.settings.kind).toBe('cloudflared');
+      expect(allowTunnelHost).toHaveBeenLastCalledWith('gemini.example.com');
+
+      // Back to a quick tunnel: Cloudflare already publishes the whole app, so Gemini's own stops.
+      host = null;
+      await connection.applyGeminiTunnel();
+      expect(connection.getStatus().geminiTunnel).toBeNull();
+      expect(allowTunnelHost).toHaveBeenLastCalledWith(null);
+
+      // A hostname without its token says what is missing instead of starting a quick tunnel.
+      host = 'gemini.example.com'; token = null;
+      await connection.applyGeminiTunnel();
+      expect(connection.getStatus().geminiTunnel).toMatchObject({ state: 'error', url: null });
+      expect(connection.getStatus().geminiTunnel?.detail).toContain('token');
+    } finally {
+      vi.mocked(getSecret).mockImplementation(original);
+      connection.configureGeminiTunnel(() => false);
+      await connection.disconnect();
     }
   });
 

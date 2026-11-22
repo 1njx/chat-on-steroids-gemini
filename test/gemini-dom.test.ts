@@ -24,6 +24,10 @@ interface GeminiDom {
   errors(): Array<{ text: string; quota: boolean; signedOut: boolean }>;
   localized(): boolean;
   snapshot(): Record<string, unknown> & { account: unknown; lastTurn: { id: string; final: boolean } | null };
+  customAppCard(name: string): HTMLElement | null;
+  readCustomAppUrl(name: string, ms?: number): Promise<string | null>;
+  fillCreateForm(url: string, ms?: number): Promise<HTMLButtonElement | null>;
+  highlight(node: HTMLElement, note: string): void;
 }
 
 // Shapes copied from the live gemini.google.com page (2026-11-20, Google AI Pro account).
@@ -227,5 +231,74 @@ describe('Gemini page adapter', () => {
     expect(api.snapshot()).toMatchObject({ signIn: 'unknown', account: null, composerReady: false, generating: false, turnCount: 0, lastTurn: null });
     expect(api.insertPrompt('x')).toBe(false);
     expect(api.stopGeneration()).toBe(false);
+  });
+});
+
+// Shapes copied from the live custom apps page (gemini.google.com/customize/connectors, 2026-11-22).
+const APPS = `
+<a aria-label="Google Account: Pat (pat@example.com)" href="#"></a>
+<button aria-label="Create custom app">Custom</button>
+<section class="category-section"><h2>Custom apps</h2><div class="apps-grid">
+  <customize-card><button class="card-primary-action" aria-label="Chat On Steroids Core"></button>
+  <div class="content">Chat On Steroids Core</div><div class="card-action-container"><button aria-label="More options"></button></div></customize-card>
+</div></section>
+<div id="details"></div><div id="dialogs"></div>`;
+
+describe('Gemini custom apps page', () => {
+  const url = `https://new-name.trycloudflare.com/mcp/core/${'a'.repeat(43)}`;
+  let next: HTMLButtonElement;
+  beforeEach(() => {
+    dom.window.close();
+    dom = new JSDOM(APPS, { url: 'https://gemini.google.com/customize/connectors', runScripts: 'outside-only', pretendToBeVisual: true });
+    document = dom.window.document;
+    document.documentElement.lang = 'en';
+    Object.defineProperty(dom.window.HTMLElement.prototype, 'getClientRects', { value() { return this.hidden ? [] : [{ width: 10, height: 10 }]; } });
+    document.querySelector('.card-primary-action')!.addEventListener('click', () => {
+      document.getElementById('details')!.innerHTML = `<div class="details-content-column" role="region"><h1>Chat On Steroids Core</h1>
+        <button aria-label="More options"></button><dl class="info-list">
+        <div class="info-row"><dt>Handle</dt><dd>@Chat On Steroids Core</dd></div>
+        <div class="info-row"><dt>MCP URL</dt><dd>https://old-name.trycloudflare.com/mcp/core/${'b'.repeat(43)}</dd></div></dl></div>`;
+    });
+    document.querySelector('button[aria-label="Create custom app"]')!.addEventListener('click', () => {
+      document.getElementById('dialogs')!.innerHTML = `<mat-dialog-container role="dialog"><h2>Connect to an MCP server</h2>
+        <input type="url" name="url"><input type="text" name="clientId"><input type="password" name="clientSecret">
+        <button>Cancel</button><button disabled>Next</button></mat-dialog-container>`;
+      const input = document.querySelector<HTMLInputElement>('input[name="url"]')!;
+      next = [...document.querySelectorAll('button')].find(b => b.textContent === 'Next') as HTMLButtonElement;
+      next.addEventListener('click', () => { throw new Error('the companion must never press Next'); });
+      input.addEventListener('input', () => { next.disabled = !input.value.startsWith('https://'); });
+    });
+    dom.window.eval(source);
+    api = (dom.window as unknown as { CLF_GEMINI_DOM: GeminiDom }).CLF_GEMINI_DOM;
+  });
+
+  it('reads the address an existing custom app has', async () => {
+    expect(api.customAppCard('Chat On Steroids Core')).not.toBeNull();
+    expect(api.customAppCard('Someone else')).toBeNull();
+    expect(await api.readCustomAppUrl('Chat On Steroids Core', 500)).toBe(`https://old-name.trycloudflare.com/mcp/core/${'b'.repeat(43)}`);
+  });
+
+  it('fills only the address, leaves the optional fields empty and returns Next without pressing it', async () => {
+    const button = await api.fillCreateForm(url, 500);
+    expect(button).toBe(next);
+    expect(button!.disabled).toBe(false);
+    expect(document.querySelector<HTMLInputElement>('input[name="url"]')!.value).toBe(url);
+    expect(document.querySelector<HTMLInputElement>('input[name="clientId"]')!.value).toBe('');
+    expect(document.querySelector<HTMLInputElement>('input[name="clientSecret"]')!.value).toBe('');
+    api.highlight(button!, 'Click Next yourself.');
+    expect(document.getElementById('clf-gemini-note')!.textContent).toBe('Click Next yourself.');
+  });
+
+  it('fills nothing when the page layout is not recognized', async () => {
+    // A redesign: no Create button, or a dialog without the URL field.
+    document.querySelector('button[aria-label="Create custom app"]')!.remove();
+    expect(await api.fillCreateForm(url, 300)).toBeNull();
+    document.body.insertAdjacentHTML('beforeend', '<button aria-label="Create custom app" id="c2">Custom</button>');
+    document.getElementById('c2')!.addEventListener('click', () => {
+      document.getElementById('dialogs')!.innerHTML = '<mat-dialog-container role="dialog"><input name="link"><button>Next</button></mat-dialog-container>';
+    });
+    expect(await api.fillCreateForm(url, 300)).toBeNull();
+    expect(document.querySelector<HTMLInputElement>('input[name="link"]')!.value).toBe('');
+    expect(await api.readCustomAppUrl('Chat On Steroids Core', 0)).toBeNull();
   });
 });

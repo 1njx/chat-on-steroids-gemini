@@ -7,6 +7,8 @@
  *   · send: select a mode/thinking level, optionally @-mention a connected app, send one prompt,
  *     then wait for Gemini's answer and report it
  *   · stop: press Stop on the running answer
+ *   · fill-app: on the custom apps page, read the existing app's address or fill the new-app form,
+ *     then highlight the button for the person to press. It never presses Next, Connect or Delete.
  *
  * The page never executes a local tool; Gemini calls CoS's MCP connector itself. Every result is
  * reported as observed: a send is "sent" only once Gemini accepted it, and "completed" only once
@@ -108,6 +110,38 @@
     return result(command, await waitForAnswer(command, before));
   }
 
+  /**
+   * Fill in Gemini's custom app form with the app's address. Outcomes: 'current' (Gemini already
+   * has this address), 'old' (it has another; Gemini cannot edit one, so the person deletes it),
+   * 'filled' (the form holds the address; the person clicks Next). An unrecognized page fills nothing.
+   */
+  async function fillApp(command) {
+    if (dom.signInState() === 'signed-out') return result(command, { stage: 'failed', error: 'signed-out', signedOut: true });
+    if (dom.localized()) return result(command, { stage: 'failed', error: 'page-not-english' });
+    if (typeof command.url !== 'string' || !command.url.startsWith('https://')) return result(command, { stage: 'failed', error: 'invalid-url' });
+    if (!dom.onCustomApps()) {
+      location.assign('/customize/connectors');
+      return result(command, { stage: 'navigating' });
+    }
+    if (!(await dom.waitFor(dom.visibleCreate))) return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
+    const name = command.connector || 'Chat On Steroids Core';
+    if (dom.customAppCard(name)) {
+      const existing = await dom.readCustomAppUrl(name);
+      if (!existing) { dom.backToList(); return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' }); }
+      if (existing === command.url) {
+        dom.backToList();
+        return result(command, { stage: 'completed', outcome: 'current', existingUrl: existing });
+      }
+      const more = dom.detailsMoreOptions();
+      if (more) dom.highlight(more, `Chat On Steroids: "${name}" has an old address, and Gemini cannot change it. Open More options, choose Delete yourself, then press "Fill in Gemini" in the app again.`);
+      return result(command, { stage: 'completed', outcome: 'old', existingUrl: existing });
+    }
+    const next = await dom.fillCreateForm(command.url);
+    if (!next) return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
+    dom.highlight(next, 'Chat On Steroids filled in the address. Check it, then click Next yourself and follow Gemini: read its notice, tick it, and Connect.');
+    return result(command, { stage: 'completed', outcome: 'filled' });
+  }
+
   async function run(command) {
     if (!command || typeof command.id !== 'string' || running.has(command.id)) return;
     running.add(command.id);
@@ -118,6 +152,8 @@
           : { stage: 'failed', error: 'mode-picker-unreadable' });
       } else if (command.kind === 'send') {
         await send(command);
+      } else if (command.kind === 'fill-app') {
+        await fillApp(command);
       } else if (command.kind === 'stop') {
         await result(command, dom.stopGeneration() ? { stage: 'completed' } : { stage: 'failed', error: 'not-generating' });
       } else {

@@ -9,6 +9,26 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.5] — Gemini edition: a lasting Gemini address, and Gemini's custom app filled in for you
+
+### Added
+
+- **Your own Cloudflare tunnel for Gemini.** Set up Gemini → Tunnel → "Keep the same address" takes
+  a public hostname and a tunnel token and runs that tunnel for Gemini, next to ChatGPT's. The
+  address survives restarts (it turns on Keep plugin URLs across restarts). The token is kept in
+  the system's secure storage. The quick tunnel stays the fallback, and the step says it changes.
+- **Fill in Gemini for me.** The Add step asks the extension on your signed-in Gemini page to open
+  custom apps, read the address an existing Chat On Steroids Core app has, or fill in the new-app
+  form and highlight Next. It never presses Next, Connect or Delete. A page it does not recognize
+  gets nothing filled in, with a plain message to add the app by hand.
+
+### Fixed
+
+- **"Not added" for an app that was added.** The Add step only counted a call from Gemini, so an
+  app with an old quick-tunnel address looked missing. It now remembers a fingerprint of the
+  address Gemini last got (never the address) and says "Your Gemini custom app has an old
+  address. Update it to …".
+
 ## [2.2.4] — Gemini edition: Gemini's tunnel no longer replaces ChatGPT's
 
 ### Fixed

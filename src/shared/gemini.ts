@@ -16,7 +16,7 @@ export interface GeminiThinkingLevel { label: string; selected: boolean; availab
 
 export interface GeminiCommandSummary {
   id: string;
-  kind: 'send' | 'inspect-modes' | 'stop';
+  kind: 'send' | 'inspect-modes' | 'stop' | 'fill-app';
   stage: 'queued' | 'claimed' | 'sending' | 'sent' | 'completed' | 'failed' | 'cancelled' | 'unknown';
   error: string | null;
   createdAt: number;
@@ -26,6 +26,8 @@ export interface GeminiCommandSummary {
   modeId: string | null;
   promptPreview: string | null;
   answerChars: number | null;
+  /** fill-app only: 'filled' (form filled, the person clicks Next), 'current' or 'old' (Gemini already has the app). */
+  outcome?: string | null;
 }
 
 export interface GeminiStatus {
@@ -39,12 +41,35 @@ export interface GeminiStatus {
   errors: string[];
   quotaLimited: boolean;
   catalog: { modes: GeminiMode[]; thinkingLevels: GeminiThinkingLevel[]; observedAt: number } | null;
-  settings: { connectorName: string | null; defaultModeId: string | null; defaultThinkingLevel: string | null; httpsTunnel?: boolean };
+  settings: {
+    connectorName: string | null; defaultModeId: string | null; defaultThinkingLevel: string | null; httpsTunnel?: boolean;
+    /** geminiUrlFingerprint of the address last given for Gemini's custom app (copied, filled in, or read there). */
+    givenUrlHash?: string | null;
+    /** The hostname of the person's own Cloudflare tunnel for Gemini; its token is in the secret store. */
+    namedTunnelHost?: string | null;
+  };
   commands: GeminiCommandSummary[];
   /** When an MCP request from Gemini's connector client (User-Agent "Google") last arrived this run. */
   connectorSeenAt?: number | null;
   /** When Gemini last called one of this app's tools in this run (null: never). */
   toolCallSeenAt?: number | null;
+}
+
+/**
+ * A short fingerprint of a connector address, to tell whether it changed without storing it: the
+ * address ends in a secret path token. shortcut: 53-bit non-cryptographic hash, enough to notice a
+ * changed address; use SHA-256 if it ever has to prove anything.
+ */
+export function geminiUrlFingerprint(url: string): string {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < url.length; i++) {
+    const ch = url.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(14, '0');
 }
 
 /** Plain-language text for a command error code; unknown codes are shown as Gemini/the page gave them. */
@@ -71,4 +96,6 @@ export const GEMINI_ERRORS: Record<string, string> = {
   'invalid-request': 'The request was not valid.',
   'invalid-conversation': 'That is not a Gemini chat.',
   'conversation-busy': 'A message to that Gemini chat is already on its way.',
+  'custom-apps-layout-unknown': "Gemini's custom apps page did not look as expected, so nothing was filled in. Add the app by hand: click Custom, paste the address, then Next.",
+  'invalid-url': 'Gemini needs an https address. Finish the Tunnel step first.',
 };

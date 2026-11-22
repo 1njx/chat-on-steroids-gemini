@@ -13,7 +13,7 @@ import { requiresApprovedFilesystemRoot } from '../shared/capabilities.js';
 import { prewarmComputerHelper } from './computer/index.js';
 import { effectiveCapabilities, getConfig } from './config.js';
 import { logError, logInfo, logWarn } from './logger.js';
-import { lastRequestAt, startMcpServer, tunnelProbeHeaders, type McpEndpoint } from './mcp/server.js';
+import { allowTunnelHost, lastRequestAt, startMcpServer, tunnelProbeHeaders, type McpEndpoint } from './mcp/server.js';
 import { lastToolCallAt } from './mcp/tools.js';
 import { SURFACE_LIST, configuredConnectorName, liveConnectorName, surfaceIsUseful, desktopToolNames, type SurfaceId } from './mcp/surfaces.js';
 import { getSecret } from './secrets.js';
@@ -46,9 +46,25 @@ const optionalSurfaces: OptionalSurface[] = ['desktop', 'plugins'];
  * switching the whole app to Cloudflare left ChatGPT's connectors pointing at a tunnel that no
  * longer ran. Whole-origin transports (cloudflared, manual) already give Gemini an address.
  */
-let geminiTunnel: { handle: TunnelHandle | null } | null = null;
+let geminiTunnel: { handle: TunnelHandle | null; host: string | null } | null = null;
 let geminiTunnelWanted: () => boolean = () => false;
-export function configureGeminiTunnel(wanted: () => boolean): void { geminiTunnelWanted = wanted; }
+/** The person's own Cloudflare tunnel hostname for Gemini (its token is a secret), or null for a quick tunnel. */
+let geminiNamedHost: () => string | null = () => null;
+export function configureGeminiTunnel(wanted: () => boolean, namedHost: () => string | null = () => null): void {
+  geminiTunnelWanted = wanted;
+  geminiNamedHost = namedHost;
+}
+/**
+ * Whether Gemini's own tunnel should run, and which. A quick tunnel only on the OpenAI path (the
+ * others already publish the whole origin); the person's own named tunnel on any Cloudflare or
+ * OpenAI path, since its address is the one that lasts.
+ */
+function geminiTunnelPlan(kind: TunnelSettings['kind']): { host: string | null } | null {
+  if (!endpoint || !geminiTunnelWanted()) return null;
+  const host = geminiNamedHost();
+  if (kind === 'openai' || (host && kind === 'cloudflared')) return { host };
+  return null;
+}
 const optionalTunnelId = (settings: TunnelSettings, id: OptionalSurface): string =>
   (id === 'desktop' ? settings.desktopTunnelId : settings.pluginsTunnelId) ?? '';
 /**
@@ -602,14 +618,19 @@ async function startOptionalTunnel(
 /** Starts Gemini's quick tunnel to the whole local origin, when wanted and the Core tunnel is OpenAI's. */
 async function startGeminiTunnel(generation: number, settings: TunnelSettings, current: () => boolean = () => true): Promise<void> {
   if (geminiTunnel || shutdownRequested || pendingDisconnect || generation !== connectionGeneration || !current()) return;
-  if (settings.kind !== 'openai' || !geminiTunnelWanted() || !endpoint) return;
+  const plan = geminiTunnelPlan(settings.kind);
+  if (!plan || !endpoint) return;
   const coreLocal = endpoint.urls.core;
-  const lifetime: { handle: TunnelHandle | null } = { handle: null };
+  const lifetime: { handle: TunnelHandle | null; host: string | null } = { handle: null, host: plan.host };
   geminiTunnel = lifetime;
   const own = () => generation === connectionGeneration && geminiTunnel === lifetime;
-  setStatus({ geminiTunnel: { state: 'starting', detail: 'Starting a Cloudflare tunnel for Gemini…', url: null } });
+  setStatus({ geminiTunnel: { state: 'starting', detail: plan.host ? `Starting your Cloudflare tunnel for ${plan.host}…` : 'Starting a Cloudflare tunnel for Gemini…', url: null } });
   try {
+    const token = plan.host ? await getSecret('geminiTunnelToken') : null;
+    if (plan.host && !token) throw new Error('The token of your Cloudflare tunnel is not saved. Enter it again in Set up Gemini → Tunnel.');
+    allowTunnelHost(plan.host);
     const started = await startTunnel({
+      ...(plan.host && token ? { named: { host: plan.host, token } } : {}),
       localUrl: endpoint.url,
       // binaryPath names tunnel-client on this path, never cloudflared: use the shipped copy.
       settings: { ...settings, kind: 'cloudflared', binaryPath: '' },
@@ -630,7 +651,7 @@ async function startGeminiTunnel(generation: number, settings: TunnelSettings, c
   } catch (err) {
     if (!own()) return;
     geminiTunnel = null;
-    const message = err instanceof TunnelError ? err.message : (err as Error).message;
+    const message = (err as Error).message;
     logWarn(`gemini tunnel not started: ${message}`);
     setStatus({ geminiTunnel: { state: 'error', detail: message, url: null } });
   }
@@ -639,6 +660,7 @@ async function startGeminiTunnel(generation: number, settings: TunnelSettings, c
 async function stopGeminiTunnel(): Promise<void> {
   const running = geminiTunnel;
   geminiTunnel = null;
+  allowTunnelHost(null);
   if (running?.handle) { await running.handle.stop().catch(() => {}); logInfo('gemini tunnel stopped'); }
   if (status.geminiTunnel) setStatus({ geminiTunnel: null });
 }
@@ -647,9 +669,10 @@ async function stopGeminiTunnel(): Promise<void> {
 async function applyGeminiTunnelImpl(): Promise<void> {
   if (shutdownRequested || pendingDisconnect) return;
   const config = getConfig();
-  // A failed tunnel is tried again from scratch; a running one is left alone.
-  if (!endpoint || config.tunnel.kind !== 'openai' || !geminiTunnelWanted() || status.geminiTunnel?.state === 'error') await stopGeminiTunnel();
-  if (!endpoint || config.tunnel.kind !== 'openai' || !geminiTunnelWanted()) return;
+  const plan = geminiTunnelPlan(config.tunnel.kind);
+  // A failed tunnel is tried again from scratch; a running one is left alone unless its kind changed.
+  if (!plan || status.geminiTunnel?.state === 'error' || (geminiTunnel && geminiTunnel.host !== plan.host)) await stopGeminiTunnel();
+  if (!plan) return;
   await startGeminiTunnel(connectionGeneration, config.tunnel);
 }
 

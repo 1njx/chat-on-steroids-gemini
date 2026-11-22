@@ -500,6 +500,10 @@ details.connector[open] > summary .connector-chevron { transform: rotate(90deg);
 .gemini-command[data-stage="failed"] b, .gemini-command[data-stage="unknown"] b { color: var(--warn, #d97706); }
 /* Set up Gemini: Setup's rail and steps; only the copy rows and the requirement list are its own. */
 .gemini-setup .wizard { margin: 0; padding: 0; list-style: none; }
+.gemini-named { margin-top: 12px; max-width: 560px; }
+.gemini-named summary { cursor: pointer; font-weight: 600; }
+.gemini-field { display: grid; gap: 4px; margin: 8px 0; }
+.gemini-field input { font: inherit; padding: 7px 10px; border-radius: 8px; }
 .gemini-copy-row { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; max-width: 560px; }
 .gemini-copy-row code { flex: 1; min-width: 0; padding: 7px 10px; border-radius: 8px; background: var(--surface-2, rgba(127, 127, 127, 0.08)); overflow-wrap: anywhere; user-select: all; }
 .gemini-copy-row .btn { display: inline-flex; align-items: center; gap: 6px; flex: none; }

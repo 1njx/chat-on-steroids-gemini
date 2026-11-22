@@ -1100,7 +1100,18 @@
                       <button class="btn" id="geminiTunnelBack" type="button" hidden>Switch ChatGPT back to the OpenAI tunnel</button>
                       <button class="btn" id="geminiTunnelOff" type="button" hidden>Turn off Gemini's tunnel</button>
                     </div>
-                    <p class="hint">A Cloudflare quick tunnel gets a new address every time it starts. When that happens, add the app in Gemini again with the new address (next step). For an address that lasts, run your own named tunnel and choose “Local only” in Setup → Advanced.</p>
+                    <p class="hint">A Cloudflare quick tunnel gets a new address every time it starts. When that happens, add the app in Gemini again with the new address (next step). For an address that lasts, use your own Cloudflare tunnel below.</p>
+                    <details class="gemini-named" id="geminiNamed">
+                      <summary>Keep the same address: use your own Cloudflare tunnel</summary>
+                      <p class="hint">Needs a free Cloudflare account with a domain on it. In Cloudflare go to Zero Trust → Networks → Tunnels → Create a tunnel (Cloudflared) and copy its token. Then add a public hostname for it whose service is <code id="geminiNamedService" translate="no">http://localhost:port</code> (shown once connected).</p>
+                      <label class="gemini-field"><span>Public hostname</span><input id="geminiNamedHost" type="text" maxlength="253" placeholder="gemini.example.com" autocomplete="off" spellcheck="false" /></label>
+                      <label class="gemini-field"><span>Tunnel token</span><input id="geminiNamedToken" type="password" maxlength="8000" placeholder="eyJ… (or the whole install command)" autocomplete="off" spellcheck="false" /></label>
+                      <div class="step-actions">
+                        <button class="btn btn-solid" id="geminiNamedSave" type="button">Use my tunnel</button>
+                        <button class="btn" id="geminiNamedRemove" type="button" hidden>Back to a quick tunnel</button>
+                      </div>
+                      <p class="hint">This also turns on “Keep plugin URLs across restarts”, so the address keeps its path and the local port stays the same. The token is kept in your system's secure storage, never in a settings file.</p>
+                    </details>
                   </div>
                 </li>
                 <li class="step" data-gemini-step="add">
@@ -1109,7 +1120,9 @@
                     <h3>Add the app in Gemini</h3>
                     <p class="step-lead">Copy this address, then add it in Gemini as a custom app.</p>
                     <div class="gemini-copy-row"><code id="geminiSetupUrl" translate="no"></code><button class="btn" id="geminiSetupCopy" type="button" disabled><i class="ico ph ph-copy" aria-hidden="true"></i>Copy URL</button></div>
-                    <div class="step-actions"><button class="btn btn-solid" id="geminiSetupOpenApps" type="button"><i class="ico ph ph-arrow-square-out" aria-hidden="true"></i>Open custom apps</button><button class="btn" id="geminiSetupOpenAppsDefault" type="button">Open in default browser</button></div>
+                    <div class="step-actions"><button class="btn btn-solid" id="geminiFillApp" type="button" disabled><i class="ico ph ph-pencil-simple" aria-hidden="true"></i>Fill in Gemini for me</button><button class="btn" id="geminiSetupOpenApps" type="button"><i class="ico ph ph-arrow-square-out" aria-hidden="true"></i>Open custom apps</button><button class="btn" id="geminiSetupOpenAppsDefault" type="button">Open in default browser</button></div>
+                    <p class="hint">“Fill in Gemini for me” uses the extension on your signed-in Gemini page: it opens custom apps, fills in this address and highlights Next. You click Next and Connect yourself; it never saves or deletes anything.</p>
+                    <p class="status-pill" id="geminiFillPill" data-tone="off" role="status" hidden></p>
                     <div class="setup-guide" data-setup-guide="gemini-add"></div>
                     <p class="hint">After Connect, Gemini lists the app's tools under “Save your custom app”. Click Connect there once more to save it.</p>
                     <p class="hint">Treat the address like a password: anyone who has it can use this app within the access you chose.</p>

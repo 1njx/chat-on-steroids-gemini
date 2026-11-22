@@ -5,7 +5,7 @@
  */
 import type { AppApi } from '../preload/index.js';
 import type { AppState } from '../shared/types.js';
-import { GEMINI_ERRORS, type GeminiCommandSummary, type GeminiStatus } from '../shared/gemini.js';
+import { GEMINI_ERRORS, geminiUrlFingerprint, type GeminiCommandSummary, type GeminiStatus } from '../shared/gemini.js';
 import { el, icon } from './dom.js';
 
 const byId = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -103,6 +103,8 @@ export interface GeminiSetupHooks {
   stopHttpsTunnel(): void;
   /** The whole app back on the OpenAI Secure Tunnel, with Gemini's own tunnel beside it. */
   switchBackToOpenAi(): void;
+  /** Gemini on the person's own Cloudflare tunnel (null host: back to a quick tunnel). */
+  useNamedTunnel(host: string | null, token: string): void;
 }
 
 export const GEMINI_SETUP_STEPS = ['browser', 'signin', 'folder', 'tunnel', 'add', 'try'] as const;
@@ -201,11 +203,21 @@ export function paintGeminiSetup(now = Date.now()): void {
   byId<HTMLButtonElement>('geminiTunnelGo').disabled = done.has('tunnel') || busy || sideBusy
     || (connected && (kind !== 'openai' || (wanted && !sideFailed)));
 
+  const named = status?.settings.namedTunnelHost ?? null;
+  byId('geminiNamedRemove').hidden = !named;
+  const namedHost = byId<HTMLInputElement>('geminiNamedHost');
+  if (document.activeElement !== namedHost && !namedHost.value) namedHost.value = named ?? '';
+  const local = state.status.surfaces.find(s => s.id === 'core')?.localUrl;
+  byId('geminiNamedService').textContent = local ? new URL(local).origin.replace('127.0.0.1', 'localhost') : 'http://localhost:port';
+
   const url = coreHttpsUrl(state);
   byId('geminiSetupUrl').textContent = url ?? 'Finish the Tunnel step first.';
   byId<HTMLButtonElement>('geminiSetupCopy').disabled = !url;
-  pill('geminiAddPill', done.has('add') ? 'ok' : 'off', status?.connectorSeenAt ? `Gemini reached the app ${ago(status.connectorSeenAt, now)}`
-    : 'Waiting for Gemini to reach the app. After a restart a quick tunnel has a new address: add the app again with it.');
+  byId<HTMLButtonElement>('geminiFillApp').disabled = !url;
+  pill('geminiAddPill', ...addPill(status, url, now));
+  const fill = [...(status?.commands ?? [])].reverse().find(c => c.kind === 'fill-app');
+  byId('geminiFillPill').hidden = !fill;
+  if (fill) pill('geminiFillPill', ...fillPill(fill, url));
   const name = status?.settings.connectorName || 'Chat On Steroids Core';
   byId('geminiTryPrompt').textContent = `@${name} list the files in my shared folder`;
   pill('geminiTryPill', done.has('try') ? 'ok' : 'off', status?.toolCallSeenAt ? `Gemini ran one of the app's tools ${ago(status.toolCallSeenAt, now)}`
@@ -223,6 +235,36 @@ export function paintGeminiSetup(now = Date.now()): void {
     return row;
   }));
   byId('geminiReadyTitle').textContent = current === null ? 'Gemini is set up' : 'Almost there';
+}
+
+/**
+ * The Add step's status. Only a call from Gemini proves the app is added; until then the address
+ * Gemini last got (copied, filled in or read on its page, kept as a fingerprint) tells an app with
+ * an old address from one never added.
+ */
+export function addPill(status: GeminiStatus | null, url: string | null, now = Date.now()): ['ok' | 'wait' | 'off' | 'bad', string] {
+  if (status?.connectorSeenAt) return ['ok', `Gemini reached the app ${ago(status.connectorSeenAt, now)}`];
+  const given = status?.settings.givenUrlHash ?? null;
+  if (url && given && given !== geminiUrlFingerprint(url)) {
+    return ['bad', `Your Gemini custom app has an old address. Update it to ${url} — Gemini cannot edit an address, so delete the old app in Gemini and add it again ("Fill in Gemini for me" helps).`];
+  }
+  if (url && given) return ['wait', 'Gemini has this address. Mention the app in a Gemini chat (next step) so Gemini reaches it.'];
+  return ['off', status?.settings.namedTunnelHost
+    ? 'Waiting for Gemini to reach the app. Your own tunnel keeps this address across restarts.'
+    : 'Waiting for Gemini to reach the app. A quick tunnel gets a new address at each start: add the app again with it.'];
+}
+
+/** What the last "Fill in Gemini for me" did, in the person's words. */
+export function fillPill(fill: GeminiCommandSummary, url: string | null): ['ok' | 'wait' | 'off' | 'bad', string] {
+  if (fill.stage === 'queued' || fill.stage === 'claimed') return ['wait', 'Opening Gemini custom apps in your browser…'];
+  if (fill.stage === 'failed') {
+    return ['bad', `${geminiErrorText(fill.error)}${fill.error === 'custom-apps-layout-unknown' ? '' : ' Add the app by hand: Open custom apps, click Custom, paste the address, then Next.'}`];
+  }
+  if (fill.stage !== 'completed') return ['off', STAGES[fill.stage]];
+  if (fill.outcome === 'filled') return ['ok', 'Filled in. In Gemini, check the address, click the highlighted Next, tick Google\'s notice and Connect, then Connect once more to save.'];
+  if (fill.outcome === 'current') return ['ok', 'Gemini already has this app with this address. Nothing to change.'];
+  if (fill.outcome === 'old') return ['bad', `Gemini has the app with an old address and cannot edit it. In Gemini, open the highlighted More options and choose Delete, then press Fill in Gemini for me again${url ? ` to add ${url}` : ''}.`];
+  return ['off', 'Done.'];
 }
 
 function openStep(name: SetupStep): void {
@@ -265,7 +307,7 @@ export function initGemini(api: AppApi, toast: (message: string) => void, hooks?
   };
   byId('geminiCopyUrl').addEventListener('click', async () => {
     const url = byId('geminiCopyUrl').dataset.url;
-    if (url && (await api.writeClipboard(url)).ok) toast('Core URL copied. Treat it like a password.');
+    if (url && (await api.writeClipboard(url)).ok) { toast('Core URL copied. Treat it like a password.'); void rememberGiven(api, url); }
   });
   byId('geminiOpenConnectors').addEventListener('click', () => { void api.openGeminiConnectors(); });
   byId('geminiOpenConnectorsDefault').addEventListener('click', () => { void api.openGeminiConnectors({ external: true }); });
@@ -293,6 +335,11 @@ export function initGemini(api: AppApi, toast: (message: string) => void, hooks?
     prompt.value = '';
     toast('Queued for Gemini.');
   });
+}
+
+/** The address handed out for Gemini's custom app, kept only as a fingerprint. */
+function rememberGiven(api: AppApi, url: string): Promise<unknown> {
+  return api.saveGeminiSettings({ givenUrlHash: geminiUrlFingerprint(url) }).catch(() => undefined);
 }
 
 /** The wizard's Back/Next, rail and buttons, wired once. */
@@ -330,13 +377,26 @@ function initGeminiSetup(api: AppApi, toast: (message: string) => void, hooks?: 
   byId('geminiTunnelGo').addEventListener('click', () => hooks?.useHttpsTunnel());
   byId('geminiTunnelOff').addEventListener('click', () => hooks?.stopHttpsTunnel());
   byId('geminiTunnelBack').addEventListener('click', () => hooks?.switchBackToOpenAi());
+  byId('geminiNamedSave').addEventListener('click', () => {
+    const host = byId<HTMLInputElement>('geminiNamedHost').value.trim();
+    if (!host) { toast('Enter the public hostname of your Cloudflare tunnel.'); return; }
+    hooks?.useNamedTunnel(host, byId<HTMLInputElement>('geminiNamedToken').value);
+    byId<HTMLInputElement>('geminiNamedToken').value = '';
+  });
+  byId('geminiNamedRemove').addEventListener('click', () => { byId<HTMLInputElement>('geminiNamedHost').value = ''; hooks?.useNamedTunnel(null, ''); });
+  byId('geminiFillApp').addEventListener('click', async () => {
+    const url = appState ? coreHttpsUrl(appState) : null;
+    if (!url) return;
+    const reply = await api.fillGeminiApp(url);
+    if (!reply.ok || !reply.data.ok) toast(reply.ok && !reply.data.ok ? geminiErrorText(reply.data.error) : 'The app did not accept that.');
+  });
   byId('geminiOpenGemini').addEventListener('click', () => { void api.openGemini(); });
   byId('geminiOpenGeminiDefault').addEventListener('click', () => { void api.openGemini({ external: true }); });
   byId('geminiSetupOpenApps').addEventListener('click', () => { void api.openGeminiConnectors(); });
   byId('geminiSetupOpenAppsDefault').addEventListener('click', () => { void api.openGeminiConnectors({ external: true }); });
   byId('geminiSetupCopy').addEventListener('click', async () => {
     const url = appState ? coreHttpsUrl(appState) : null;
-    if (url && (await api.writeClipboard(url)).ok) toast('Address copied. Treat it like a password.');
+    if (url && (await api.writeClipboard(url)).ok) { toast('Address copied. Treat it like a password.'); void rememberGiven(api, url); }
   });
   byId('geminiTryCopy').addEventListener('click', async () => {
     if ((await api.writeClipboard(byId('geminiTryPrompt').textContent ?? '')).ok) toast('Copied. Paste it in a new Gemini chat.');

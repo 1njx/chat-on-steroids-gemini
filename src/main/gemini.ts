@@ -17,7 +17,7 @@ import { readDurable, writeDurableSoon } from './durable.js';
 import { logInfo, logWarn } from './logger.js';
 import { recordChatObservations, type ChatObservation } from './session/recorder.js';
 import { GEMINI_NATIVE_ID, PROVIDERS, geminiConversationKey } from '../shared/providers.js';
-import type { GeminiCommandSummary, GeminiMode, GeminiStatus, GeminiThinkingLevel } from '../shared/gemini.js';
+import { geminiUrlFingerprint, type GeminiCommandSummary, type GeminiMode, type GeminiStatus, type GeminiThinkingLevel } from '../shared/gemini.js';
 
 export const PAGE_LIVE_MS = 60_000;
 const QUEUE_MS = 3 * 60_000;
@@ -29,7 +29,7 @@ const MAX_COMMANDS = 40;
 const MAX_NAVIGATIONS = 3;
 
 type Stage = 'queued' | 'claimed' | 'sending' | 'sent' | 'completed' | 'failed' | 'cancelled' | 'unknown';
-type Kind = 'send' | 'inspect-modes' | 'stop';
+type Kind = 'send' | 'inspect-modes' | 'stop' | 'fill-app';
 
 interface Command {
   id: string;
@@ -49,6 +49,9 @@ interface Command {
   error: string | null;
   sessionId: string | null;
   answerChars: number | null;
+  /** fill-app: the https address to fill in Gemini's custom app form. */
+  url: string | null;
+  outcome: string | null;
 }
 
 const snapshotSchema = z.object({
@@ -73,6 +76,9 @@ const modeSchema = z.object({
   selected: z.boolean(),
   reason: z.string().max(40).nullable(),
 });
+const FINGERPRINT = z.string().regex(/^[0-9a-f]{14}$/);
+const HOSTNAME = z.string().trim().toLowerCase().max(253).regex(/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/);
+const HTTPS_URL = z.string().max(600).url().refine(url => url.startsWith('https://'));
 const levelSchema = z.object({ label: z.string().min(1).max(20), selected: z.boolean().catch(false), available: z.boolean().catch(true) });
 const settingsSchema = z.object({
   connectorName: z.string().trim().min(1).max(80).nullable().catch(null),
@@ -80,13 +86,16 @@ const settingsSchema = z.object({
   defaultThinkingLevel: z.string().max(20).nullable().catch(null),
   // A Cloudflare quick tunnel for Gemini beside the OpenAI one (connection.ts), so ChatGPT keeps its tunnel.
   httpsTunnel: z.boolean().catch(false),
+  givenUrlHash: FINGERPRINT.nullable().catch(null),
+  namedTunnelHost: HOSTNAME.nullable().catch(null),
 });
 export type GeminiSettings = z.infer<typeof settingsSchema>;
 
 const pages = new Map<number, { snapshot: Snapshot; seenAt: number }>();
 let commands: Command[] = [];
 let catalog: { modes: GeminiMode[]; thinkingLevels: GeminiThinkingLevel[]; observedAt: number } | null = null;
-let settings: GeminiSettings = { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, httpsTunnel: false };
+const NO_SETTINGS: GeminiSettings = { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, httpsTunnel: false, givenUrlHash: null, namedTunnelHost: null };
+let settings: GeminiSettings = { ...NO_SETTINGS };
 let changed = (): void => {};
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -155,6 +164,8 @@ const settled = (c: Command): boolean => ['completed', 'failed', 'cancelled', 'u
 function eligible(command: Command, tab: number, page: Snapshot, live: Array<[number, Snapshot]>): boolean {
   if (page.signIn !== 'signed-in') return false;
   if (command.kind === 'stop') return page.conversationId === command.conversationId;
+  // Filling the custom app form needs no composer: any idle page can open the custom apps page.
+  if (command.kind === 'fill-app') return !page.generating;
   if (!page.composerReady) return false;
   if (command.kind === 'inspect-modes') return !page.generating;
   if (page.generating) return false;
@@ -171,6 +182,7 @@ function wire(command: Command): Record<string, unknown> {
   return {
     id: command.id, kind: command.kind, prompt: command.prompt, modeId: command.modeId,
     thinkingLevel: command.thinkingLevel, connector: command.connector, conversationId: command.conversationId,
+    ...(command.kind === 'fill-app' ? { url: command.url } : {}),
   };
 }
 
@@ -210,6 +222,8 @@ const resultSchema = z.object({
   connector: z.string().max(80).optional(),
   modes: z.array(z.unknown()).max(20).optional(),
   thinkingLevels: z.array(z.unknown()).max(8).optional(),
+  outcome: z.enum(['filled', 'current', 'old']).optional(),
+  existingUrl: z.string().max(600).optional(),
 });
 
 /** A page's progress on a command it was handed. Only the tab holding the command may report it. */
@@ -260,6 +274,16 @@ export async function completeGeminiCommand(body: unknown, now = Date.now()): Pr
     if (!modes.success || !modes.data.length || !levels.success) { finish(command, 'failed', 'mode-list-invalid'); changed(); return { ok: true }; }
     catalog = { modes: modes.data, thinkingLevels: levels.data, observedAt: now };
     persist();
+    finish(command, 'completed');
+    changed();
+    return { ok: true };
+  }
+  if (command.kind === 'fill-app') {
+    if (!result.outcome) { finish(command, 'failed', 'custom-apps-layout-unknown'); changed(); return { ok: true }; }
+    command.outcome = result.outcome;
+    // Remember which address Gemini has (read on its page) or was given (filled in), never the address itself.
+    const given = result.outcome === 'filled' ? command.url : HTTPS_URL.safeParse(result.existingUrl).data;
+    if (given) { settings.givenUrlHash = geminiUrlFingerprint(given); persist(); }
     finish(command, 'completed');
     changed();
     return { ok: true };
@@ -368,6 +392,17 @@ export function stopGemini(conversation: string): { ok: boolean; error?: string 
   return { ok: true };
 }
 
+/**
+ * Ask a signed-in Gemini page to fill in the custom app form with this address. The page fills in
+ * and highlights; it never presses Next, Connect or Delete (gemini-content.js).
+ */
+export function queueGeminiFill(url: unknown): { ok: true; id: string } | { ok: false; error: string } {
+  const parsed = HTTPS_URL.safeParse(url);
+  if (!parsed.success) return { ok: false, error: 'invalid-url' };
+  for (const old of commands.filter(c => c.kind === 'fill-app' && !settled(c))) finish(old, 'cancelled');
+  return { ok: true, id: newCommand('fill-app', { url: parsed.data, connector: settings.connectorName }).id };
+}
+
 /** Withdraw a command that no page has been authorized to send. */
 export function cancelGeminiCommand(id: string): { ok: boolean; error?: string } {
   const command = commands.find(c => c.id === id);
@@ -383,7 +418,7 @@ function newCommand(kind: Kind, fields: Partial<Command>): Command {
   const command: Command = {
     id: randomUUID(), kind, stage: 'queued', prompt: null, modeId: null, thinkingLevel: null, connector: null,
     conversationId: null, tab: null, navigations: 0, createdAt: now, updatedAt: now, sentAt: null, error: null,
-    sessionId: null, answerChars: null, ...fields,
+    sessionId: null, answerChars: null, url: null, outcome: null, ...fields,
   };
   commands.push(command);
   sweep(now);
@@ -398,6 +433,8 @@ export function saveGeminiSettings(patch: unknown): { ok: boolean; error?: strin
     defaultModeId: z.string().max(80).regex(/^[A-Za-z0-9_-]+$/).nullable(),
     defaultThinkingLevel: z.string().max(20).nullable(),
     httpsTunnel: z.boolean(),
+    givenUrlHash: FINGERPRINT.nullable(),
+    namedTunnelHost: HOSTNAME.nullable(),
   }).partial().strict().safeParse(patch);
   if (!parsed.success) return { ok: false, error: 'invalid-settings' };
   settings = { ...settings, ...Object.fromEntries(Object.entries(parsed.data).filter(([, v]) => v !== undefined)) };
@@ -409,11 +446,15 @@ export function saveGeminiSettings(patch: unknown): { ok: boolean; error?: strin
 /** Whether the person asked for Gemini's own https tunnel next to the OpenAI one. */
 export function geminiWantsHttpsTunnel(): boolean { return settings.httpsTunnel; }
 
+/** The hostname of the person's own Cloudflare tunnel for Gemini, or null for a quick tunnel. */
+export function geminiNamedTunnelHost(): string | null { return settings.namedTunnelHost; }
+
 /** Pages the extension should open: only when work waits and no Gemini page is reporting at all. */
 export function geminiPagesToOpen(now = Date.now()): string[] {
   if (livePages(now).length) return [];
   const waiting = commands.find(c => c.stage === 'queued' && c.kind !== 'stop');
   if (!waiting) return [];
+  if (waiting.kind === 'fill-app') return [`${PROVIDERS.gemini.origin}/customize/connectors`];
   return [waiting.conversationId ? `${PROVIDERS.gemini.origin}/app/${waiting.conversationId}` : `${PROVIDERS.gemini.origin}/app`];
 }
 
@@ -424,7 +465,7 @@ export function geminiStatus(now = Date.now()): GeminiStatus {
   const summary = (c: Command): GeminiCommandSummary => ({
     id: c.id, kind: c.kind, stage: c.stage, error: c.error, createdAt: c.createdAt, updatedAt: c.updatedAt,
     conversation: c.conversationId ? `gemini:${c.conversationId}` : null, sessionId: c.sessionId,
-    modeId: c.modeId, promptPreview: c.prompt ? c.prompt.slice(0, 120) : null, answerChars: c.answerChars,
+    modeId: c.modeId, promptPreview: c.prompt ? c.prompt.slice(0, 120) : null, answerChars: c.answerChars, outcome: c.outcome,
   });
   return {
     pages: live.length,
@@ -442,7 +483,7 @@ export function geminiStatus(now = Date.now()): GeminiStatus {
 
 export function resetGeminiForTests(): void {
   pages.clear(); commands = []; catalog = null;
-  settings = { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, httpsTunnel: false };
+  settings = { ...NO_SETTINGS };
   changed = () => {};
   if (sweepTimer) { clearInterval(sweepTimer); sweepTimer = null; }
 }

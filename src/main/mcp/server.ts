@@ -282,6 +282,13 @@ export function forgetExposedSurface(): void {
   surfaceExposure.clear();
 }
 
+let extraHost: string | null = null;
+/** Also accept requests addressed to this public hostname (Gemini's named tunnel), or null for none. */
+export function allowTunnelHost(host: string | null): void { extraHost = host ? host.toLowerCase() : null; }
+const hostnameOf = (header: string | undefined): string | null => {
+  try { return header ? new URL(`http://${header}`).hostname.toLowerCase() : null; } catch { return null; }
+};
+
 export async function startMcpServer(
   getContext: () => ToolContext,
   kept: Partial<Record<SurfaceId, string>> = {},
@@ -363,7 +370,10 @@ export async function startMcpServer(
       { onerror: (error) => logError(`MCP handler error (${surface.id}): ${error.message}`) }
     )
   }));
-  const checkHost = localhostHostValidation();
+  const checkLocalHost = localhostHostValidation();
+  // The person's own named tunnel forwards its public hostname as Host; only that one name is added.
+  const checkHost = (req: http.IncomingMessage, res: http.ServerResponse): boolean =>
+    (!!extraHost && hostnameOf(req.headers.host) === extraHost) || checkLocalHost(req, res);
   const checkOrigin = localhostOriginValidation();
 
   // A TCP connection or incomplete body is not an accepted MCP operation. Only

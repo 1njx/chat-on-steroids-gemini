@@ -3200,6 +3200,25 @@ initGemini(api, toast, {
     const missing = missingStep(state);
     if (missing && missing.step !== 'folder') openSetupStep(missing.step);
     else if (!isRunning(state.status.state)) await toggleConnection();
+  })(),
+  // An address that lasts needs the same path and port too: "Keep plugin URLs across restarts".
+  useNamedTunnel: (host, token) => void (async () => {
+    if (!state) return;
+    if (host && state.config.mcp?.persistentUrls !== true) {
+      $<HTMLInputElement>('mcpPersistentUrls').checked = true;
+      if (!(await save()) || !state) return;
+    }
+    const reply = await run(api.saveGeminiNamedTunnel(token ? { host, token } : { host }));
+    if (!reply) return;
+    if (!reply.ok) {
+      toast(reply.error === 'token-required' ? 'Paste the tunnel token from Cloudflare too.'
+        : reply.error === 'invalid-token' ? 'That does not look like a Cloudflare tunnel token.'
+          : reply.error === 'invalid-host' ? 'Enter a hostname like gemini.example.com.' : 'That was not saved.');
+      return;
+    }
+    if (!host) return;
+    if (!(await run(api.saveGeminiSettings({ httpsTunnel: true })))?.ok || !state) return;
+    if (!isRunning(state.status.state)) await toggleConnection();
   })()
 });
 // Lines logged while the startup snapshot loads arrive live and are in the snapshot too. Hold
