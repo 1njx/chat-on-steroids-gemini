@@ -4050,5 +4050,12 @@
   "{0} · needs a higher plan": "{0} · daha üst bir plan gerekir",
   "{0} · not available": "{0} · kullanılamıyor",
   "Gemini is answering…": "Gemini yanıtlıyor…",
-  "Gemini gets text only: no files, plans or edits.": "Gemini yalnızca metin alır: dosya, plan veya düzenleme yok."
+  "Gemini gets text only: no files, plans or edits.": "Gemini yalnızca metin alır: dosya, plan veya düzenleme yok.",
+  "Add it in ChatGPT for me": "Benim için ChatGPT'ye ekle",
+  "Opens ChatGPT in your browser, fills in this plugin and creates it. This ticks ChatGPT's “I understand and want to continue” for you: use it only for this app on your computer.": "ChatGPT'yi tarayıcında açar, bu eklentiyi doldurur ve oluşturur. ChatGPT'nin “I understand and want to continue” kutusunu senin yerine işaretler: yalnızca bilgisayarındaki bu uygulama için kullan.",
+  "Opening ChatGPT…": "ChatGPT açılıyor…",
+  "Filling in ChatGPT…": "ChatGPT dolduruluyor…",
+  "ChatGPT already has a plugin with this name.": "ChatGPT'de bu adda bir eklenti zaten var.",
+  "Created in ChatGPT.": "ChatGPT'de oluşturuldu.",
+  "Could not add it: {0}. Use the steps above.": "Eklenemedi: {0}. Yukarıdaki adımları kullan."
 }

@@ -3966,5 +3966,12 @@
   "{0} · needs a higher plan": "{0} · 上位プランが必要",
   "{0} · not available": "{0} · 利用不可",
   "Gemini is answering…": "Gemini が回答中…",
-  "Gemini gets text only: no files, plans or edits.": "Gemini に送れるのはテキストのみです。ファイル、プラン、編集は送れません。"
+  "Gemini gets text only: no files, plans or edits.": "Gemini に送れるのはテキストのみです。ファイル、プラン、編集は送れません。",
+  "Add it in ChatGPT for me": "ChatGPT に代わりに追加",
+  "Opens ChatGPT in your browser, fills in this plugin and creates it. This ticks ChatGPT's “I understand and want to continue” for you: use it only for this app on your computer.": "ブラウザーで ChatGPT を開き、このプラグインを入力して作成します。ChatGPT の「I understand and want to continue」に代わりにチェックを入れるため、このコンピューター上のこのアプリにだけ使ってください。",
+  "Opening ChatGPT…": "ChatGPT を開いています…",
+  "Filling in ChatGPT…": "ChatGPT に入力しています…",
+  "ChatGPT already has a plugin with this name.": "ChatGPT にはこの名前のプラグインがすでにあります。",
+  "Created in ChatGPT.": "ChatGPT に作成しました。",
+  "Could not add it: {0}. Use the steps above.": "追加できませんでした: {0}。上の手順を使ってください。"
 }

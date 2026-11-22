@@ -9,6 +9,17 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.6] — Gemini edition: the ChatGPT plugin created for you
+
+### Added
+
+- **Add it in ChatGPT for me.** Each plugin card in Setup's ChatGPT step has a button that opens
+  ChatGPT's Plugins page through the extension, fills in Add custom MCP server (name, description,
+  tunnel or URL, No authentication), ticks "I understand and want to continue" and clicks Create as
+  a plugin. The button says it ticks that box for you. A plugin with the same name is left as it
+  is. A page that is not in English or does not look as expected gets nothing created, and the
+  card says to use the steps by hand.
+
 ## [2.2.5] — Gemini edition: a lasting Gemini address, and Gemini's custom app filled in for you
 
 ### Added

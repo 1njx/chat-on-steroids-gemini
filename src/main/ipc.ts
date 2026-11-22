@@ -27,6 +27,7 @@ import { refreshAppProxy } from './app-proxy.js';
 import { committedResumeAncestorsFromSummary, DEFAULT_RECORDING_STORAGE_GIB, REASONING_EFFORTS, RECORDING_STORAGE_LIMITS_GIB, type RecordingStorageLimitGiB, type SessionChange } from '../shared/session.js';
 import { safeExternalLink } from '../shared/external-link.js';
 import { wakeBrowserWork } from './browser-wake.js';
+import { pluginAddStatus, requestPluginAdd } from './plugin-add.js';
 import { refreshKeepAwake } from './keep-awake.js';
 import { getChatModels, startChatModelDiscovery, configureChatModelDiscovery } from './chat-models.js';
 import { cancelGeminiCommand, configureGemini, geminiNamedTunnelHost, geminiStatus, geminiWantsHttpsTunnel, queueGeminiFill, queueGeminiSend, requestGeminiModes, saveGeminiSettings, stopGemini } from './gemini.js';
@@ -2216,6 +2217,12 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
     await applyGeminiTunnel();
     return { ok: true };
   });
+  handle('chatgpt:addPlugin', async (payload) => {
+    const queued = requestPluginAdd(payload);
+    if (queued.ok) void startBridge().then(() => wakeBrowserWork()).catch(() => undefined);
+    return queued;
+  });
+  handle('chatgpt:pluginAddStatus', async () => pluginAddStatus());
   handle('gemini:fillApp', async (payload) => {
     const queued = queueGeminiFill(z.object({ url: z.string().max(600) }).parse(payload).url);
     if (queued.ok) void startBridge().catch(() => undefined);

@@ -35,6 +35,7 @@ import { authorizedPluginRefreshPublications, hasRequestedPluginRefresh, pending
 import { attachBrowserWake, wakeActivityWork, wakeBrowserWork } from './browser-wake.js';
 import { noteRouteExistingChatSend, tunnelRouteSettling } from './tunnel/route-settle.js';
 import { noteChatgptProjects } from './chatgpt-project-catalog.js';
+import { pendingPluginAdds, reportPluginAdd } from './plugin-add.js';
 import { armProjectCreate, bindChatToLinkedProject, claimProjectCreate, completeProjectCreate, failProjectCreate, getProject, markProjectGone, pendingProjectCreates } from './projects.js';
 import { wakeBrowserUrl } from './browser-startup.js';
 let browserWake: ReturnType<typeof attachBrowserWake> | null = null;
@@ -3432,6 +3433,12 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
     const changed = await noteChatgptProjects(body['projects'] as Array<{ id: unknown; name: unknown }>, Date.now(), body['workspace']);
     return json(res, 200, { ok: true, changed }, origin);
   }
+  // "Add it in ChatGPT for me" (src/main/plugin-add.ts): one page claims, then reports done or failed.
+  if (route === '/plugin-add' && req.method === 'POST') {
+    const accepted = reportPluginAdd(await readBody(req));
+    if (accepted) changed();
+    return json(res, accepted ? 200 : 409, { ok: accepted }, origin);
+  }
   if (route === '/gemini/state' && req.method === 'POST') {
     const reply = observeGeminiPage(await readBody(req));
     return json(res, reply.ok ? 200 : 400, reply, origin);
@@ -3638,6 +3645,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
         pluginRefreshRequests: otherBrowser ? [] : (await authorizedPluginRefreshPublications(getConfig().ui.autoRefreshPlugins === true)).map(({ surface, schemaId, connectorName }) => ({ surface, schemaId, connectorName })),
         browserPreferenceRequest: pendingBrowserPreferenceRequest(),
         projectCreateRequests: otherBrowser ? [] : await pendingProjectCreates(),
+        pluginAddRequests: otherBrowser ? [] : pendingPluginAdds(),
         inputOpeningIds: inputRows.filter(row => !['sent', 'failed', 'cancelled'].includes(row.state)).map(row => row.id),
         // The ones being sent right now (handed to a browser), not those that only wait in the queue:
         // only these hold the extension's self-update (a blocked chat can keep a queued one for hours).

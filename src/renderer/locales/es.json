@@ -4134,5 +4134,12 @@
   "{0} · needs a higher plan": "{0} · requiere un plan superior",
   "{0} · not available": "{0} · no disponible",
   "Gemini is answering…": "Gemini está respondiendo…",
-  "Gemini gets text only: no files, plans or edits.": "Gemini solo recibe texto: sin archivos, planes ni ediciones."
+  "Gemini gets text only: no files, plans or edits.": "Gemini solo recibe texto: sin archivos, planes ni ediciones.",
+  "Add it in ChatGPT for me": "Añadirlo en ChatGPT por mí",
+  "Opens ChatGPT in your browser, fills in this plugin and creates it. This ticks ChatGPT's “I understand and want to continue” for you: use it only for this app on your computer.": "Abre ChatGPT en tu navegador, rellena este complemento y lo crea. Marca por ti la casilla «I understand and want to continue» de ChatGPT: úsalo solo para esta app en tu ordenador.",
+  "Opening ChatGPT…": "Abriendo ChatGPT…",
+  "Filling in ChatGPT…": "Rellenando ChatGPT…",
+  "ChatGPT already has a plugin with this name.": "ChatGPT ya tiene un complemento con este nombre.",
+  "Created in ChatGPT.": "Creado en ChatGPT.",
+  "Could not add it: {0}. Use the steps above.": "No se pudo añadir: {0}. Sigue los pasos de arriba."
 }

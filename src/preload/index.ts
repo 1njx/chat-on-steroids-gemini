@@ -419,6 +419,9 @@ const api = {
   cancelGeminiCommand: (id: string) => call<{ ok: boolean; error?: string }>('gemini:cancel', { id }),
   saveGeminiSettings: (patch: Partial<GeminiStatus['settings']>) => call<{ ok: boolean; error?: string }>('gemini:settings', patch),
   saveGeminiNamedTunnel: (tunnel: { host: string | null; token?: string }) => call<{ ok: boolean; error?: string }>('gemini:namedTunnel', tunnel),
+  addChatgptPlugin: (request: { surface: 'core' | 'desktop'; name: string; description: string; tunnelId?: string; url?: string }) =>
+    call<{ ok: true; id: string } | { ok: false; error: string }>('chatgpt:addPlugin', request),
+  getChatgptPluginAdd: () => call<{ id: string; surface: string; state: 'requested' | 'claimed' | 'done' | 'failed'; outcome: 'created' | 'exists' | null; error: string | null } | null>('chatgpt:pluginAddStatus'),
   fillGeminiApp: (url: string) => call<{ ok: true; id: string } | { ok: false; error: string }>('gemini:fillApp', { url }),
   openGeminiConnectors: (options: { external?: boolean } = {}) => call<boolean>('gemini:openConnectors', options),
   openGemini: (options: { external?: boolean } = {}) => call<boolean>('gemini:open', options),

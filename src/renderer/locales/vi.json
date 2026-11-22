@@ -3966,5 +3966,12 @@
   "{0} · needs a higher plan": "{0} · cần gói cao hơn",
   "{0} · not available": "{0} · không khả dụng",
   "Gemini is answering…": "Gemini đang trả lời…",
-  "Gemini gets text only: no files, plans or edits.": "Gemini chỉ nhận văn bản: không có tệp, kế hoạch hay chỉnh sửa."
+  "Gemini gets text only: no files, plans or edits.": "Gemini chỉ nhận văn bản: không có tệp, kế hoạch hay chỉnh sửa.",
+  "Add it in ChatGPT for me": "Thêm vào ChatGPT giúp tôi",
+  "Opens ChatGPT in your browser, fills in this plugin and creates it. This ticks ChatGPT's “I understand and want to continue” for you: use it only for this app on your computer.": "Mở ChatGPT trong trình duyệt, điền plugin này và tạo nó. Thao tác này đánh dấu “I understand and want to continue” của ChatGPT thay bạn: chỉ dùng cho ứng dụng này trên máy tính của bạn.",
+  "Opening ChatGPT…": "Đang mở ChatGPT…",
+  "Filling in ChatGPT…": "Đang điền vào ChatGPT…",
+  "ChatGPT already has a plugin with this name.": "ChatGPT đã có plugin với tên này.",
+  "Created in ChatGPT.": "Đã tạo trong ChatGPT.",
+  "Could not add it: {0}. Use the steps above.": "Không thêm được: {0}. Hãy làm theo các bước ở trên."
 }

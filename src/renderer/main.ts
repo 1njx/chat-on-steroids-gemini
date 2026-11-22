@@ -2330,10 +2330,71 @@ function connectorCards(next: AppState): HTMLElement[] {
       );
     }
 
+    // Not reached yet: the extension can create it in ChatGPT for the person.
+    const add = pluginAddRequest(surface, next.config, url);
+    if (add && surface.state === 'live' && withEvidence(surface).lastRequestAt === null && !pluginCreated(surface)) {
+      const button = el('button', 'btn btn-solid', () => t("Add it in ChatGPT for me"));
+      button.setAttribute('type', 'button');
+      button.addEventListener('click', () => void addPluginInChatgpt(add));
+      const pill = el('p', 'status-pill');
+      pill.id = `pluginAddPill-${surface.id}`;
+      paintPluginAdd(pill, pluginAdds.get(surface.id));
+      card.append(button, el('p', 'hint', () => t("Opens ChatGPT in your browser, fills in this plugin and creates it. This ticks ChatGPT's “I understand and want to continue” for you: use it only for this app on your computer.")), pill);
+    }
+
     // The tool list is reference, not a step: it stays on hand as the card title's tooltip.
     if (surface.tools.length > 0) ui(head, 'title', () => t("Tools: {0}", [surface.tools.join(', ')]));
     return card;
     });
+}
+
+type PluginAddRequest = { surface: 'core' | 'desktop'; name: string; description: string; tunnelId?: string; url?: string };
+/** What "Add it in ChatGPT for me" fills in: the card's name and description, and its tunnel or URL. */
+export function pluginAddRequest(surface: { id: string; connectorName: string; description: string },
+  config: { tunnel: { kind: string; tunnelId: string; desktopTunnelId: string } }, url: string | null): PluginAddRequest | null {
+  if (surface.id !== 'core' && surface.id !== 'desktop') return null;
+  const base = { surface: surface.id, name: surface.connectorName, description: surface.description } as const;
+  if (url?.startsWith('https://')) return { ...base, url };
+  const tunnelId = surface.id === 'core' ? config.tunnel.tunnelId : config.tunnel.desktopTunnelId;
+  return config.tunnel.kind === 'openai' && TUNNEL_ID_PATTERN.test(tunnelId) ? { ...base, tunnelId } : null;
+}
+
+/** The last "Add it in ChatGPT for me" per plugin card, kept while cards are repainted. */
+type PluginAddShown = { tone: 'ok' | 'wait' | 'bad'; text: () => string };
+const pluginAdds = new Map<string, PluginAddShown>();
+let pluginAddPoll: ReturnType<typeof setInterval> | null = null;
+function paintPluginAdd(pill: HTMLElement, shown: PluginAddShown | undefined): void {
+  pill.hidden = !shown;
+  pill.dataset.tone = shown?.tone ?? 'off';
+  ui(pill, 'textContent', () => shown?.text() ?? '');
+}
+function showPluginAdd(surface: string, shown: PluginAddShown): void {
+  pluginAdds.set(surface, shown);
+  const pill = document.getElementById(`pluginAddPill-${surface}`);
+  if (pill) paintPluginAdd(pill, shown);
+}
+/** In the person's words, what the extension's ChatGPT tab did with the request. */
+export function pluginAddShown(status: { state: string; outcome: string | null; error: string | null }): PluginAddShown {
+  if (status.state === 'requested') return { tone: 'wait', text: () => t("Opening ChatGPT…") };
+  if (status.state === 'claimed') return { tone: 'wait', text: () => t("Filling in ChatGPT…") };
+  if (status.state === 'done') return status.outcome === 'exists'
+    ? { tone: 'ok', text: () => t("ChatGPT already has a plugin with this name.") }
+    : { tone: 'ok', text: () => t("Created in ChatGPT.") };
+  return { tone: 'bad', text: () => t("Could not add it: {0}. Use the steps above.", [status.error ?? '']) };
+}
+async function addPluginInChatgpt(request: PluginAddRequest): Promise<void> {
+  const queued = await run(api.addChatgptPlugin(request));
+  if (!queued) return;
+  if (!queued.ok) { toast('That plugin could not be added from here. Use the steps above.'); return; }
+  showPluginAdd(request.surface, pluginAddShown({ state: 'requested', outcome: null, error: null }));
+  if (pluginAddPoll) clearInterval(pluginAddPoll);
+  const until = Date.now() + 180_000;
+  const stop = () => { if (pluginAddPoll) clearInterval(pluginAddPoll); pluginAddPoll = null; };
+  pluginAddPoll = setInterval(() => void api.getChatgptPluginAdd().then(reply => reply.ok ? reply.data : null).then(status => {
+    if (!status || status.id !== queued.id) return stop();
+    showPluginAdd(request.surface, pluginAddShown(status));
+    if (status.state === 'done' || status.state === 'failed' || Date.now() > until) stop();
+  }).catch(stop), 1000);
 }
 
 /**

@@ -3966,5 +3966,12 @@
   "{0} · needs a higher plan": "{0} · 需要更高级的套餐",
   "{0} · not available": "{0} · 不可用",
   "Gemini is answering…": "Gemini 正在回答…",
-  "Gemini gets text only: no files, plans or edits.": "Gemini 只接收文字：不支持文件、计划或编辑。"
+  "Gemini gets text only: no files, plans or edits.": "Gemini 只接收文字：不支持文件、计划或编辑。",
+  "Add it in ChatGPT for me": "替我在 ChatGPT 中添加",
+  "Opens ChatGPT in your browser, fills in this plugin and creates it. This ticks ChatGPT's “I understand and want to continue” for you: use it only for this app on your computer.": "在浏览器中打开 ChatGPT，填写并创建此插件。这会替你勾选 ChatGPT 的“I understand and want to continue”：仅用于你电脑上的此应用。",
+  "Opening ChatGPT…": "正在打开 ChatGPT…",
+  "Filling in ChatGPT…": "正在 ChatGPT 中填写…",
+  "ChatGPT already has a plugin with this name.": "ChatGPT 中已有同名插件。",
+  "Created in ChatGPT.": "已在 ChatGPT 中创建。",
+  "Could not add it: {0}. Use the steps above.": "无法添加：{0}。请按上面的步骤操作。"
 }

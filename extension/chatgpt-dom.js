@@ -4240,6 +4240,69 @@ var CLF_DOM = (() => {
     }, false);
   }
 
+  /*
+   * ChatGPT's Plugins page: Add → "Add custom MCP server" opens a dialog with Name, Description, a
+   * Connection switch (Server URL | Tunnel), a hidden native Authentication <select> behind its
+   * custom list, a consent checkbox and one submit button (observed live 2026-11-22). The dialog's
+   * fields are found by structure; the Add button and the menu item by their English labels.
+   * shortcut: English labels only for Add and the menu item; other languages get the manual steps.
+   */
+  const shownNode = node => !!node && node.isConnected && node.getClientRects().length > 0;
+  const plainText = node => (node?.textContent || '').replace(/\s+/g, ' ').trim();
+  function pluginAddControl() {
+    return safe(() => [...document.querySelectorAll('main button')].find(button => plainText(button) === 'Add' && shownNode(button)) || null, null);
+  }
+  function pluginAddMenuItem() {
+    return safe(() => [...document.querySelectorAll('[role="menu"] [role="menuitem"]')]
+      .find(item => plainText(item) === 'Add custom MCP server' && shownNode(item)) || null, null);
+  }
+  /** The open Add custom MCP server dialog, only when every field is where it was observed. */
+  function pluginAddForm() {
+    return safe(() => {
+      const dialogs = [...document.querySelectorAll('[role="dialog"]')].filter(node => shownNode(node) &&
+        node.querySelector('select option[value="NONE"]') && node.querySelector('[role="group"] button[aria-pressed]'));
+      if (dialogs.length !== 1) return null;
+      const dialog = dialogs[0];
+      const names = [...dialog.querySelectorAll('label input:not([type]), label input[type="text"]')].filter(input => !input.getAttribute('aria-label'));
+      const descriptions = dialog.querySelectorAll('textarea');
+      const toggles = [...dialog.querySelectorAll('[role="group"] button[aria-pressed]')];
+      const auths = [...dialog.querySelectorAll('select')].filter(select => select.querySelector('option[value="NONE"]'));
+      const consents = dialog.querySelectorAll('[role="checkbox"]');
+      const submits = dialog.querySelectorAll('button[type="submit"]');
+      if (names.length !== 1 || descriptions.length !== 1 || toggles.length !== 2 || auths.length !== 1 || consents.length !== 1 || submits.length !== 1) return null;
+      return { dialog, name: names[0], description: descriptions[0], urlToggle: toggles[0], tunnelToggle: toggles[1],
+        auth: auths[0], consent: consents[0], submit: submits[0] };
+    }, null);
+  }
+  /** The Connection field the chosen switch shows: a Tunnel ID or a Server URL. */
+  function pluginConnectionInput(dialog, tunnel) {
+    return safe(() => {
+      const inputs = [...dialog.querySelectorAll(tunnel ? 'input[placeholder^="tunnel_"]' : 'input[type="url"]')].filter(shownNode);
+      return inputs.length === 1 ? inputs[0] : null;
+    }, null);
+  }
+  /** Sets an input, textarea or select the way React sees a person change it. */
+  function fillField(field, value) {
+    return safe(() => {
+      const proto = field.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : field.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+      const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+      if (!setter) return false;
+      setter.call(field, value);
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      field.dispatchEvent(new Event('change', { bubbles: true }));
+      return field.value === value;
+    }, false);
+  }
+  /** Whether the Installed list beside the Plugins page already has a plugin of this name. */
+  function installedPluginNamed(name) {
+    return safe(() => [...document.querySelectorAll('a[href^="/plugins/plugin_"]')]
+      .some(link => !link.closest('main') && plainText(link) === name), false);
+  }
+  /** What the dialog says went wrong, if it says anything. */
+  function pluginAddError(dialog) {
+    return safe(() => plainText(dialog.querySelector('[role="alert"]')).slice(0, 200) || null, null);
+  }
+
   async function newChatControl(stillCurrent = () => true) {
     const shown = node => node && !node.closest(OWN_SURFACES) && !node.closest('[hidden],[aria-hidden="true"],[inert]') && node.getClientRects().length > 0;
     const link = (root = document) => [...root.querySelectorAll('a[data-testid="create-new-chat-button"][data-sidebar-item="true"][href="/"]')].find(shown) || null;
@@ -4286,6 +4349,13 @@ var CLF_DOM = (() => {
     openQuestionEdit,
     projectCreateControl,
     projectCreateForm,
+    pluginAddControl,
+    pluginAddMenuItem,
+    pluginAddForm,
+    pluginConnectionInput,
+    fillField,
+    installedPluginNamed,
+    pluginAddError,
     revealSidebar,
     projectIdsShown,
     projectsShown,

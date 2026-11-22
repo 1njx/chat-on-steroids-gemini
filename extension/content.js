@@ -14610,6 +14610,57 @@
     }
   }
 
+  /**
+   * "Add it in ChatGPT for me": this marked /plugins tab fills ChatGPT's Add custom MCP server
+   * dialog and creates the plugin. The person asked for it in the app, where the button says it
+   * ticks ChatGPT's consent box for them. A page that does not look as observed creates nothing.
+   */
+  let pluginAddBusy = false;
+  const PLUGIN_ADD_LAYOUT = "ChatGPT's Add custom MCP server dialog did not look as expected, so nothing was created";
+  async function addChatgptPlugin(request) {
+    if (pluginAddBusy || !request || !/^[a-f0-9-]{36}$/i.test(String(request.id)) || typeof request.name !== 'string' || !request.name) return false;
+    const tunnel = typeof request.tunnelId === 'string' && /^tunnel_[a-zA-Z0-9]{8,80}$/.test(request.tunnelId);
+    if (!tunnel && !(typeof request.url === 'string' && /^https:\/\/\S+$/.test(request.url))) return false;
+    const marked = () => alive && location.pathname === '/plugins' &&
+      new URL(location.href).searchParams.get('cos-plugin-add') === request.id;
+    if (!marked()) return false;
+    pluginAddBusy = true;
+    const report = (action, extra = {}) => ask({ type: 'plugin_add', action, id: request.id, ...extra });
+    const fail = async error => { await report('fail', { error }); return false; };
+    try {
+      if ((await report('claim'))?.data?.ok !== true || !marked()) return false;
+      const control = await waitPageView(() => CLF_DOM.pluginAddControl(), marked, 20_000, 250);
+      // Two plugins cannot share a name: an existing one is left as it is.
+      if (CLF_DOM.installedPluginNamed(request.name)) return (await report('done', { outcome: 'exists' }))?.data?.ok === true;
+      if (!control) return fail(PLUGIN_ADD_LAYOUT);
+      // ChatGPT's Add menu opens on pointer-down; a bare click() leaves it shut (measured 2026-11-22).
+      control.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 0, pointerType: 'mouse', isPrimary: true }));
+      const item = await waitPageView(() => CLF_DOM.pluginAddMenuItem(), marked, 5_000, 250);
+      if (!item) return fail(PLUGIN_ADD_LAYOUT);
+      item.click();
+      const form = await waitPageView(() => CLF_DOM.pluginAddForm(), marked, 8_000, 250);
+      if (!form) return fail(PLUGIN_ADD_LAYOUT);
+      const toggle = tunnel ? form.tunnelToggle : form.urlToggle;
+      if (toggle.getAttribute('aria-pressed') !== 'true') toggle.click();
+      const connection = await waitPageView(() => CLF_DOM.pluginConnectionInput(form.dialog, tunnel), marked, 5_000, 250);
+      if (!connection) return fail(PLUGIN_ADD_LAYOUT);
+      if (!CLF_DOM.fillField(form.name, request.name) || !CLF_DOM.fillField(form.description, request.description || '') ||
+          !CLF_DOM.fillField(connection, tunnel ? request.tunnelId : request.url) || !CLF_DOM.fillField(form.auth, 'NONE')) return fail(PLUGIN_ADD_LAYOUT);
+      // Changing the connection clears ChatGPT's consent box, so it is ticked last, once.
+      await new Promise(resolve => setTimeout(resolve, 300));
+      if (form.consent.getAttribute('aria-checked') !== 'true') form.consent.click();
+      const ready = await waitPageView(() => !form.submit.disabled && form.consent.getAttribute('aria-checked') === 'true' &&
+        form.name.value === request.name && form.auth.value === 'NONE', marked, 5_000, 250);
+      if (!ready) return fail(CLF_DOM.pluginAddError(form.dialog) || 'ChatGPT did not accept the plugin details');
+      form.submit.click();
+      const closed = await waitPageView(() => !form.dialog.isConnected || form.dialog.getClientRects().length === 0, () => alive, 20_000, 250);
+      if (!closed) return fail(CLF_DOM.pluginAddError(form.dialog) || 'ChatGPT did not create the plugin');
+      return (await report('done', { outcome: 'created' }))?.data?.ok === true;
+    } finally {
+      pluginAddBusy = false;
+    }
+  }
+
   async function refreshManagedPlugin(request) {
     if (pluginRefreshBusy || !request || !/^[a-f0-9-]{36}$/i.test(request.id) || !ownsPluginRefreshPage(request.id)) return false;
     pluginRefreshBusy = true;
@@ -14900,6 +14951,10 @@
       }
       if (message.type === 'clf-plugin-refresh-state') {
         sendResponse({ safe: !pluginRefreshBusy && ownsPluginRefreshPage(message.id) && CLF_DOM.pluginManagementIdle() }); return false;
+      }
+      if (message.type === 'clf-plugin-add') {
+        void addChatgptPlugin(message.request).then(ok => sendResponse({ ok })).catch(() => sendResponse({ ok: false }));
+        return true;
       }
       if (message.type === 'clf-project-create') {
         void createChatgptProject(message.request).then(ok => sendResponse({ ok })).catch(() => sendResponse({ ok: false }));

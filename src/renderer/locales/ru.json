@@ -4218,5 +4218,12 @@
   "{0} · needs a higher plan": "{0} · нужен тариф выше",
   "{0} · not available": "{0} · недоступно",
   "Gemini is answering…": "Gemini отвечает…",
-  "Gemini gets text only: no files, plans or edits.": "Gemini получает только текст: без файлов, планов и правок."
+  "Gemini gets text only: no files, plans or edits.": "Gemini получает только текст: без файлов, планов и правок.",
+  "Add it in ChatGPT for me": "Добавить в ChatGPT за меня",
+  "Opens ChatGPT in your browser, fills in this plugin and creates it. This ticks ChatGPT's “I understand and want to continue” for you: use it only for this app on your computer.": "Открывает ChatGPT в браузере, заполняет этот плагин и создаёт его. За тебя ставится отметка «I understand and want to continue» в ChatGPT: используй это только для этого приложения на твоём компьютере.",
+  "Opening ChatGPT…": "Открываю ChatGPT…",
+  "Filling in ChatGPT…": "Заполняю в ChatGPT…",
+  "ChatGPT already has a plugin with this name.": "В ChatGPT уже есть плагин с таким именем.",
+  "Created in ChatGPT.": "Создано в ChatGPT.",
+  "Could not add it: {0}. Use the steps above.": "Не удалось добавить: {0}. Используй шаги выше."
 }

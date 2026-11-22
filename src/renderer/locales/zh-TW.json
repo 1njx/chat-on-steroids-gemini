@@ -3966,5 +3966,12 @@
   "{0} · needs a higher plan": "{0} · 需要更高階的方案",
   "{0} · not available": "{0} · 無法使用",
   "Gemini is answering…": "Gemini 正在回答…",
-  "Gemini gets text only: no files, plans or edits.": "Gemini 只接收文字：不支援檔案、計畫或編輯。"
+  "Gemini gets text only: no files, plans or edits.": "Gemini 只接收文字：不支援檔案、計畫或編輯。",
+  "Add it in ChatGPT for me": "替我在 ChatGPT 中新增",
+  "Opens ChatGPT in your browser, fills in this plugin and creates it. This ticks ChatGPT's “I understand and want to continue” for you: use it only for this app on your computer.": "在瀏覽器中開啟 ChatGPT，填寫並建立此外掛。這會替你勾選 ChatGPT 的「I understand and want to continue」：僅用於你電腦上的這個應用程式。",
+  "Opening ChatGPT…": "正在開啟 ChatGPT…",
+  "Filling in ChatGPT…": "正在 ChatGPT 中填寫…",
+  "ChatGPT already has a plugin with this name.": "ChatGPT 中已有同名外掛。",
+  "Created in ChatGPT.": "已在 ChatGPT 中建立。",
+  "Could not add it: {0}. Use the steps above.": "無法新增：{0}。請依照上方步驟操作。"
 }

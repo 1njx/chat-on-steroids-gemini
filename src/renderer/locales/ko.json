@@ -3966,5 +3966,12 @@
   "{0} · needs a higher plan": "{0} · 상위 요금제 필요",
   "{0} · not available": "{0} · 사용할 수 없음",
   "Gemini is answering…": "Gemini가 답변하는 중…",
-  "Gemini gets text only: no files, plans or edits.": "Gemini에는 텍스트만 보낼 수 있습니다. 파일, 계획, 편집은 보낼 수 없습니다."
+  "Gemini gets text only: no files, plans or edits.": "Gemini에는 텍스트만 보낼 수 있습니다. 파일, 계획, 편집은 보낼 수 없습니다.",
+  "Add it in ChatGPT for me": "ChatGPT에 대신 추가",
+  "Opens ChatGPT in your browser, fills in this plugin and creates it. This ticks ChatGPT's “I understand and want to continue” for you: use it only for this app on your computer.": "브라우저에서 ChatGPT를 열고 이 플러그인을 입력해 만듭니다. ChatGPT의 “I understand and want to continue”를 대신 체크하므로 이 컴퓨터의 이 앱에만 사용하세요.",
+  "Opening ChatGPT…": "ChatGPT 여는 중…",
+  "Filling in ChatGPT…": "ChatGPT에 입력하는 중…",
+  "ChatGPT already has a plugin with this name.": "ChatGPT에 이 이름의 플러그인이 이미 있습니다.",
+  "Created in ChatGPT.": "ChatGPT에 만들었습니다.",
+  "Could not add it: {0}. Use the steps above.": "추가하지 못했습니다: {0}. 위 단계를 따르세요."
 }

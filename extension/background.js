@@ -2785,6 +2785,36 @@ function inspectProjectCreates(requests) {
   return projectCreateFlight;
 }
 
+/**
+ * "Add it in ChatGPT for me": one foreground ChatGPT Plugins tab per request, which fills ChatGPT's
+ * Add custom MCP server dialog (content.js addChatgptPlugin). The tab stays open afterwards so the
+ * person sees the new plugin; a tab the person closed comes back at most every two minutes.
+ */
+let pluginAddFlight = null;
+function inspectPluginAdds(requests) {
+  if (!Array.isArray(requests) || pluginAddFlight) return pluginAddFlight;
+  pluginAddFlight = (async () => {
+    const request = requests.find(candidate => candidate && /^[a-f0-9-]{36}$/i.test(String(candidate.id)) && typeof candidate.name === 'string');
+    const owner = (await chrome.storage.session.get('pluginAddOwner')).pluginAddOwner;
+    if (owner && owner.id !== request?.id) await chrome.storage.session.remove('pluginAddOwner');
+    if (!request || request.state !== 'requested') return;
+    const mine = owner && owner.id === request.id ? owner : null;
+    const tab = mine ? await chrome.tabs.get(mine.tab).catch(() => null) : null;
+    if (!tab) {
+      if (mine && Date.now() - (mine.openedAt ?? 0) < PROJECT_CREATE_REOPEN_MS) return;
+      const created = await createChatTab(`https://chatgpt.com/plugins?cos-plugin-add=${request.id}`, false);
+      await chrome.storage.session.set({ pluginAddOwner: { id: request.id, tab: created.id, openedAt: Date.now() } });
+      return;
+    }
+    let timer;
+    try {
+      await Promise.race([chrome.tabs.sendMessage(tab.id, { type: 'clf-plugin-add', request }).catch(() => undefined),
+        new Promise(resolve => { timer = setTimeout(resolve, 45000); })]);
+    } finally { clearTimeout(timer); }
+  })().catch(() => undefined).finally(() => { pluginAddFlight = null; });
+  return pluginAddFlight;
+}
+
 function inspectRequestedPluginRefresh(publications, background, browserOnly = false) {
   if (pluginRefreshFlight || !Array.isArray(publications) || !publications.length) return pluginRefreshFlight;
   pluginRefreshFlight = (async () => {
@@ -3871,6 +3901,7 @@ async function maintainOnce() {
   await rememberConnectorApps(reply.data.connectorApps);
   inspectRequestedPluginRefresh(reply.data.pluginRefreshRequests, reply.data.background === true, reply.data.browserOnly === true);
   void inspectProjectCreates(reply.data.projectCreateRequests);
+  void inspectPluginAdds(reply.data.pluginAddRequests);
   const repairConversations = new Set(repairs.map(entry => entry.conversationId));
   // Reloading the same document races its final input offer. Repair it now; the
   // still-durable app row is offered on the next status pass after the reload.
@@ -4598,6 +4629,17 @@ const HANDLERS = {
     const result = await call('/project-create', { method: 'POST', body });
     if (['done', 'fail'].includes(message.action) && result.ok && result.data?.ok) void maintain();
     return result;
+  },
+  // Only the tab opened for that exact request may claim or finish it.
+  async plugin_add(message, _sender, source) {
+    if (!ownsDocument(source) || !/^[a-f0-9-]{36}$/i.test(String(message.id || '')) || !source.documentId) return { ok: false };
+    if (!['claim', 'done', 'fail'].includes(message.action)) return { ok: false };
+    const owner = (await chrome.storage.session.get('pluginAddOwner')).pluginAddOwner;
+    if (!owner || owner.id !== message.id || owner.tab !== source.tab) return { ok: false };
+    return call('/plugin-add', { method: 'POST', body: JSON.stringify({ action: message.action, id: message.id,
+      client: String(source.documentId).slice(0, 64),
+      ...(message.outcome === 'created' || message.outcome === 'exists' ? { outcome: message.outcome } : {}),
+      ...(typeof message.error === 'string' ? { error: message.error.slice(0, 500) } : {}) }) });
   },
   async plugin_refresh(message, _sender, source) {
     if (!ownsDocument(source) || !/^[a-f0-9-]{36}$/i.test(String(message.id || ''))) return { ok: false };
@@ -5654,6 +5696,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     'project_catalog',
     'plugin_refresh',
     'project_create',
+    'plugin_add',
     'core_plugin',
     'load_failure',
     'conversation_deleted',
