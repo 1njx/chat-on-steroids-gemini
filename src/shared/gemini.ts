@@ -98,4 +98,6 @@ export const GEMINI_ERRORS: Record<string, string> = {
   'conversation-busy': 'A message to that Gemini chat is already on its way.',
   'custom-apps-layout-unknown': "Gemini's custom apps page did not look as expected, so nothing was filled in. Add the app by hand: click Custom, paste the address, then Next.",
   'invalid-url': 'Gemini needs an https address. Finish the Tunnel step first.',
+  'delete-failed': "Gemini did not delete the app with the old address. Delete it by hand (open it, More options, Delete), then press the button again.",
+  'connect-failed': "Gemini did not finish connecting the app. Check the open Gemini tab, or add the app by hand: click Custom, paste the address, then Next and Connect.",
 };

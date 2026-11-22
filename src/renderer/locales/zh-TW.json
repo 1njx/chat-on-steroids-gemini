@@ -3973,5 +3973,8 @@
   "Filling in ChatGPT…": "正在 ChatGPT 中填寫…",
   "ChatGPT already has a plugin with this name.": "ChatGPT 中已有同名外掛。",
   "Created in ChatGPT.": "已在 ChatGPT 中建立。",
-  "Could not add it: {0}. Use the steps above.": "無法新增：{0}。請依照上方步驟操作。"
+  "Could not add it: {0}. Use the steps above.": "無法新增：{0}。請依照上方步驟操作。",
+  "Setting Allow all tools in ChatGPT…": "正在 ChatGPT 中設定「允許所有工具」…",
+  "Created in ChatGPT, with Allow all tools.": "已在 ChatGPT 中建立，並設為「允許所有工具」。",
+  "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "已在 ChatGPT 中建立。這裡沒有權限設定，因此第一次呼叫工具時會詢問；擴充功能會允許這個應用程式自己的外掛。"
 }

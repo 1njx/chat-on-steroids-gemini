@@ -3065,6 +3065,39 @@ describe('desktop input delivery and helper ownership', () => {
     return card;
   }
 
+  // The live card on 2026-10-14: the app's name first, Deny with an Esc hint, Allow once with a Return hint.
+  function mountLiveApprovalCard(document: Document, app: string, clicks: string[]): HTMLElement {
+    const card = document.createElement('div');
+    card.setAttribute('data-codex-approval-surface', 'true');
+    card.innerHTML = `<div role="alert"><div><span>${app}</span></div><div>Allow ChatGPT to use ${app}?</div></div>
+      <div><button id="deny">Deny<kbd>Esc</kbd></button><button id="allow">Allow once<kbd>⏎</kbd></button><button aria-haspopup="menu" aria-label="Approval options"></button></div>`;
+    card.getClientRects = () => [{ width: 600, height: 200 }] as unknown as DOMRectList;
+    for (const button of card.querySelectorAll('button')) button.addEventListener('click', () => clicks.push(button.id || 'options'));
+    document.body.append(card);
+    return card;
+  }
+
+  it("allows a tool call of this app's own plugin at once and asks for Allow all tools, never another plugin's", async () => {
+    live = await harness(`https://chatgpt.com/c/${chatA}`, {
+      status: () => ({ connected: true, paired: true, port: 8765, pending: 0, connectorNames: {
+        core: 'Chat On Steroids Core', desktop: 'Chat On Steroids Desktop', plugins: 'Chat On Steroids Plugins' } }),
+      setup_task: () => ({ ok: true })
+    });
+    await settle();
+    startGenerating(live.document);
+    const clicks: string[] = [];
+    const other = mountLiveApprovalCard(live.document, 'Gmail', clicks);
+    live.hook.observe(); await settle();
+    expect(clicks).toEqual([]);
+    other.remove();
+    mountLiveApprovalCard(live.document, 'Chat On Steroids Core', clicks);
+    live.hook.observe(); await settle();
+    live.hook.observe(); await settle();
+    expect(clicks).toEqual(['allow']);
+    expect(live.sent.filter(message => message.type === 'setup_task')).toEqual([
+      expect.objectContaining({ action: 'allow-always', name: 'Chat On Steroids Core' })]);
+  });
+
   async function openRemountedToolTurn(requestId: string, domTurnId: string, approvalFinalId: string | null = null) {
     live = await harness(`https://chatgpt.com/c/${chatA}`, {
       desktop_input: message => ({ ok: true, data: message.authorize || message.ack || message.fail ? { ok: true } : { input: claimed() } }),

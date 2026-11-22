@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extension_name__",
-  "version": "2.2.6",
+  "version": "2.2.7",
   "description": "__MSG_extension_description__",
   "default_locale": "en",
   "minimum_chrome_version": "125",
@@ -79,6 +79,15 @@
       ],
       "world": "MAIN",
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://platform.openai.com/*"
+      ],
+      "js": [
+        "openai-setup.js"
+      ],
+      "run_at": "document_idle"
     },
     {
       "matches": [

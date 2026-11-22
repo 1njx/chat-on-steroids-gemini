@@ -222,7 +222,7 @@ const resultSchema = z.object({
   connector: z.string().max(80).optional(),
   modes: z.array(z.unknown()).max(20).optional(),
   thinkingLevels: z.array(z.unknown()).max(8).optional(),
-  outcome: z.enum(['filled', 'current', 'old']).optional(),
+  outcome: z.enum(['filled', 'connected', 'current', 'old']).optional(),
   existingUrl: z.string().max(600).optional(),
 });
 
@@ -282,7 +282,7 @@ export async function completeGeminiCommand(body: unknown, now = Date.now()): Pr
     if (!result.outcome) { finish(command, 'failed', 'custom-apps-layout-unknown'); changed(); return { ok: true }; }
     command.outcome = result.outcome;
     // Remember which address Gemini has (read on its page) or was given (filled in), never the address itself.
-    const given = result.outcome === 'filled' ? command.url : HTTPS_URL.safeParse(result.existingUrl).data;
+    const given = result.outcome === 'filled' || result.outcome === 'connected' ? command.url : HTTPS_URL.safeParse(result.existingUrl).data;
     if (given) { settings.givenUrlHash = geminiUrlFingerprint(given); persist(); }
     finish(command, 'completed');
     changed();

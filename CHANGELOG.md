@@ -9,6 +9,28 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.7] — Gemini edition: setup done for you in your signed-in tabs
+
+### Added
+
+- **Set everything up.** One button in Setup chains the OpenAI tunnel and key, Connect, the plugins
+  in ChatGPT with Allow all tools, and the app in Gemini when Gemini's tunnel is on. Each part shows
+  its progress; a failed part says why and opens its step.
+- **Set it up for me (Tunnel and Key).** The extension takes the tunnel this app uses or one named
+  for it at platform.openai.com, or creates one, then creates a Restricted key with Tunnels: Read
+  and Use. The key goes only into the system's secret store.
+- **Allow all tools after Create.** "Add it in ChatGPT for me" sets the new plugin's Permissions
+  to Allow all tools where ChatGPT offers it, and says the first tool call will ask where not.
+- **This app's own tool calls allowed.** A ChatGPT approval card for one of this app's plugins is
+  allowed at once and that plugin is set to Allow all tools. Other plugins' cards are untouched.
+- **Add it in Gemini for me** goes all the way: it deletes an app with an old address, clicks
+  Next, ticks Google's notice and Connects. The step says first what it will click.
+
+### Changed
+
+- ChatGPT's Add button and "Add custom MCP server" item are recognized in every language Setup
+  shows, not only English.
+
 ## [2.2.6] — Gemini edition: the ChatGPT plugin created for you
 
 ### Added

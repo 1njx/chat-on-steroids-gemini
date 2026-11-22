@@ -132,14 +132,22 @@
         dom.backToList();
         return result(command, { stage: 'completed', outcome: 'current', existingUrl: existing });
       }
-      const more = dom.detailsMoreOptions();
-      if (more) dom.highlight(more, `Chat On Steroids: "${name}" has an old address, and Gemini cannot change it. Open More options, choose Delete yourself, then press "Fill in Gemini" in the app again.`);
-      return result(command, { stage: 'completed', outcome: 'old', existingUrl: existing });
+      // Gemini cannot edit an address: the app with the old one is deleted, then added again, as the
+      // app's button said before the person pressed it.
+      if (!(await dom.deleteCustomApp(name))) return result(command, { stage: 'failed', error: 'delete-failed' });
     }
     const next = await dom.fillCreateForm(command.url);
     if (!next) return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
-    dom.highlight(next, 'Chat On Steroids filled in the address. Check it, then click Next yourself and follow Gemini: read its notice, tick it, and Connect.');
-    return result(command, { stage: 'completed', outcome: 'filled' });
+    next.click();
+    const step = await dom.waitFor(dom.connectStep, 15000);
+    if (!step) return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
+    if (!step.checkbox.checked) step.checkbox.click();
+    if (!(await dom.waitFor(() => step.checkbox.checked && !step.connect.disabled ? true : null, 3000)))
+      return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
+    step.connect.click();
+    if (!(await dom.waitFor(() => !step.dialog.isConnected || step.dialog.getClientRects().length === 0 ? true : null, 20000)))
+      return result(command, { stage: 'failed', error: 'connect-failed' });
+    return result(command, { stage: 'completed', outcome: 'connected' });
   }
 
   async function run(command) {

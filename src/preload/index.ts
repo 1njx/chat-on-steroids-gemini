@@ -421,7 +421,9 @@ const api = {
   saveGeminiNamedTunnel: (tunnel: { host: string | null; token?: string }) => call<{ ok: boolean; error?: string }>('gemini:namedTunnel', tunnel),
   addChatgptPlugin: (request: { surface: 'core' | 'desktop'; name: string; description: string; tunnelId?: string; url?: string }) =>
     call<{ ok: true; id: string } | { ok: false; error: string }>('chatgpt:addPlugin', request),
-  getChatgptPluginAdd: () => call<{ id: string; surface: string; state: 'requested' | 'claimed' | 'done' | 'failed'; outcome: 'created' | 'exists' | null; error: string | null } | null>('chatgpt:pluginAddStatus'),
+  startOpenaiSetup: () => call<{ ok: true; id: string } | { ok: false; error: string }>('setup:openai'),
+  getSetupTask: (kind: 'plugin-add' | 'plugin-permission' | 'openai-setup') =>
+    call<{ id: string; kind: string; surface: string | null; state: 'requested' | 'claimed' | 'done' | 'failed'; outcome: string | null; progress: string | null; error: string | null } | null>('setup:task', kind),
   fillGeminiApp: (url: string) => call<{ ok: true; id: string } | { ok: false; error: string }>('gemini:fillApp', { url }),
   openGeminiConnectors: (options: { external?: boolean } = {}) => call<boolean>('gemini:openConnectors', options),
   openGemini: (options: { external?: boolean } = {}) => call<boolean>('gemini:open', options),

@@ -2786,33 +2786,53 @@ function inspectProjectCreates(requests) {
 }
 
 /**
- * "Add it in ChatGPT for me": one foreground ChatGPT Plugins tab per request, which fills ChatGPT's
- * Add custom MCP server dialog (content.js addChatgptPlugin). The tab stays open afterwards so the
- * person sees the new plugin; a tab the person closed comes back at most every two minutes.
+ * Setup done in the person's signed-in tabs (src/main/setup-tasks.ts): Add custom MCP server and
+ * Allow all tools in ChatGPT, a tunnel and a restricted key at platform.openai.com. One foreground
+ * helper tab does them one at a time; its page pulls its task by the `cos-task` marker of the URL
+ * it was opened with, and the tab, not the document, owns the task across its page loads.
  */
-let pluginAddFlight = null;
-function inspectPluginAdds(requests) {
-  if (!Array.isArray(requests) || pluginAddFlight) return pluginAddFlight;
-  pluginAddFlight = (async () => {
-    const request = requests.find(candidate => candidate && /^[a-f0-9-]{36}$/i.test(String(candidate.id)) && typeof candidate.name === 'string');
-    const owner = (await chrome.storage.session.get('pluginAddOwner')).pluginAddOwner;
-    if (owner && owner.id !== request?.id) await chrome.storage.session.remove('pluginAddOwner');
-    if (!request || request.state !== 'requested') return;
-    const mine = owner && owner.id === request.id ? owner : null;
-    const tab = mine ? await chrome.tabs.get(mine.tab).catch(() => null) : null;
-    if (!tab) {
-      if (mine && Date.now() - (mine.openedAt ?? 0) < PROJECT_CREATE_REOPEN_MS) return;
-      const created = await createChatTab(`https://chatgpt.com/plugins?cos-plugin-add=${request.id}`, false);
-      await chrome.storage.session.set({ pluginAddOwner: { id: request.id, tab: created.id, openedAt: Date.now() } });
+let setupTasks = [];
+let setupTaskFlight = null;
+const SETUP_TASK_ORIGIN = { 'plugin-add': 'https://chatgpt.com', 'plugin-permission': 'https://chatgpt.com', 'openai-setup': 'https://platform.openai.com' };
+const SETUP_SIGNED_OUT = {
+  'plugin-add': 'Sign in to ChatGPT in this browser, then press the button again',
+  'plugin-permission': 'Sign in to ChatGPT in this browser, then press the button again',
+  'openai-setup': 'Sign in to platform.openai.com in this browser, then press the button again'
+};
+function setupTaskUrl(task) {
+  if (task.kind === 'plugin-add') return `https://chatgpt.com/plugins?cos-task=${task.id}`;
+  if (task.kind === 'plugin-permission') return /^asdk_app_[a-zA-Z0-9_-]{1,160}$/.test(String(task.appId))
+    ? `https://chatgpt.com/settings/plugins-settings/plugin_${task.appId}/permissions?cos-task=${task.id}` : null;
+  if (task.kind === 'openai-setup') return `https://platform.openai.com/settings/organization/${task.progress === 'tunnel' ? 'api-keys' : 'tunnels'}?cos-task=${task.id}`;
+  return null;
+}
+function inspectSetupTasks(list) {
+  if (!Array.isArray(list) || setupTaskFlight) return setupTaskFlight;
+  setupTasks = list.filter(task => task && /^[a-f0-9-]{36}$/i.test(String(task.id)) && SETUP_TASK_ORIGIN[task.kind]);
+  setupTaskFlight = (async () => {
+    if (setupTasks.some(task => task.state === 'claimed')) return;
+    const task = setupTasks.find(candidate => candidate.state === 'requested');
+    const url = task && setupTaskUrl(task);
+    if (!url) return;
+    const helper = (await chrome.storage.session.get('setupTaskTab')).setupTaskTab;
+    const tab = helper ? await chrome.tabs.get(helper.tab).catch(() => null) : null;
+    if (tab && helper.taskId === task.id) {
+      const waited = Date.now() - (helper.openedAt ?? 0);
+      let origin = null;
+      try { origin = new URL(tab.url || tab.pendingUrl || '').origin; } catch { /* not loaded */ }
+      // Opened for this task, never claimed, and now on another site: a sign-in page.
+      if (waited > 20_000 && origin && origin !== SETUP_TASK_ORIGIN[task.kind])
+        await call('/setup-task', { method: 'POST', body: JSON.stringify({ action: 'fail', id: task.id, client: 'background', error: SETUP_SIGNED_OUT[task.kind] }) });
+      else if (waited > 120_000) {
+        await chrome.tabs.update(tab.id, { url });
+        await chrome.storage.session.set({ setupTaskTab: { ...helper, openedAt: Date.now() } });
+      }
       return;
     }
-    let timer;
-    try {
-      await Promise.race([chrome.tabs.sendMessage(tab.id, { type: 'clf-plugin-add', request }).catch(() => undefined),
-        new Promise(resolve => { timer = setTimeout(resolve, 45000); })]);
-    } finally { clearTimeout(timer); }
-  })().catch(() => undefined).finally(() => { pluginAddFlight = null; });
-  return pluginAddFlight;
+    const target = tab && !tab.pinned ? await chrome.tabs.update(tab.id, { url, active: true }) : await createChatTab(url, false);
+    await chrome.storage.session.set({ setupTaskTab: { tab: target.id, taskId: task.id, openedAt: Date.now() } });
+  })().catch(() => undefined).finally(() => { setupTaskFlight = null; });
+  return setupTaskFlight;
 }
 
 function inspectRequestedPluginRefresh(publications, background, browserOnly = false) {
@@ -3901,7 +3921,7 @@ async function maintainOnce() {
   await rememberConnectorApps(reply.data.connectorApps);
   inspectRequestedPluginRefresh(reply.data.pluginRefreshRequests, reply.data.background === true, reply.data.browserOnly === true);
   void inspectProjectCreates(reply.data.projectCreateRequests);
-  void inspectPluginAdds(reply.data.pluginAddRequests);
+  void inspectSetupTasks(reply.data.setupTasks);
   const repairConversations = new Set(repairs.map(entry => entry.conversationId));
   // Reloading the same document races its final input offer. Repair it now; the
   // still-durable app row is offered on the next status pass after the reload.
@@ -4630,16 +4650,34 @@ const HANDLERS = {
     if (['done', 'fail'].includes(message.action) && result.ok && result.data?.ok) void maintain();
     return result;
   },
-  // Only the tab opened for that exact request may claim or finish it.
-  async plugin_add(message, _sender, source) {
-    if (!ownsDocument(source) || !/^[a-f0-9-]{36}$/i.test(String(message.id || '')) || !source.documentId) return { ok: false };
-    if (!['claim', 'done', 'fail'].includes(message.action)) return { ok: false };
-    const owner = (await chrome.storage.session.get('pluginAddOwner')).pluginAddOwner;
-    if (!owner || owner.id !== message.id || owner.tab !== source.tab) return { ok: false };
-    return call('/plugin-add', { method: 'POST', body: JSON.stringify({ action: message.action, id: message.id,
-      client: String(source.documentId).slice(0, 64),
-      ...(message.outcome === 'created' || message.outcome === 'exists' ? { outcome: message.outcome } : {}),
-      ...(typeof message.error === 'string' ? { error: message.error.slice(0, 500) } : {}) }) });
+  /**
+   * A setup page's report. Only the helper tab opened for a task, on that task's own site, may
+   * read or move it. `allow-always` comes from any ChatGPT page whose approval card for one of this
+   * app's own plugins was just allowed. A key passes through to the app and nowhere else.
+   */
+  async setup_task(message, sender) {
+    if (!sender || sender.id !== chrome.runtime.id || sender.frameId !== 0 || !Number.isInteger(sender.tab?.id)) return { ok: false };
+    let origin;
+    try { origin = new URL(sender.url || sender.tab.url).origin; } catch { return { ok: false }; }
+    if (message.action === 'allow-always') {
+      if (origin !== 'https://chatgpt.com' || typeof message.name !== 'string' || !message.name) return { ok: false };
+      const reply = await call('/setup-task', { method: 'POST', body: JSON.stringify({ action: 'allow-always', name: message.name.slice(0, 120) }) });
+      return { ok: reply.ok && reply.data?.ok === true };
+    }
+    const helper = (await chrome.storage.session.get('setupTaskTab')).setupTaskTab;
+    const task = setupTasks.find(candidate => candidate.id === message.id);
+    if (!helper || helper.tab !== sender.tab.id || !task || SETUP_TASK_ORIGIN[task.kind] !== origin) return { ok: false };
+    if (message.action === 'get') return { ok: true, task };
+    if (!['claim', 'progress', 'done', 'fail'].includes(message.action)) return { ok: false };
+    const body = { action: message.action, id: task.id, client: `tab:${sender.tab.id}` };
+    for (const field of ['outcome', 'progress', 'appId', 'tunnelId', 'key', 'error'])
+      if (typeof message[field] === 'string') body[field] = message[field].slice(0, 500);
+    const reply = await call('/setup-task', { method: 'POST', body: JSON.stringify(body) });
+    const ok = reply.ok && reply.data?.ok === true;
+    if (ok && message.action === 'claim') task.state = 'claimed';
+    if (ok && message.action === 'progress') task.progress = message.progress;
+    if (ok && ['done', 'fail'].includes(message.action)) void maintain();
+    return { ok };
   },
   async plugin_refresh(message, _sender, source) {
     if (!ownsDocument(source) || !/^[a-f0-9-]{36}$/i.test(String(message.id || ''))) return { ok: false };
@@ -5696,7 +5734,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     'project_catalog',
     'plugin_refresh',
     'project_create',
-    'plugin_add',
     'core_plugin',
     'load_failure',
     'conversation_deleted',

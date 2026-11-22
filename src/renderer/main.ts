@@ -40,6 +40,8 @@ import { inQuietHours } from '../shared/phone-push.js';
 import { collectSettings, initSettingsSearch, searchSettings } from './settings-search.js';
 import { resolveSettingsTab } from './settings-tabs.js';
 import { initGemini, paintGeminiConnector } from './gemini.js';
+import { mountSetupAuto } from './setup-auto.js';
+import { GEMINI_ERRORS } from '../shared/gemini.js';
 import { matchesWords } from './palette.js';
 import type { AppearanceSettings, ThemeChoice } from '../shared/appearance.js';
 import type { BrowserBridgePort } from '../shared/browser-bridge.js';
@@ -2362,7 +2364,6 @@ export function pluginAddRequest(surface: { id: string; connectorName: string; d
 /** The last "Add it in ChatGPT for me" per plugin card, kept while cards are repainted. */
 type PluginAddShown = { tone: 'ok' | 'wait' | 'bad'; text: () => string };
 const pluginAdds = new Map<string, PluginAddShown>();
-let pluginAddPoll: ReturnType<typeof setInterval> | null = null;
 function paintPluginAdd(pill: HTMLElement, shown: PluginAddShown | undefined): void {
   pill.hidden = !shown;
   pill.dataset.tone = shown?.tone ?? 'off';
@@ -2373,28 +2374,44 @@ function showPluginAdd(surface: string, shown: PluginAddShown): void {
   const pill = document.getElementById(`pluginAddPill-${surface}`);
   if (pill) paintPluginAdd(pill, shown);
 }
-/** In the person's words, what the extension's ChatGPT tab did with the request. */
-export function pluginAddShown(status: { state: string; outcome: string | null; error: string | null }): PluginAddShown {
+type TaskSeen = { state: string; outcome: string | null; error: string | null };
+/** In the person's words, what the extension's ChatGPT tab did: the plugin, then its permission. */
+export function pluginAddShown(status: TaskSeen, permission: TaskSeen | null = null): PluginAddShown {
   if (status.state === 'requested') return { tone: 'wait', text: () => t("Opening ChatGPT…") };
   if (status.state === 'claimed') return { tone: 'wait', text: () => t("Filling in ChatGPT…") };
-  if (status.state === 'done') return status.outcome === 'exists'
+  if (status.state === 'failed') return { tone: 'bad', text: () => t("Could not add it: {0}. Use the steps above.", [status.error ?? '']) };
+  if (permission?.state === 'requested' || permission?.state === 'claimed') return { tone: 'wait', text: () => t("Setting Allow all tools in ChatGPT…") };
+  if (permission?.state === 'done' && permission.outcome !== 'unavailable') return { tone: 'ok', text: () => t("Created in ChatGPT, with Allow all tools.") };
+  if (permission) return { tone: 'ok', text: () => t("Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.") };
+  return status.outcome === 'exists'
     ? { tone: 'ok', text: () => t("ChatGPT already has a plugin with this name.") }
     : { tone: 'ok', text: () => t("Created in ChatGPT.") };
-  return { tone: 'bad', text: () => t("Could not add it: {0}. Use the steps above.", [status.error ?? '']) };
 }
-async function addPluginInChatgpt(request: PluginAddRequest): Promise<void> {
+/** Polls one setup task until it settles; resolves with its last status (null if it vanished). */
+export function waitSetupTask(kind: 'plugin-add' | 'plugin-permission' | 'openai-setup', id: string | null,
+  each: (status: TaskSeen & { id: string; progress: string | null }) => void, ms = 240_000): Promise<(TaskSeen & { id: string; progress: string | null }) | null> {
+  const until = Date.now() + ms;
+  return new Promise(resolve => {
+    const tick = () => void api.getSetupTask(kind).then(reply => reply.ok ? reply.data : null).then(status => {
+      if (!status || (id && status.id !== id)) return resolve(null);
+      each(status);
+      if (status.state === 'done' || status.state === 'failed' || Date.now() > until) return resolve(status);
+      setTimeout(tick, 1000);
+    }).catch(() => resolve(null));
+    tick();
+  });
+}
+export async function addPluginInChatgpt(request: PluginAddRequest): Promise<boolean> {
   const queued = await run(api.addChatgptPlugin(request));
-  if (!queued) return;
-  if (!queued.ok) { toast('That plugin could not be added from here. Use the steps above.'); return; }
+  if (!queued) return false;
+  if (!queued.ok) { toast('That plugin could not be added from here. Use the steps above.'); return false; }
   showPluginAdd(request.surface, pluginAddShown({ state: 'requested', outcome: null, error: null }));
-  if (pluginAddPoll) clearInterval(pluginAddPoll);
-  const until = Date.now() + 180_000;
-  const stop = () => { if (pluginAddPoll) clearInterval(pluginAddPoll); pluginAddPoll = null; };
-  pluginAddPoll = setInterval(() => void api.getChatgptPluginAdd().then(reply => reply.ok ? reply.data : null).then(status => {
-    if (!status || status.id !== queued.id) return stop();
-    showPluginAdd(request.surface, pluginAddShown(status));
-    if (status.state === 'done' || status.state === 'failed' || Date.now() > until) stop();
-  }).catch(stop), 1000);
+  const added = await waitSetupTask('plugin-add', queued.id, status => showPluginAdd(request.surface, pluginAddShown(status)));
+  if (added?.state !== 'done') return false;
+  // The page reported the new plugin's app id, so the app asked for Allow all tools next.
+  const permission = await waitSetupTask('plugin-permission', null, status => showPluginAdd(request.surface, pluginAddShown(added, status)), 120_000);
+  showPluginAdd(request.surface, pluginAddShown(added, permission ?? { state: 'done', outcome: 'unavailable', error: null }));
+  return true;
 }
 
 /**
@@ -3292,6 +3309,55 @@ async function refresh(): Promise<void> {
   const next = await run(api.getState());
   if (next) apply(next);
 }
+
+/** What "Set everything up" works with, read when it is pressed (src/renderer/setup-auto.ts). */
+mountSetupAuto(async () => {
+  const gemini = await api.getGeminiStatus().then(reply => reply.ok ? reply.data : null).catch(() => null);
+  const geminiUrl = () => document.getElementById('geminiSetupUrl')?.textContent?.trim() || '';
+  const waitFor = async (ready: () => boolean, ms: number) => {
+    for (const end = Date.now() + ms; Date.now() < end; await new Promise(resolve => setTimeout(resolve, 1000))) {
+      await refresh();
+      if (ready()) return true;
+    }
+    return false;
+  };
+  return {
+    needsOpenai: () => !!state && state.config.tunnel.kind === 'openai' && (!TUNNEL_ID_PATTERN.test(state.config.tunnel.tunnelId) || !state.hasApiKey),
+    startOpenai: () => run(api.startOpenaiSetup()),
+    waitTask: (kind, id, each) => waitSetupTask(kind, id, each),
+    refresh,
+    connect: async () => {
+      if (!state) return 'The app state is not loaded';
+      if (!isRunning(state.status.state)) {
+        const next = await run(api.connect());
+        if (!next) return 'Connect was refused';
+        apply(next);
+      }
+      const live = () => !!state && isRunning(state.status.state) && state.status.surfaces.filter(surface => surface.available && !surface.optional).every(surface => surface.state === 'live');
+      return (await waitFor(live, 90_000)) ? null : (state?.status.detail || 'The tunnel did not come up within 90 seconds');
+    },
+    plugins: () => {
+      if (!state) return [];
+      const { status, config } = state;
+      return status.surfaces.filter(surface => surface.available && surface.state === 'live' && withEvidence(surface).lastRequestAt === null && !pluginCreated(surface))
+        .map(surface => pluginAddRequest(surface, config, surface.publicUrl ?? (config.tunnel.kind === 'manual' ? surface.localUrl : null)))
+        .filter((request): request is PluginAddRequest => request !== null)
+        .map(request => () => addPluginInChatgpt(request));
+    },
+    gemini: gemini?.settings.httpsTunnel === true ? async () => {
+      if (!(await waitFor(() => geminiUrl().startsWith('https://'), 60_000))) return "Gemini's address is not ready yet. Use the Gemini step by hand";
+      const queued = await run(api.fillGeminiApp(geminiUrl()));
+      if (!queued?.ok) return 'The browser extension could not be asked. Use the Gemini step by hand';
+      for (const end = Date.now() + 180_000; Date.now() < end; await new Promise(resolve => setTimeout(resolve, 1000))) {
+        const command = await api.getGeminiStatus().then(reply => reply.ok ? reply.data.commands.find(entry => entry.id === queued.id) : null).catch(() => null);
+        if (command?.stage === 'completed') return null;
+        if (command && ['failed', 'cancelled'].includes(command.stage)) return GEMINI_ERRORS[command.error ?? ''] ?? `Gemini: ${command.error ?? 'failed'}`;
+      }
+      return 'Gemini did not finish in time. Use the Gemini step by hand';
+    } : null,
+    openStep: openSetupStep
+  };
+});
 
 buildGroups();
 initSidebarResize();

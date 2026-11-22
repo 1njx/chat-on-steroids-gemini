@@ -3973,5 +3973,8 @@
   "Filling in ChatGPT…": "ChatGPT に入力しています…",
   "ChatGPT already has a plugin with this name.": "ChatGPT にはこの名前のプラグインがすでにあります。",
   "Created in ChatGPT.": "ChatGPT に作成しました。",
-  "Could not add it: {0}. Use the steps above.": "追加できませんでした: {0}。上の手順を使ってください。"
+  "Could not add it: {0}. Use the steps above.": "追加できませんでした: {0}。上の手順を使ってください。",
+  "Setting Allow all tools in ChatGPT…": "ChatGPT で「すべてのツールを許可」を設定しています…",
+  "Created in ChatGPT, with Allow all tools.": "ChatGPT に作成し、「すべてのツールを許可」にしました。",
+  "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "ChatGPT に作成しました。ここには権限の設定がないため、最初のツール呼び出しで確認されます。拡張機能がこのアプリ自身のプラグインを許可します。"
 }

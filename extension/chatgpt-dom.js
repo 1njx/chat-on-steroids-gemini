@@ -4244,17 +4244,17 @@ var CLF_DOM = (() => {
    * ChatGPT's Plugins page: Add → "Add custom MCP server" opens a dialog with Name, Description, a
    * Connection switch (Server URL | Tunnel), a hidden native Authentication <select> behind its
    * custom list, a consent checkbox and one submit button (observed live 2026-11-22). The dialog's
-   * fields are found by structure; the Add button and the menu item by their English labels.
-   * shortcut: English labels only for Add and the menu item; other languages get the manual steps.
+   * fields are found by structure; the Add button and the menu item by their labels in each of the
+   * languages Setup shows (src/renderer/setup-images/pages/manifest.json, sent with the task).
    */
   const shownNode = node => !!node && node.isConnected && node.getClientRects().length > 0;
   const plainText = node => (node?.textContent || '').replace(/\s+/g, ' ').trim();
-  function pluginAddControl() {
-    return safe(() => [...document.querySelectorAll('main button')].find(button => plainText(button) === 'Add' && shownNode(button)) || null, null);
+  function pluginAddControl(labels = ['Add']) {
+    return safe(() => [...document.querySelectorAll('main button')].find(button => labels.includes(plainText(button)) && shownNode(button)) || null, null);
   }
-  function pluginAddMenuItem() {
+  function pluginAddMenuItem(labels = ['Add custom MCP server']) {
     return safe(() => [...document.querySelectorAll('[role="menu"] [role="menuitem"]')]
-      .find(item => plainText(item) === 'Add custom MCP server' && shownNode(item)) || null, null);
+      .find(item => labels.includes(plainText(item)) && shownNode(item)) || null, null);
   }
   /** The open Add custom MCP server dialog, only when every field is where it was observed. */
   function pluginAddForm() {
@@ -4297,6 +4297,31 @@ var CLF_DOM = (() => {
   function installedPluginNamed(name) {
     return safe(() => [...document.querySelectorAll('a[href^="/plugins/plugin_"]')]
       .some(link => !link.closest('main') && plainText(link) === name), false);
+  }
+  /** The app id of the installed plugin of this name, from its link in the Installed list. */
+  function installedPluginAppId(name) {
+    return safe(() => {
+      const ids = [...document.querySelectorAll('a[href^="/plugins/plugin_"]')]
+        .filter(link => !link.closest('main') && plainText(link) === name)
+        .map(link => (link.getAttribute('href').match(/^\/plugins\/plugin_(asdk_app_[a-zA-Z0-9_-]{1,160})$/) || [])[1]).filter(Boolean);
+      return ids.length === 1 ? ids[0] : null;
+    }, null);
+  }
+  /**
+   * "Allow all tools" on a plugin's Permissions page (settings/plugins-settings/plugin_<id>/permissions,
+   * observed 2026-11-22): four radios whose values name the choice in every language.
+   */
+  const PERMISSION_VALUES = ['always_ask', 'ask_before_writes', 'review_important_actions', 'full_access'];
+  function pluginPermissionRadio() {
+    return safe(() => {
+      const radios = [...document.querySelectorAll('main input[type="radio"]')];
+      if (radios.length !== 4 || PERMISSION_VALUES.some(value => radios.filter(radio => radio.value === value).length !== 1)) return null;
+      return radios.find(radio => radio.value === 'full_access');
+    }, null);
+  }
+  /** A dialog ChatGPT opened over the page, if one is showing. */
+  function openDialog() {
+    return safe(() => [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')].find(shownNode) || null, null);
   }
   /** What the dialog says went wrong, if it says anything. */
   function pluginAddError(dialog) {
@@ -4355,6 +4380,9 @@ var CLF_DOM = (() => {
     pluginConnectionInput,
     fillField,
     installedPluginNamed,
+    installedPluginAppId,
+    pluginPermissionRadio,
+    openDialog,
     pluginAddError,
     revealSidebar,
     projectIdsShown,

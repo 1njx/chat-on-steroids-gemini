@@ -246,7 +246,7 @@ export function addPill(status: GeminiStatus | null, url: string | null, now = D
   if (status?.connectorSeenAt) return ['ok', `Gemini reached the app ${ago(status.connectorSeenAt, now)}`];
   const given = status?.settings.givenUrlHash ?? null;
   if (url && given && given !== geminiUrlFingerprint(url)) {
-    return ['bad', `Your Gemini custom app has an old address. Update it to ${url} — Gemini cannot edit an address, so delete the old app in Gemini and add it again ("Fill in Gemini for me" helps).`];
+    return ['bad', `Your Gemini custom app has an old address. Update it to ${url} — Gemini cannot edit an address, so "Add it in Gemini for me" deletes the old app and adds it again.`];
   }
   if (url && given) return ['wait', 'Gemini has this address. Mention the app in a Gemini chat (next step) so Gemini reaches it.'];
   return ['off', status?.settings.namedTunnelHost
@@ -254,16 +254,17 @@ export function addPill(status: GeminiStatus | null, url: string | null, now = D
     : 'Waiting for Gemini to reach the app. A quick tunnel gets a new address at each start: add the app again with it.'];
 }
 
-/** What the last "Fill in Gemini for me" did, in the person's words. */
+/** What the last "Add it in Gemini for me" did, in the person's words. */
 export function fillPill(fill: GeminiCommandSummary, url: string | null): ['ok' | 'wait' | 'off' | 'bad', string] {
   if (fill.stage === 'queued' || fill.stage === 'claimed') return ['wait', 'Opening Gemini custom apps in your browser…'];
   if (fill.stage === 'failed') {
     return ['bad', `${geminiErrorText(fill.error)}${fill.error === 'custom-apps-layout-unknown' ? '' : ' Add the app by hand: Open custom apps, click Custom, paste the address, then Next.'}`];
   }
   if (fill.stage !== 'completed') return ['off', STAGES[fill.stage]];
+  if (fill.outcome === 'connected') return ['ok', 'Added in Gemini and connected. Mention the app in a Gemini chat to use it.'];
   if (fill.outcome === 'filled') return ['ok', 'Filled in. In Gemini, check the address, click the highlighted Next, tick Google\'s notice and Connect, then Connect once more to save.'];
   if (fill.outcome === 'current') return ['ok', 'Gemini already has this app with this address. Nothing to change.'];
-  if (fill.outcome === 'old') return ['bad', `Gemini has the app with an old address and cannot edit it. In Gemini, open the highlighted More options and choose Delete, then press Fill in Gemini for me again${url ? ` to add ${url}` : ''}.`];
+  if (fill.outcome === 'old') return ['bad', `Gemini has the app with an old address and cannot edit it. In Gemini, open the highlighted More options and choose Delete, then press Add it in Gemini for me again${url ? ` to add ${url}` : ''}.`];
   return ['off', 'Done.'];
 }
 

@@ -67,12 +67,12 @@ each step turns green by itself when the app sees it done.
    2.2.3 did here), "Switch ChatGPT back to the OpenAI tunnel" switches back and keeps Gemini's
    own tunnel; when no tunnel ID is saved, Setup asks for it. Done when connected with an https
    Core address. "Keep the same address" runs your own Cloudflare tunnel instead of a quick one.
-5. **Add app** — "Fill in Gemini for me" uses the extension on your signed-in Gemini page: it opens
-   custom apps and, when **Chat On Steroids Core** is already there, reads its address. Same
-   address: nothing to do. Old address: Gemini cannot edit one, so it highlights **More options**
-   for you to choose **Delete**, then press the button again. Otherwise it opens **Create custom
-   app**, fills in the address and highlights **Next**. It never presses Next, Connect or Delete,
-   and stores no Google password or cookie. A page it does not recognize gets nothing filled in, and
+5. **Add app** — "Add it in Gemini for me" uses the extension on your signed-in Gemini page. The
+   step says first what it will click: it opens custom apps and, when **Chat On Steroids Core** is
+   already there, reads its address. Same address: nothing to do. Old address: Gemini cannot edit
+   one, so it chooses **More options → Delete** (and Gemini's confirmation, if it asks). Then it
+   opens **Create custom app**, fills in the address, clicks **Next**, ticks Google's notice and
+   clicks **Connect**. It stores no Google password or cookie. A page it does not recognize gets nothing filled in, and
    the step says to add the app by hand. The step remembers a fingerprint of the address Gemini
    last got (copied, filled in or read there), never the address, so after a restart it says
    "Your Gemini custom app has an old address. Update it to …" instead of "not added".

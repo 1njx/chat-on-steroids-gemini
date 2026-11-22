@@ -3973,5 +3973,8 @@
   "Filling in ChatGPT…": "ChatGPT에 입력하는 중…",
   "ChatGPT already has a plugin with this name.": "ChatGPT에 이 이름의 플러그인이 이미 있습니다.",
   "Created in ChatGPT.": "ChatGPT에 만들었습니다.",
-  "Could not add it: {0}. Use the steps above.": "추가하지 못했습니다: {0}. 위 단계를 따르세요."
+  "Could not add it: {0}. Use the steps above.": "추가하지 못했습니다: {0}. 위 단계를 따르세요.",
+  "Setting Allow all tools in ChatGPT…": "ChatGPT에서 “모든 도구 허용”을 설정하는 중…",
+  "Created in ChatGPT, with Allow all tools.": "ChatGPT에 만들고 “모든 도구 허용”으로 설정했습니다.",
+  "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "ChatGPT에 만들었습니다. 여기에는 권한 설정이 없어 첫 도구 호출 때 물어봅니다. 확장 프로그램이 이 앱의 플러그인을 허용합니다."
 }

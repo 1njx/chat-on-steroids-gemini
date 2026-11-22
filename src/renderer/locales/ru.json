@@ -4225,5 +4225,8 @@
   "Filling in ChatGPT…": "Заполняю в ChatGPT…",
   "ChatGPT already has a plugin with this name.": "В ChatGPT уже есть плагин с таким именем.",
   "Created in ChatGPT.": "Создано в ChatGPT.",
-  "Could not add it: {0}. Use the steps above.": "Не удалось добавить: {0}. Используй шаги выше."
+  "Could not add it: {0}. Use the steps above.": "Не удалось добавить: {0}. Используй шаги выше.",
+  "Setting Allow all tools in ChatGPT…": "Включаю «Разрешить все инструменты» в ChatGPT…",
+  "Created in ChatGPT, with Allow all tools.": "Создано в ChatGPT, с «Разрешить все инструменты».",
+  "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "Создано в ChatGPT. Здесь нет настройки разрешений, поэтому первый вызов инструмента спросит; расширение затем разрешит плагины этого приложения."
 }

@@ -4057,5 +4057,8 @@
   "Filling in ChatGPT…": "ChatGPT dolduruluyor…",
   "ChatGPT already has a plugin with this name.": "ChatGPT'de bu adda bir eklenti zaten var.",
   "Created in ChatGPT.": "ChatGPT'de oluşturuldu.",
-  "Could not add it: {0}. Use the steps above.": "Eklenemedi: {0}. Yukarıdaki adımları kullan."
+  "Could not add it: {0}. Use the steps above.": "Eklenemedi: {0}. Yukarıdaki adımları kullan.",
+  "Setting Allow all tools in ChatGPT…": "ChatGPT'de “Tüm araçlara izin ver” ayarlanıyor…",
+  "Created in ChatGPT, with Allow all tools.": "ChatGPT'de oluşturuldu, “Tüm araçlara izin ver” ile.",
+  "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "ChatGPT'de oluşturuldu. Burada izin ayarı yok, bu yüzden ilk araç çağrısı soracak; eklenti bu uygulamanın kendi eklentilerine izin verir."
 }

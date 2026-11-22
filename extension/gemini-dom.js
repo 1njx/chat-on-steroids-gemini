@@ -339,7 +339,7 @@ var CLF_GEMINI_DOM = (() => {
     return safe(() => { const lang = (document.documentElement.lang || '').toLowerCase(); return !!lang && !lang.startsWith('en'); }, false);
   }
 
-  // ---- custom apps page (never presses Next, Connect, Disconnect or Delete)
+  // ---- custom apps page (Delete, Next, the notice and Connect only for "Add it in Gemini for me")
 
   const CREATE_APP = 'button[aria-label="Create custom app"]';
   const onCustomApps = () => safe(() => /\/customize\/connectors\/?$/.test(location.pathname), false);
@@ -403,6 +403,38 @@ var CLF_GEMINI_DOM = (() => {
     return input.value === url ? next : null;
   }
 
+  /**
+   * Deletes the open app from its details page: More options → Delete (observed 2026-11-22), then
+   * the confirmation's Delete if Gemini asks (its shape was never seen live). True once the
+   * app's card is gone from the list.
+   */
+  async function deleteCustomApp(name, ms = 8000) {
+    const more = detailsMoreOptions();
+    if (!more) return false;
+    more.click();
+    const item = await waitFor(() => [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].find(b => visible(b) && text(b) === 'Delete') || null, 3000);
+    if (!item) return false;
+    item.click();
+    const confirm = await waitFor(() => [...document.querySelectorAll('mat-dialog-container, [role="dialog"], [role="alertdialog"]')].filter(visible)
+      .flatMap(dialog => [...dialog.querySelectorAll('button')].filter(b => text(b) === 'Delete' && !b.disabled)).at(0) || null, 3000);
+    if (confirm) confirm.click();
+    await sleep(800);
+    if (!onCustomApps() || !visibleCreate()) backToList();
+    return !!(await waitFor(() => visibleCreate() && !customAppCard(name) ? true : null, ms));
+  }
+
+  /** The step after Next: "Connect this MCP server", with Google's notice to tick and Connect. */
+  function connectStep() {
+    return safe(() => {
+      const dialog = [...document.querySelectorAll('mat-dialog-container, [role="dialog"]')]
+        .find(node => visible(node) && node.querySelector('mat-checkbox input[type="checkbox"]'));
+      if (!dialog) return null;
+      const checkboxes = dialog.querySelectorAll('mat-checkbox input[type="checkbox"]');
+      const connect = [...dialog.querySelectorAll('button')].filter(b => text(b) === 'Connect');
+      return checkboxes.length === 1 && connect.length === 1 ? { dialog, checkbox: checkboxes[0], connect: connect[0] } : null;
+    }, null);
+  }
+
   /** Points the person at the control they press themselves; never clicks it. */
   function highlight(node, note) {
     safe(() => {
@@ -447,6 +479,6 @@ var CLF_GEMINI_DOM = (() => {
     selectThinkingLevel, insertPrompt, composerText, mentionOptions, mentionConnector, appendPrompt,
     send, stopGeneration, turns, errors,
     localized, snapshot, parseOption,
-    onCustomApps, customAppCard, readCustomAppUrl, backToList, detailsMoreOptions, fillCreateForm, highlight, waitFor, visibleCreate,
+    onCustomApps, customAppCard, readCustomAppUrl, backToList, detailsMoreOptions, fillCreateForm, highlight, waitFor, visibleCreate, deleteCustomApp, connectStep,
   };
 })();

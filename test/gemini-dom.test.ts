@@ -28,6 +28,8 @@ interface GeminiDom {
   readCustomAppUrl(name: string, ms?: number): Promise<string | null>;
   fillCreateForm(url: string, ms?: number): Promise<HTMLButtonElement | null>;
   highlight(node: HTMLElement, note: string): void;
+  deleteCustomApp(name: string, ms?: number): Promise<boolean>;
+  connectStep(): { dialog: HTMLElement; checkbox: HTMLInputElement; connect: HTMLButtonElement } | null;
 }
 
 // Shapes copied from the live gemini.google.com page (2026-11-20, Google AI Pro account).
@@ -300,5 +302,46 @@ describe('Gemini custom apps page', () => {
     expect(await api.fillCreateForm(url, 300)).toBeNull();
     expect(document.querySelector<HTMLInputElement>('input[name="link"]')!.value).toBe('');
     expect(await api.readCustomAppUrl('Chat On Steroids Core', 0)).toBeNull();
+  });
+
+  // More options on the details page offers Use now and Delete (live, 2026-11-22).
+  it('deletes the app with the old address through More options → Delete, and confirms only a Delete', async () => {
+    const doc = document;
+    expect(await api.readCustomAppUrl('Chat On Steroids Core', 500)).toMatch(/old-name/);
+    const pressed: string[] = [];
+    doc.querySelector('#details button[aria-label="More options"]')!.addEventListener('click', () => {
+      doc.body.insertAdjacentHTML('beforeend', '<div role="menu"><button role="menuitem">Use now</button><button role="menuitem" id="del">Delete</button></div>');
+      doc.getElementById('del')!.addEventListener('click', () => {
+        pressed.push('Delete');
+        doc.getElementById('dialogs')!.innerHTML = '<mat-dialog-container role="dialog"><p>Delete this app?</p><button>Cancel</button><button id="confirm">Delete</button></mat-dialog-container>';
+        doc.getElementById('confirm')!.addEventListener('click', () => {
+          pressed.push('confirm');
+          doc.getElementById('dialogs')!.innerHTML = '';
+          doc.querySelector('customize-card')!.remove();
+        });
+      });
+    });
+    expect(await api.deleteCustomApp('Chat On Steroids Core', 2000)).toBe(true);
+    expect(pressed).toEqual(['Delete', 'confirm']);
+    expect(api.customAppCard('Chat On Steroids Core')).toBeNull();
+  });
+
+  it('gives up without a Delete item, deleting nothing', async () => {
+    await api.readCustomAppUrl('Chat On Steroids Core', 500);
+    expect(await api.deleteCustomApp('Chat On Steroids Core', 300)).toBe(false);
+    expect(api.customAppCard('Chat On Steroids Core')).not.toBeNull();
+  });
+
+  // After Next: "Connect this MCP server" with Google's notice (a mat-checkbox) and Connect (live, 2026-11-22).
+  it('finds the notice and Connect after Next, and nothing in a dialog of another shape', () => {
+    expect(api.connectStep()).toBeNull();
+    document.getElementById('dialogs')!.innerHTML = `<mat-dialog-container role="dialog"><h2>Connect this MCP server</h2>
+      <mat-checkbox><input type="checkbox"><label>I understand and accept the security and privacy risks of connecting this custom app.</label></mat-checkbox>
+      <button>Cancel</button><button disabled>Connect</button></mat-dialog-container>`;
+    const step = api.connectStep()!;
+    expect(step.checkbox.checked).toBe(false);
+    expect(step.connect.textContent).toBe('Connect');
+    document.querySelector('mat-dialog-container')!.insertAdjacentHTML('beforeend', '<mat-checkbox><input type="checkbox"></mat-checkbox>');
+    expect(api.connectStep()).toBeNull();
   });
 });

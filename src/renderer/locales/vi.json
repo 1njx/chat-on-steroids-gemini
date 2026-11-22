@@ -3973,5 +3973,8 @@
   "Filling in ChatGPT…": "Đang điền vào ChatGPT…",
   "ChatGPT already has a plugin with this name.": "ChatGPT đã có plugin với tên này.",
   "Created in ChatGPT.": "Đã tạo trong ChatGPT.",
-  "Could not add it: {0}. Use the steps above.": "Không thêm được: {0}. Hãy làm theo các bước ở trên."
+  "Could not add it: {0}. Use the steps above.": "Không thêm được: {0}. Hãy làm theo các bước ở trên.",
+  "Setting Allow all tools in ChatGPT…": "Đang đặt “Cho phép mọi công cụ” trong ChatGPT…",
+  "Created in ChatGPT, with Allow all tools.": "Đã tạo trong ChatGPT, với “Cho phép mọi công cụ”.",
+  "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "Đã tạo trong ChatGPT. Ở đây không có cài đặt quyền, nên lần gọi công cụ đầu tiên sẽ hỏi; tiện ích sẽ cho phép các plugin của chính ứng dụng này."
 }

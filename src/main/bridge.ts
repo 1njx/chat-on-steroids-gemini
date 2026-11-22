@@ -35,7 +35,8 @@ import { authorizedPluginRefreshPublications, hasRequestedPluginRefresh, pending
 import { attachBrowserWake, wakeActivityWork, wakeBrowserWork } from './browser-wake.js';
 import { noteRouteExistingChatSend, tunnelRouteSettling } from './tunnel/route-settle.js';
 import { noteChatgptProjects } from './chatgpt-project-catalog.js';
-import { pendingPluginAdds, reportPluginAdd } from './plugin-add.js';
+import { pendingSetupTasks, reportSetupTask, requestPluginPermission, type SetupTaskEffect } from './setup-tasks.js';
+import { setupApiKeySlot } from '../shared/setup-profile.js';
 import { armProjectCreate, bindChatToLinkedProject, claimProjectCreate, completeProjectCreate, failProjectCreate, getProject, markProjectGone, pendingProjectCreates } from './projects.js';
 import { wakeBrowserUrl } from './browser-startup.js';
 let browserWake: ReturnType<typeof attachBrowserWake> | null = null;
@@ -1897,6 +1898,19 @@ async function browserDisconnected(): Promise<boolean> {
   return (await getSecret('bridgeToken')) === BROWSER_DISCONNECTED;
 }
 
+/** Saves what a setup page found: the tunnel ID in the settings, the key in the secret store only. */
+async function applySetupEffects(effects: SetupTaskEffect[]): Promise<void> {
+  for (const effect of effects) {
+    if (effect.kind === 'tunnel') {
+      await updateConfig(latest => ({ ...latest, tunnel: { ...latest.tunnel, kind: 'openai', tunnelId: effect.tunnelId } }));
+      logInfo('bridge: tunnel ID saved from platform.openai.com');
+    } else if (effect.kind === 'key') {
+      await setSecret(setupApiKeySlot(getConfig().tunnel.profileId), effect.key);
+      logInfo('bridge: api key stored from platform.openai.com');
+    } else requestPluginPermission(effect.appId, effect.name, effect.surface);
+  }
+}
+
 function readBody(req: http.IncomingMessage, limit = MAX_BODY_BYTES): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let size = 0;
@@ -3433,11 +3447,25 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
     const changed = await noteChatgptProjects(body['projects'] as Array<{ id: unknown; name: unknown }>, Date.now(), body['workspace']);
     return json(res, 200, { ok: true, changed }, origin);
   }
-  // "Add it in ChatGPT for me" (src/main/plugin-add.ts): one page claims, then reports done or failed.
-  if (route === '/plugin-add' && req.method === 'POST') {
-    const accepted = reportPluginAdd(await readBody(req));
-    if (accepted) changed();
-    return json(res, accepted ? 200 : 409, { ok: accepted }, origin);
+  // Setup done in the person's tabs (src/main/setup-tasks.ts): one page claims, then reports.
+  // The body may carry an OpenAI key: it goes only to the secret store, never into a log line.
+  if (route === '/setup-task' && req.method === 'POST') {
+    const body = await readBody(req).catch(() => null) as Record<string, unknown> | null;
+    // A first tool call of this app's own plugin was allowed: ask for Allow all tools as well.
+    if (body?.action === 'allow-always') {
+      const name = typeof body.name === 'string' ? body.name : '';
+      const app = Object.entries(connectorApps()).flatMap(([surface, apps]) => apps.map(app => ({ ...app, surface }))).find(app => app.name === name);
+      const queued = app ? requestPluginPermission(app.appId, name, app.surface) : { ok: false };
+      if (queued.ok) changed();
+      return json(res, queued.ok ? 200 : 409, { ok: queued.ok }, origin);
+    }
+    const effects = reportSetupTask(body);
+    if (effects) {
+      try { await applySetupEffects(effects); }
+      catch (err) { logWarn(`bridge: a setup step from the browser could not be saved — ${(err as Error).message.slice(0, 120)}`); return json(res, 500, { ok: false }, origin); }
+      changed();
+    }
+    return json(res, effects ? 200 : 409, { ok: !!effects }, origin);
   }
   if (route === '/gemini/state' && req.method === 'POST') {
     const reply = observeGeminiPage(await readBody(req));
@@ -3645,7 +3673,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
         pluginRefreshRequests: otherBrowser ? [] : (await authorizedPluginRefreshPublications(getConfig().ui.autoRefreshPlugins === true)).map(({ surface, schemaId, connectorName }) => ({ surface, schemaId, connectorName })),
         browserPreferenceRequest: pendingBrowserPreferenceRequest(),
         projectCreateRequests: otherBrowser ? [] : await pendingProjectCreates(),
-        pluginAddRequests: otherBrowser ? [] : pendingPluginAdds(),
+        setupTasks: otherBrowser ? [] : pendingSetupTasks(),
         inputOpeningIds: inputRows.filter(row => !['sent', 'failed', 'cancelled'].includes(row.state)).map(row => row.id),
         // The ones being sent right now (handed to a browser), not those that only wait in the queue:
         // only these hold the extension's self-update (a blocked chat can keep a queued one for hours).

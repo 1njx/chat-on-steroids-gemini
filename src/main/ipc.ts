@@ -27,7 +27,7 @@ import { refreshAppProxy } from './app-proxy.js';
 import { committedResumeAncestorsFromSummary, DEFAULT_RECORDING_STORAGE_GIB, REASONING_EFFORTS, RECORDING_STORAGE_LIMITS_GIB, type RecordingStorageLimitGiB, type SessionChange } from '../shared/session.js';
 import { safeExternalLink } from '../shared/external-link.js';
 import { wakeBrowserWork } from './browser-wake.js';
-import { pluginAddStatus, requestPluginAdd } from './plugin-add.js';
+import { requestOpenaiSetup, requestPluginAdd, setupTaskStatus } from './setup-tasks.js';
 import { refreshKeepAwake } from './keep-awake.js';
 import { getChatModels, startChatModelDiscovery, configureChatModelDiscovery } from './chat-models.js';
 import { cancelGeminiCommand, configureGemini, geminiNamedTunnelHost, geminiStatus, geminiWantsHttpsTunnel, queueGeminiFill, queueGeminiSend, requestGeminiModes, saveGeminiSettings, stopGemini } from './gemini.js';
@@ -2222,7 +2222,12 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
     if (queued.ok) void startBridge().then(() => wakeBrowserWork()).catch(() => undefined);
     return queued;
   });
-  handle('chatgpt:pluginAddStatus', async () => pluginAddStatus());
+  handle('setup:openai', async () => {
+    const queued = requestOpenaiSetup({ tunnelName: 'Chat On Steroids', keyName: 'Chat On Steroids', knownTunnelId: getConfig().tunnel.tunnelId || undefined });
+    if (queued.ok) void startBridge().then(() => wakeBrowserWork()).catch(() => undefined);
+    return queued;
+  });
+  handle('setup:task', async (payload) => setupTaskStatus(z.enum(['plugin-add', 'plugin-permission', 'openai-setup']).parse(payload)));
   handle('gemini:fillApp', async (payload) => {
     const queued = queueGeminiFill(z.object({ url: z.string().max(600) }).parse(payload).url);
     if (queued.ok) void startBridge().catch(() => undefined);
