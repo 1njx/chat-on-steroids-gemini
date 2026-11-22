@@ -40,6 +40,15 @@ const optionalTunnels = new Map<OptionalSurface, {
   lossReporter: ConnectionLossReporter;
 }>();
 const optionalSurfaces: OptionalSurface[] = ['desktop', 'plugins'];
+/**
+ * Gemini's own Cloudflare quick tunnel on the OpenAI path. The OpenAI Secure Tunnel only serves
+ * ChatGPT and Gemini needs an https address, so this runs beside it rather than instead of it:
+ * switching the whole app to Cloudflare left ChatGPT's connectors pointing at a tunnel that no
+ * longer ran. Whole-origin transports (cloudflared, manual) already give Gemini an address.
+ */
+let geminiTunnel: { handle: TunnelHandle | null } | null = null;
+let geminiTunnelWanted: () => boolean = () => false;
+export function configureGeminiTunnel(wanted: () => boolean): void { geminiTunnelWanted = wanted; }
 const optionalTunnelId = (settings: TunnelSettings, id: OptionalSurface): string =>
   (id === 'desktop' ? settings.desktopTunnelId : settings.pluginsTunnelId) ?? '';
 /**
@@ -505,6 +514,7 @@ async function connectImpl(current: () => boolean = () => true): Promise<void> {
       if (!current()) { await disconnectImpl(); return; }
       await startOptionalTunnel(id, generation, config.tunnel, apiKey, startupCurrent);
     }
+    await startGeminiTunnel(generation, config.tunnel, startupCurrent);
     if (!current()) await disconnectImpl();
   } catch (err) {
     if (shutdownRequested || generation !== connectionGeneration || !current()) {
@@ -589,6 +599,65 @@ async function startOptionalTunnel(
   }
 }
 
+/** Starts Gemini's quick tunnel to the whole local origin, when wanted and the Core tunnel is OpenAI's. */
+async function startGeminiTunnel(generation: number, settings: TunnelSettings, current: () => boolean = () => true): Promise<void> {
+  if (geminiTunnel || shutdownRequested || pendingDisconnect || generation !== connectionGeneration || !current()) return;
+  if (settings.kind !== 'openai' || !geminiTunnelWanted() || !endpoint) return;
+  const coreLocal = endpoint.urls.core;
+  const lifetime: { handle: TunnelHandle | null } = { handle: null };
+  geminiTunnel = lifetime;
+  const own = () => generation === connectionGeneration && geminiTunnel === lifetime;
+  setStatus({ geminiTunnel: { state: 'starting', detail: 'Starting a Cloudflare tunnel for Gemini…', url: null } });
+  try {
+    const started = await startTunnel({
+      localUrl: endpoint.url,
+      // binaryPath names tunnel-client on this path, never cloudflared: use the shipped copy.
+      settings: { ...settings, kind: 'cloudflared', binaryPath: '' },
+      apiKey: null,
+      label: 'gemini',
+      report: (report) => {
+        if (!own()) return;
+        const url = report.publicUrl === undefined ? status.geminiTunnel?.url ?? null : siblingPublicUrl(report.publicUrl, coreLocal);
+        setStatus({ geminiTunnel: {
+          state: report.state === 'connected' ? 'connected' : report.state === 'tunnel-unavailable' ? 'error' : 'starting',
+          detail: report.detail,
+          url: report.state === 'tunnel-unavailable' ? null : url
+        } });
+      }
+    });
+    if (!own() || shutdownRequested) { await started.stop().catch(() => {}); return; }
+    lifetime.handle = started;
+  } catch (err) {
+    if (!own()) return;
+    geminiTunnel = null;
+    const message = err instanceof TunnelError ? err.message : (err as Error).message;
+    logWarn(`gemini tunnel not started: ${message}`);
+    setStatus({ geminiTunnel: { state: 'error', detail: message, url: null } });
+  }
+}
+
+async function stopGeminiTunnel(): Promise<void> {
+  const running = geminiTunnel;
+  geminiTunnel = null;
+  if (running?.handle) { await running.handle.stop().catch(() => {}); logInfo('gemini tunnel stopped'); }
+  if (status.geminiTunnel) setStatus({ geminiTunnel: null });
+}
+
+/** Starts or stops Gemini's tunnel to match the setting and the Core transport. */
+async function applyGeminiTunnelImpl(): Promise<void> {
+  if (shutdownRequested || pendingDisconnect) return;
+  const config = getConfig();
+  // A failed tunnel is tried again from scratch; a running one is left alone.
+  if (!endpoint || config.tunnel.kind !== 'openai' || !geminiTunnelWanted() || status.geminiTunnel?.state === 'error') await stopGeminiTunnel();
+  if (!endpoint || config.tunnel.kind !== 'openai' || !geminiTunnelWanted()) return;
+  await startGeminiTunnel(connectionGeneration, config.tunnel);
+}
+
+/** Applies a change of the Gemini tunnel setting to a live connection. Safe to call while disconnected. */
+export function applyGeminiTunnel(): Promise<void> {
+  return enqueueLifecycle(applyGeminiTunnelImpl);
+}
+
 /** Retires report authority before stopping the optional tunnel. */
 async function stopOptionalTunnel(id: OptionalSurface, detail: string): Promise<void> {
   const current = optionalTunnels.get(id);
@@ -625,6 +694,7 @@ async function applySettingsImpl(): Promise<void> {
   // Rebuild the cards first: permissions may have changed which tools each surface would
   // advertise, and on a whole-origin transport that is all there is to do.
   setStatus({ surfaces: describeSurfaces() });
+  await applyGeminiTunnelImpl();
 
   if (config.tunnel.kind !== 'openai') {
     for (const id of optionalSurfaces) {
@@ -685,6 +755,7 @@ async function disconnectResources(endpointForceAfterMs?: number): Promise<void>
   }
   for (const { handle } of optionalTunnels.values()) await handle?.stop().catch(() => {});
   optionalTunnels.clear();
+  await stopGeminiTunnel();
   if (tunnel) {
     await tunnel.stop().catch(() => {});
     tunnel = null;

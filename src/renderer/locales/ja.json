@@ -176,6 +176,7 @@
   "Add Chat On Steroids Plugins to ChatGPT once, so ChatGPT can use your installed plugins.": "ChatGPT に Chat On Steroids Plugins を一度追加すると、ChatGPT がインストール済みのプラグインを使えるようになります。",
   "Add {0} to ChatGPT once, so ChatGPT can use your installed plugins.": "ChatGPT に {0} を一度追加すると、ChatGPT がインストール済みのプラグインを使えるようになります。",
   "Setup required · connect your plugins": "設定が必要です · プラグインを接続してください",
+  "Online · ChatGPT needs the new address": "オンライン · ChatGPT に新しいアドレスが必要です",
   "Set up plugins": "プラグインを設定",
   "After installing, updating or changing enabled plugins, refresh": "プラグインのインストール、更新、有効・無効の変更後は、ChatGPT で",
   "Chat On Steroids Plugins": "Chat On Steroids Plugins",

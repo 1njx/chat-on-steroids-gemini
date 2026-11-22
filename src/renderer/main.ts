@@ -3184,15 +3184,22 @@ api.onStateChanged(apply);
 initGemini(api, toast, {
   openSetupStep,
   addFolder: () => void addFolder(),
-  // Gemini needs https: the OpenAI tunnel only serves ChatGPT, so switch to Cloudflare, then connect.
+  // Gemini needs https and the OpenAI tunnel only serves ChatGPT: Gemini gets its own Cloudflare
+  // tunnel beside it. Switching the whole app to Cloudflare broke ChatGPT's tunnel-ID plugins.
   useHttpsTunnel: () => void (async () => {
     if (!state) return;
-    const kind = $<HTMLSelectElement>('tunnelKind');
-    if (state.config.tunnel.kind === 'openai') {
-      kind.value = 'cloudflared';
-      if (!(await save())) return;
-    }
+    if (state.config.tunnel.kind === 'openai' && !(await run(api.saveGeminiSettings({ httpsTunnel: true })))?.ok) return;
     if (state && !isRunning(state.status.state)) await toggleConnection();
+  })(),
+  stopHttpsTunnel: () => void run(api.saveGeminiSettings({ httpsTunnel: false })),
+  switchBackToOpenAi: () => void (async () => {
+    if (!state || !(await run(api.saveGeminiSettings({ httpsTunnel: true })))?.ok) return;
+    $<HTMLSelectElement>('tunnelKind').value = 'openai';
+    if (!(await save()) || !state) return;
+    // An ID that was never saved on this computer is asked for where Setup asks for it.
+    const missing = missingStep(state);
+    if (missing && missing.step !== 'folder') openSetupStep(missing.step);
+    else if (!isRunning(state.status.state)) await toggleConnection();
   })()
 });
 // Lines logged while the startup snapshot loads arrive live and are in the snapshot too. Hold

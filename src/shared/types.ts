@@ -581,6 +581,11 @@ export interface ConnectionStatus {
    */
   routeSettlingUntil?: number | null;
   /**
+   * Gemini's own Cloudflare quick tunnel, run beside the OpenAI Secure Tunnel so ChatGPT keeps
+   * its address. `url` is Core's https MCP address through it. Absent or null when none runs.
+   */
+  geminiTunnel?: { state: 'starting' | 'connected' | 'error'; detail: string; url: string | null } | null;
+  /**
    * One entry per model-facing connector, in setup order.
    *
    * This app publishes more than one MCP server — a required coding connector and an

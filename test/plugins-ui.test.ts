@@ -168,6 +168,21 @@ it('distinguishes a serving connector from evidence of ChatGPT contact', () => {
   expect(document.getElementById('pluginsSetupLink')!.textContent).toBe('Plugin setup');
 });
 
+it('says Not connected, not Setup required, when the app tunnel is not OpenAI\'s', () => {
+  const surface = { id: 'plugins', connectorName: 'Chat On Steroids Plugins', description: 'Plugins', localUrl: 'http://localhost/mcp', tools: [] };
+  applyPluginsState({ config: { tunnel: { kind: 'cloudflared', pluginsTunnelId: '' } }, status: { surfaces: [{ ...surface, state: 'off', lastRequestAt: null }] } } as unknown as AppState);
+  expect(document.getElementById('pluginsConnectionStatus')!.textContent).toBe('Not connected');
+  // A quick tunnel gets a new address at each start: online, but ChatGPT still has the old one.
+  applyPluginsState({ config: { tunnel: { kind: 'cloudflared', pluginsTunnelId: '' } }, status: { surfaces: [{ ...surface, state: 'live', lastRequestAt: null }] } } as unknown as AppState);
+  expect(document.getElementById('pluginsConnectionStatus')!.textContent).toBe('Online · ChatGPT needs the new address');
+  applyPluginsState({ config: { tunnel: { kind: 'cloudflared', pluginsTunnelId: '' } }, status: { surfaces: [{ ...surface, state: 'live', lastRequestAt: 1 }] } } as unknown as AppState);
+  expect(document.getElementById('pluginsConnectionStatus')!.textContent).toBe('Connected to ChatGPT');
+  applyPluginsState({ config: { tunnel: { kind: 'manual' } }, status: { surfaces: [] } } as unknown as AppState);
+  expect(document.getElementById('pluginsConnectionStatus')!.textContent).toBe('Not connected');
+  applyPluginsState({ config: { tunnel: { kind: 'openai', pluginsTunnelId: '' } }, status: { surfaces: [] } } as unknown as AppState);
+  expect(document.getElementById('pluginsConnectionStatus')!.textContent).toBe('Setup required · connect your plugins');
+});
+
 it('keeps saved plugin setup compact after restart even while its connector is offline', () => {
   applyPluginsState({ config: { tunnel: { kind: 'openai', pluginsTunnelId: 'saved-plugins' } }, status: { surfaces: [] } } as unknown as AppState);
   expect(document.querySelector('.plugin-connection')!.classList.contains('is-configured')).toBe(true);

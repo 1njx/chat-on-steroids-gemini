@@ -943,6 +943,66 @@ describe('connection surface state', () => {
     });
   });
 
+  it('runs Gemini its own Cloudflare tunnel beside the OpenAI one, never instead of it', async () => {
+    Object.assign(mocks.config.tunnel, { kind: 'openai', tunnelId: 'core-test', binaryPath: 'C:\\tools\\tunnel-client.exe' });
+    let wanted = true;
+    const connection = await import('../src/main/connection.js');
+    const { startTunnel } = await import('../src/main/tunnel/index.js');
+    connection.configureGeminiTunnel(() => wanted);
+    try {
+      await connection.connect();
+      const started = vi.mocked(startTunnel).mock.calls.map(([options]) => options);
+      expect(started.map(options => [options.label, options.settings.kind])).toEqual([['core', 'openai'], ['gemini', 'cloudflared']]);
+      const gemini = started.find(options => options.label === 'gemini')!;
+      // The whole local origin, with the shipped cloudflared: binaryPath names tunnel-client here.
+      expect(gemini.localUrl).toBe('http://127.0.0.1:45678/mcp/core/core-token');
+      expect(gemini.settings.binaryPath).toBe('');
+      expect(gemini.apiKey).toBeNull();
+      expect(connection.getStatus().geminiTunnel).toEqual({ state: 'connected', detail: 'Connected.', url: 'https://example.trycloudflare.com/mcp/core/core-token' });
+      expect(connection.getStatus().surfaces.find(s => s.id === 'core')?.state).toBe('live');
+
+      // A failed Gemini tunnel says so, leaves ChatGPT's alone, and starts again from scratch.
+      mocks.reports.get('gemini')!({ state: 'tunnel-unavailable', detail: 'cloudflared stopped (exit 1).' });
+      expect(connection.getStatus().geminiTunnel).toEqual({ state: 'error', detail: 'cloudflared stopped (exit 1).', url: null });
+      expect(connection.getStatus().state).toBe('connected');
+      await connection.applyGeminiTunnel();
+      expect(vi.mocked(startTunnel).mock.calls.filter(([options]) => options.label === 'gemini')).toHaveLength(2);
+      expect(mocks.tunnelStop).toHaveBeenCalledTimes(1);
+      expect(connection.getStatus().geminiTunnel?.state).toBe('connected');
+
+      // Turned off: only Gemini's tunnel stops.
+      wanted = false;
+      await connection.applyGeminiTunnel();
+      expect(connection.getStatus().geminiTunnel).toBeNull();
+      expect(mocks.tunnelStop).toHaveBeenCalledTimes(2);
+      expect(connection.getStatus().state).toBe('connected');
+    } finally {
+      await connection.disconnect();
+      Object.assign(mocks.config.tunnel, { tunnelId: '', binaryPath: '' });
+    }
+  });
+
+  it('starts no Gemini tunnel when the app tunnel already serves the whole origin, and stops it on disconnect', async () => {
+    const connection = await import('../src/main/connection.js');
+    const { startTunnel } = await import('../src/main/tunnel/index.js');
+    connection.configureGeminiTunnel(() => true);
+    await connection.connect();
+    expect(vi.mocked(startTunnel).mock.calls.map(([options]) => options.label)).toEqual(['core']);
+    expect(connection.getStatus().geminiTunnel ?? null).toBeNull();
+    await connection.disconnect();
+
+    Object.assign(mocks.config.tunnel, { kind: 'openai', tunnelId: 'core-test' });
+    try {
+      await connection.connect();
+      expect(connection.getStatus().geminiTunnel?.state).toBe('connected');
+      await connection.disconnect();
+      expect(connection.getStatus().geminiTunnel).toBeNull();
+      expect(mocks.tunnelStop).toHaveBeenCalledTimes(3);
+    } finally {
+      Object.assign(mocks.config.tunnel, { tunnelId: '' });
+    }
+  });
+
   it('reconnects Core when its transport method changes instead of mixing old and new methods', async () => {
     const connection = await import('../src/main/connection.js');
     await connection.connect();

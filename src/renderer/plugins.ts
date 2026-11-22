@@ -87,9 +87,12 @@ export function applyPluginsState(next: AppState): void {
   ui($('pluginsSetupLink'), 'textContent', () => configured ? t("Plugin setup") : t("Set up plugins"));
   ui($('pluginsRefreshName'), 'textContent', pluginsConnectorName);
   $('pluginsSetupLink').classList.toggle('btn-solid', !configured);
+  // Only the OpenAI path has a setup to finish here (a tunnel ID). Elsewhere the connector is just
+  // not connected, and a quick tunnel's new address after each start is what ChatGPT lacks.
+  const kind = next.config.tunnel.kind;
   ui(status, 'textContent', () => surface?.state === 'live'
-    ? contacted ? t("Connected to ChatGPT") : t("Plugin online · waiting for ChatGPT")
-    : configured ? t("Chat On Steroids Plugins offline") : t("Setup required · connect your plugins"));
+    ? contacted ? t("Connected to ChatGPT") : kind === 'cloudflared' ? t("Online · ChatGPT needs the new address") : t("Plugin online · waiting for ChatGPT")
+    : configured ? t("Chat On Steroids Plugins offline") : kind === 'openai' ? t("Setup required · connect your plugins") : t("Not connected"));
   status.dataset.live = String(surface?.state === 'live');
   ui(status, 'title', () => t(surface?.detail ?? ''));
   const setupStatus = document.getElementById('pluginSetupStatus');

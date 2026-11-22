@@ -88,7 +88,8 @@ function fillSelect(select: HTMLSelectElement, empty: string, options: Array<[st
 
 /** The Core MCP address Gemini can use: only an https one (Gemini refuses anything else). */
 function coreHttpsUrl(state: AppState): string | null {
-  const url = state.status.surfaces.find(s => s.id === 'core')?.publicUrl ?? null;
+  // On the OpenAI path Gemini has its own tunnel beside ChatGPT's (connection.ts).
+  const url = state.status.geminiTunnel?.url ?? state.status.surfaces.find(s => s.id === 'core')?.publicUrl ?? null;
   return url && url.startsWith('https://') ? url : null;
 }
 
@@ -96,8 +97,12 @@ function coreHttpsUrl(state: AppState): string | null {
 export interface GeminiSetupHooks {
   openSetupStep(step: 'browser' | 'access'): void;
   addFolder(): void;
-  /** Cloudflare quick tunnel if the method only serves ChatGPT, then connect if not connected. */
+  /** Gemini's own Cloudflare tunnel beside the OpenAI one, then connect if not connected. */
   useHttpsTunnel(): void;
+  /** Stops Gemini's own tunnel; ChatGPT's stays. */
+  stopHttpsTunnel(): void;
+  /** The whole app back on the OpenAI Secure Tunnel, with Gemini's own tunnel beside it. */
+  switchBackToOpenAi(): void;
 }
 
 export const GEMINI_SETUP_STEPS = ['browser', 'signin', 'folder', 'tunnel', 'add', 'try'] as const;
@@ -181,11 +186,20 @@ export function paintGeminiSetup(now = Date.now()): void {
   const kind = state.config.tunnel.kind;
   const connected = state.status.state === 'connected';
   const busy = state.status.state === 'starting-server' || state.status.state === 'connecting-tunnel' || state.status.state === 'disconnecting';
-  pill('geminiTunnelPill', done.has('tunnel') ? 'ok' : busy ? 'wait' : 'off', done.has('tunnel') ? 'Connected with an https address'
-    : busy ? 'Connecting…' : kind === 'manual' && connected ? 'Connected, but your own tunnel has no https address yet (Setup → Advanced)' : 'Not connected');
-  byId('geminiTunnelWarn').hidden = kind !== 'openai';
-  byId('geminiTunnelGoLabel').textContent = kind === 'openai' ? 'Switch to Cloudflare and connect' : 'Connect';
-  byId<HTMLButtonElement>('geminiTunnelGo').disabled = done.has('tunnel') || busy || (kind !== 'openai' && connected);
+  const side = state.status.geminiTunnel ?? null;
+  const wanted = status?.settings.httpsTunnel === true;
+  const sideBusy = kind === 'openai' && wanted && connected && side?.state !== 'error' && !side?.url;
+  const sideFailed = kind === 'openai' && side?.state === 'error';
+  pill('geminiTunnelPill', done.has('tunnel') ? 'ok' : busy || sideBusy ? 'wait' : sideFailed ? 'bad' : 'off', done.has('tunnel') ? 'Connected with an https address'
+    : busy ? 'Connecting…' : sideBusy ? "Starting Gemini's tunnel…" : sideFailed ? `Gemini's tunnel failed: ${side?.detail ?? ''}`
+    : kind === 'manual' && connected ? 'Connected, but your own tunnel has no https address yet (Setup → Advanced)' : 'Not connected');
+  byId('geminiTunnelBeside').hidden = kind !== 'openai';
+  byId('geminiTunnelWarn').hidden = kind !== 'cloudflared';
+  byId('geminiTunnelBack').hidden = kind !== 'cloudflared';
+  byId('geminiTunnelOff').hidden = kind !== 'openai' || !wanted;
+  byId('geminiTunnelGoLabel').textContent = kind === 'openai' && !wanted ? 'Start a tunnel for Gemini' : 'Connect';
+  byId<HTMLButtonElement>('geminiTunnelGo').disabled = done.has('tunnel') || busy || sideBusy
+    || (connected && (kind !== 'openai' || (wanted && !sideFailed)));
 
   const url = coreHttpsUrl(state);
   byId('geminiSetupUrl').textContent = url ?? 'Finish the Tunnel step first.';
@@ -222,7 +236,7 @@ export function paintGeminiConnector(state: AppState): void {
   paintGeminiSetup();
   const url = coreHttpsUrl(state);
   byId('geminiCoreUrl').textContent = url ?? (state.config.tunnel.kind === 'openai'
-    ? 'The OpenAI Secure Tunnel only serves ChatGPT. Use the Tunnel step of Set up Gemini above.'
+    ? 'The OpenAI Secure Tunnel only serves ChatGPT. Start a tunnel for Gemini in the Tunnel step of Set up Gemini above.'
     : 'Connect first: the Tunnel step of Set up Gemini above.');
   byId<HTMLButtonElement>('geminiCopyUrl').disabled = !url;
   byId('geminiCopyUrl').dataset.url = url ?? '';
@@ -314,6 +328,8 @@ function initGeminiSetup(api: AppApi, toast: (message: string) => void, hooks?: 
   byId('geminiAccess').addEventListener('click', () => hooks?.openSetupStep('access'));
   byId('geminiAddFolder').addEventListener('click', () => hooks?.addFolder());
   byId('geminiTunnelGo').addEventListener('click', () => hooks?.useHttpsTunnel());
+  byId('geminiTunnelOff').addEventListener('click', () => hooks?.stopHttpsTunnel());
+  byId('geminiTunnelBack').addEventListener('click', () => hooks?.switchBackToOpenAi());
   byId('geminiOpenGemini').addEventListener('click', () => { void api.openGemini(); });
   byId('geminiOpenGeminiDefault').addEventListener('click', () => { void api.openGemini({ external: true }); });
   byId('geminiSetupOpenApps').addEventListener('click', () => { void api.openGeminiConnectors(); });

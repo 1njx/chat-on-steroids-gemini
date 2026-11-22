@@ -39,7 +39,7 @@ export interface GeminiStatus {
   errors: string[];
   quotaLimited: boolean;
   catalog: { modes: GeminiMode[]; thinkingLevels: GeminiThinkingLevel[]; observedAt: number } | null;
-  settings: { connectorName: string | null; defaultModeId: string | null; defaultThinkingLevel: string | null };
+  settings: { connectorName: string | null; defaultModeId: string | null; defaultThinkingLevel: string | null; httpsTunnel?: boolean };
   commands: GeminiCommandSummary[];
   /** When an MCP request from Gemini's connector client (User-Agent "Google") last arrived this run. */
   connectorSeenAt?: number | null;

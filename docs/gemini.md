@@ -37,7 +37,9 @@ Gemini needs an **https** MCP address:
   and add it again after each start.
 - **Your own HTTPS tunnel** (for example a named Cloudflare tunnel) plus **General → For developers
   → Keep plugin URLs across restarts**: a lasting address. Recommended.
-- The **OpenAI Secure MCP Tunnel only serves ChatGPT.** Gemini cannot use it.
+- The **OpenAI Secure MCP Tunnel only serves ChatGPT.** Gemini cannot use it. With it, Gemini gets
+  its own Cloudflare quick tunnel that runs next to it (Set up Gemini, Tunnel step), so ChatGPT
+  keeps working on the OpenAI tunnel.
 
 ## Setup
 
@@ -52,10 +54,14 @@ each step turns green by itself when the app sees it done.
    Gemini page reports a signed-in account.
 3. **Folder** — "Add folder" shares a folder (the same folders and access as ChatGPT). Done
    when at least one folder is shared.
-4. **Tunnel** — Gemini needs an https address. "Switch to Cloudflare and connect" changes the
-   method from the OpenAI Secure Tunnel (ChatGPT only) to a Cloudflare quick tunnel and
-   connects. Done when connected with an https Core address. Switching stops ChatGPT plugins
-   that use a tunnel ID until you switch back in Setup → Advanced.
+4. **Tunnel** — Gemini needs an https address. On the OpenAI Secure Tunnel (ChatGPT only),
+   "Start a tunnel for Gemini" starts a Cloudflare quick tunnel for Gemini next to it and
+   connects; ChatGPT stays on the OpenAI tunnel. "Turn off Gemini's tunnel" stops only that one.
+   The setting is kept, so the Gemini tunnel starts again with every connection. On a Cloudflare
+   or own tunnel, "Connect" is enough. If the whole app was switched to Cloudflare (what 2.2.0 to
+   2.2.3 did here), "Switch ChatGPT back to the OpenAI tunnel" switches back and keeps Gemini's
+   own tunnel; when no tunnel ID is saved, Setup asks for it. Done when connected with an https
+   Core address.
 5. **Add app** — "Copy URL" copies the Core MCP address (treat it like a password), "Open
    custom apps" opens Gemini's connectors page. Pictures show: **+ Custom** → paste the
    address → **Next** → tick Google's notice → **Connect**; then **Connect** again under

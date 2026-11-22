@@ -29,7 +29,7 @@ import { safeExternalLink } from '../shared/external-link.js';
 import { wakeBrowserWork } from './browser-wake.js';
 import { refreshKeepAwake } from './keep-awake.js';
 import { getChatModels, startChatModelDiscovery, configureChatModelDiscovery } from './chat-models.js';
-import { cancelGeminiCommand, configureGemini, geminiStatus, queueGeminiSend, requestGeminiModes, saveGeminiSettings, stopGemini } from './gemini.js';
+import { cancelGeminiCommand, configureGemini, geminiStatus, geminiWantsHttpsTunnel, queueGeminiSend, requestGeminiModes, saveGeminiSettings, stopGemini } from './gemini.js';
 import { releaseSessionFinish, requestSessionFinishGoal } from './session/finish.js';
 import { GOAL_MARKER_INSTRUCTION } from '../shared/goal-templates.js';
 import { validateInputImages } from './session/input-images.js';
@@ -89,7 +89,7 @@ import {
 import { MAX_GOAL_SYSTEM_PROMPT_CHARS } from '../shared/goal.js';
 import { DEFAULT_HANDOFF_LENGTH, HANDOFF_LENGTHS, MAX_HANDOFF_PROMPT_CHARS } from '../shared/handoff.js';
 import { CUSTOM_CONTINUE_MAX_CHARS } from '../shared/recovery.js';
-import { applySettings, connect, disconnect, getStatus, onStatusChange, rememberRunningSurfaceTokens } from './connection.js';
+import { applyGeminiTunnel, applySettings, configureGeminiTunnel, connect, disconnect, getStatus, onStatusChange, rememberRunningSurfaceTokens } from './connection.js';
 import { effectiveCapabilities, getConfig, updateConfig, MAX_MCP_INSTRUCTIONS_CHARS, browserBridgePortSchema, settingsRecovered } from './config.js';
 import { UI_LANGUAGES } from '../shared/ui-language.js';
 import { CHATGPT_PROJECT_ID, PROJECT_COLORS } from '../shared/projects.js';
@@ -2191,7 +2191,11 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
   handle('gemini:requestModes', async () => { void startBridge().catch(() => undefined); return requestGeminiModes(); });
   handle('gemini:stop', async (payload) => stopGemini(z.object({ conversation: z.string().max(80) }).parse(payload).conversation));
   handle('gemini:cancel', async (payload) => cancelGeminiCommand(z.object({ id: z.string().uuid() }).parse(payload).id));
-  handle('gemini:settings', async (payload) => saveGeminiSettings(payload));
+  handle('gemini:settings', async (payload) => {
+    const saved = saveGeminiSettings(payload);
+    if (saved.ok && payload && typeof payload === 'object' && 'httpsTunnel' in payload) await applyGeminiTunnel();
+    return saved;
+  });
   // Gemini works only where the extension is, and Google may refuse sign-in in the built-in
   // browser: so never there. "Default browser" asks for the system's own browser outright.
   const openGeminiPage = async (url: string, payload: unknown): Promise<boolean> => {
@@ -2893,6 +2897,7 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
     geminiPush.unref?.();
   };
   configureGemini({ changed: pushGeminiSoon });
+  configureGeminiTunnel(geminiWantsHttpsTunnel);
   configureChatModelDiscovery({ changed: () => push('chatModels:changed', getChatModels()), wake: async (nonce, allowOpen) => {
     if (!await startBridge()) throw new Error('The browser bridge could not start');
     if (allowOpen) {

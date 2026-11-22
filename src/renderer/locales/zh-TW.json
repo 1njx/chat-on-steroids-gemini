@@ -349,6 +349,7 @@
   "Add Chat On Steroids Plugins to ChatGPT once, so ChatGPT can use your installed plugins.": "在 ChatGPT 中新增一次 Chat On Steroids Plugins，ChatGPT 就能使用你已安裝的外掛。",
   "Add {0} to ChatGPT once, so ChatGPT can use your installed plugins.": "在 ChatGPT 中新增一次 {0}，ChatGPT 就能使用你已安裝的外掛。",
   "Setup required · connect your plugins": "需要設定 · 請連線外掛",
+  "Online · ChatGPT needs the new address": "線上 · ChatGPT 需要新位址",
   "Set up plugins": "設定外掛",
   "After installing, updating or changing enabled plugins, refresh": "安裝、更新或啟用／停用外掛後，請在 ChatGPT 中重新整理",
   "Chat On Steroids Plugins": "Chat On Steroids Plugins",

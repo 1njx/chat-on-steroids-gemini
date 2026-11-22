@@ -78,13 +78,15 @@ const settingsSchema = z.object({
   connectorName: z.string().trim().min(1).max(80).nullable().catch(null),
   defaultModeId: z.string().max(80).regex(/^[A-Za-z0-9_-]+$/).nullable().catch(null),
   defaultThinkingLevel: z.string().max(20).nullable().catch(null),
+  // A Cloudflare quick tunnel for Gemini beside the OpenAI one (connection.ts), so ChatGPT keeps its tunnel.
+  httpsTunnel: z.boolean().catch(false),
 });
 export type GeminiSettings = z.infer<typeof settingsSchema>;
 
 const pages = new Map<number, { snapshot: Snapshot; seenAt: number }>();
 let commands: Command[] = [];
 let catalog: { modes: GeminiMode[]; thinkingLevels: GeminiThinkingLevel[]; observedAt: number } | null = null;
-let settings: GeminiSettings = { connectorName: null, defaultModeId: null, defaultThinkingLevel: null };
+let settings: GeminiSettings = { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, httpsTunnel: false };
 let changed = (): void => {};
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -395,6 +397,7 @@ export function saveGeminiSettings(patch: unknown): { ok: boolean; error?: strin
     connectorName: z.string().trim().min(1).max(80).nullable(),
     defaultModeId: z.string().max(80).regex(/^[A-Za-z0-9_-]+$/).nullable(),
     defaultThinkingLevel: z.string().max(20).nullable(),
+    httpsTunnel: z.boolean(),
   }).partial().strict().safeParse(patch);
   if (!parsed.success) return { ok: false, error: 'invalid-settings' };
   settings = { ...settings, ...Object.fromEntries(Object.entries(parsed.data).filter(([, v]) => v !== undefined)) };
@@ -402,6 +405,9 @@ export function saveGeminiSettings(patch: unknown): { ok: boolean; error?: strin
   changed();
   return { ok: true };
 }
+
+/** Whether the person asked for Gemini's own https tunnel next to the OpenAI one. */
+export function geminiWantsHttpsTunnel(): boolean { return settings.httpsTunnel; }
 
 /** Pages the extension should open: only when work waits and no Gemini page is reporting at all. */
 export function geminiPagesToOpen(now = Date.now()): string[] {
@@ -436,7 +442,7 @@ export function geminiStatus(now = Date.now()): GeminiStatus {
 
 export function resetGeminiForTests(): void {
   pages.clear(); commands = []; catalog = null;
-  settings = { connectorName: null, defaultModeId: null, defaultThinkingLevel: null };
+  settings = { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, httpsTunnel: false };
   changed = () => {};
   if (sweepTimer) { clearInterval(sweepTimer); sweepTimer = null; }
 }

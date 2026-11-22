@@ -9,6 +9,21 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.4] — Gemini edition: Gemini's tunnel no longer replaces ChatGPT's
+
+### Fixed
+
+- **Setting up Gemini no longer disconnects ChatGPT.** The Tunnel step of Set up Gemini switched
+  the whole app from the OpenAI Secure Tunnel to a Cloudflare quick tunnel, so ChatGPT plugins
+  that use a tunnel ID stopped working. Gemini now gets its own Cloudflare quick tunnel that
+  runs next to the OpenAI tunnel ("Start a tunnel for Gemini"), and "Turn off Gemini's tunnel"
+  stops only that one. An app already switched to Cloudflare shows what that costs ChatGPT and
+  offers "Switch ChatGPT back to the OpenAI tunnel".
+- **Plugins page on a Cloudflare or own tunnel.** It said "Setup required" although there is no
+  tunnel ID to set up there. It now says "Not connected", or "Online · ChatGPT needs the new
+  address" while a quick tunnel runs on an address ChatGPT has not used yet.
+- Switching the tunnel kind keeps the saved tunnel IDs (now covered by a test).
+
 ## [2.2.3] — Gemini edition: pick Gemini models in the chat composer
 
 ### Added

@@ -1093,8 +1093,13 @@
                     <h3>Turn on an https address</h3>
                     <p class="step-lead">Gemini reaches this app over the internet, so it needs an https address. The free Cloudflare tunnel makes one in one click, without an account.</p>
                     <p class="status-pill" id="geminiTunnelPill" data-tone="off" role="status"></p>
-                    <p class="hint is-warn" id="geminiTunnelWarn" hidden>The app uses the OpenAI Secure Tunnel now, and it only serves ChatGPT. Switching to Cloudflare stops your ChatGPT plugins that use a tunnel ID until you switch back in Setup → Advanced.</p>
-                    <div class="step-actions"><button class="btn btn-solid" id="geminiTunnelGo" type="button"><i class="ico ph ph-plug" aria-hidden="true"></i><span id="geminiTunnelGoLabel">Use Cloudflare tunnel</span></button></div>
+                    <p class="hint" id="geminiTunnelBeside" hidden>ChatGPT keeps the OpenAI Secure Tunnel. Gemini gets its own Cloudflare tunnel, which runs next to it.</p>
+                    <p class="hint is-warn" id="geminiTunnelWarn" hidden>The whole app uses a Cloudflare tunnel now. ChatGPT plugins you set up with a tunnel ID only work on the OpenAI Secure Tunnel. Switch back to it: Gemini then gets its own Cloudflare tunnel next to it.</p>
+                    <div class="step-actions">
+                      <button class="btn btn-solid" id="geminiTunnelGo" type="button"><i class="ico ph ph-plug" aria-hidden="true"></i><span id="geminiTunnelGoLabel">Use Cloudflare tunnel</span></button>
+                      <button class="btn" id="geminiTunnelBack" type="button" hidden>Switch ChatGPT back to the OpenAI tunnel</button>
+                      <button class="btn" id="geminiTunnelOff" type="button" hidden>Turn off Gemini's tunnel</button>
+                    </div>
                     <p class="hint">A Cloudflare quick tunnel gets a new address every time it starts. When that happens, add the app in Gemini again with the new address (next step). For an address that lasts, run your own named tunnel and choose “Local only” in Setup → Advanced.</p>
                   </div>
                 </li>

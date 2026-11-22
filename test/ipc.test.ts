@@ -1405,6 +1405,32 @@ describe('settings writes from more than one UI', () => {
     expect(getConfig().tunnel.pluginsTunnelId).toBe('');
   });
 
+  it('keeps all three tunnel IDs when the tunnel kind switches to Cloudflare and back', async () => {
+    const base = defaultConfig(); await saveConfig(base);
+    const ids = { tunnelId: `tunnel_${'1'.repeat(32)}`, desktopTunnelId: `tunnel_${'2'.repeat(32)}`, pluginsTunnelId: `tunnel_${'3'.repeat(32)}` };
+    expect((await save({ ...base, tunnel: { ...base.tunnel, ...ids } }, base)).ok).toBe(true);
+    // What Setup sends for a kind change: the same IDs from its fields, only the kind changed.
+    for (const kind of ['cloudflared', 'manual', 'openai'] as const) {
+      const current = getConfig();
+      expect((await save({ ...current, tunnel: { ...current.tunnel, kind } }, current)).ok).toBe(true);
+      expect(getConfig().tunnel).toMatchObject({ kind, ...ids });
+      expect(JSON.parse(await fs.readFile(path.join(dir, 'config.json'), 'utf8')).tunnel).toMatchObject({ kind, ...ids });
+    }
+  });
+
+  it('saves the Gemini tunnel switch without touching the app tunnel', async () => {
+    const base = defaultConfig(); await saveConfig(base);
+    const { geminiStatus } = await import('../src/main/gemini.js');
+    try {
+      expect(await handlers.get('gemini:settings')!(null, { httpsTunnel: true })).toEqual({ ok: true, data: { ok: true } });
+      expect(geminiStatus().settings.httpsTunnel).toBe(true);
+      expect(getConfig().tunnel.kind).toBe('openai');
+      expect(await handlers.get('gemini:settings')!(null, { httpsTunnel: 'yes' })).toEqual({ ok: true, data: { ok: false, error: 'invalid-settings' } });
+    } finally {
+      await handlers.get('gemini:settings')!(null, { httpsTunnel: false });
+    }
+  });
+
   it('preserves a newer Plugins tunnel across stale and legacy renderer saves', async () => {
     const base = defaultConfig(); await saveConfig(base);
     const tunnelId = `tunnel_${'b'.repeat(32)}`;

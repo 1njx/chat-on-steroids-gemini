@@ -77,7 +77,7 @@ describe('Settings → Gemini', () => {
     const { initGemini, paintGeminiConnector } = await import('../src/renderer/gemini.js');
     const doc = dom.window.document;
     let push: (s: GeminiStatus) => void = () => undefined;
-    const hooks = { openSetupStep: vi.fn(), addFolder: vi.fn(), useHttpsTunnel: vi.fn() };
+    const hooks = { openSetupStep: vi.fn(), addFolder: vi.fn(), useHttpsTunnel: vi.fn(), stopHttpsTunnel: vi.fn(), switchBackToOpenAi: vi.fn() };
     const api = {
       getGeminiStatus: () => new Promise(() => undefined), onGeminiChanged: (fn: typeof push) => { push = fn; },
       writeClipboard: async () => ({ ok: true }), openGemini: vi.fn(), openGeminiConnectors: vi.fn(),
@@ -90,8 +90,10 @@ describe('Settings → Gemini', () => {
     push(status({ pages: 0, signIn: null }));
     expect(open()).toBe('browser');
     expect(progress()).toBe('0 of 6 steps done');
-    expect(doc.getElementById('geminiTunnelWarn')!.hidden).toBe(false);
-    expect(doc.getElementById('geminiTunnelGoLabel')!.textContent).toBe('Switch to Cloudflare and connect');
+    // On the OpenAI tunnel Gemini gets a tunnel of its own; nothing says ChatGPT will stop.
+    expect(doc.getElementById('geminiTunnelWarn')!.hidden).toBe(true);
+    expect(doc.getElementById('geminiTunnelBeside')!.hidden).toBe(false);
+    expect(doc.getElementById('geminiTunnelGoLabel')!.textContent).toBe('Start a tunnel for Gemini');
     doc.getElementById('geminiBrowserSetup')!.click();
     expect(hooks.openSetupStep).toHaveBeenCalledWith('browser');
 
@@ -123,13 +125,53 @@ describe('Settings → Gemini', () => {
     expect(doc.getElementById('geminiReadyTitle')!.textContent).toBe('Gemini is set up');
     expect(doc.querySelectorAll('#geminiReadyChecks .is-passed')).toHaveLength(6);
   });
+
+  it('gives Gemini its own tunnel beside the OpenAI one, and offers the way back from Cloudflare', async () => {
+    const { initGemini, paintGeminiConnector } = await import('../src/renderer/gemini.js');
+    const doc = dom.window.document;
+    let push: (s: GeminiStatus) => void = () => undefined;
+    const hooks = { openSetupStep: vi.fn(), addFolder: vi.fn(), useHttpsTunnel: vi.fn(), stopHttpsTunnel: vi.fn(), switchBackToOpenAi: vi.fn() };
+    const api = { getGeminiStatus: () => new Promise(() => undefined), onGeminiChanged: (fn: typeof push) => { push = fn; },
+      writeClipboard: async () => ({ ok: true }), openGemini: vi.fn(), openGeminiConnectors: vi.fn() };
+    initGemini(api as never, () => undefined, hooks);
+    const wanted = status({ settings: { ...status().settings, httpsTunnel: true } });
+    const pill = () => doc.getElementById('geminiTunnelPill')!.textContent;
+
+    // Connected on OpenAI, Gemini's tunnel still starting: ChatGPT's own address is never offered.
+    paintGeminiConnector(app({ connected: true, url: 'tunnel_ok', side: { state: 'starting', detail: '', url: null } }));
+    push(wanted);
+    expect(pill()).toBe("Starting Gemini's tunnel…");
+    expect(doc.getElementById('geminiCoreUrl')!.textContent).toContain('only serves ChatGPT');
+    expect(doc.getElementById('geminiTunnelOff')!.hidden).toBe(false);
+    expect(doc.getElementById('geminiTunnelBack')!.hidden).toBe(true);
+
+    paintGeminiConnector(app({ connected: true, side: { state: 'connected', detail: '', url: 'https://g.trycloudflare.com/mcp/core/t' } }));
+    expect(pill()).toBe('Connected with an https address');
+    expect(doc.getElementById('geminiCoreUrl')!.textContent).toBe('https://g.trycloudflare.com/mcp/core/t');
+    doc.getElementById('geminiTunnelOff')!.click();
+    expect(hooks.stopHttpsTunnel).toHaveBeenCalledOnce();
+
+    // A failed Gemini tunnel says why and can be started again.
+    paintGeminiConnector(app({ connected: true, side: { state: 'error', detail: 'cloudflared was not found.', url: null } }));
+    expect(pill()).toBe("Gemini's tunnel failed: cloudflared was not found.");
+    expect((doc.getElementById('geminiTunnelGo') as HTMLButtonElement).disabled).toBe(false);
+
+    // The whole app on Cloudflare (what 2.2.x's wizard did): say what it costs ChatGPT, offer the way back.
+    paintGeminiConnector(app({ kind: 'cloudflared', url: 'https://x.trycloudflare.com/mcp/core/t' }));
+    expect(doc.getElementById('geminiTunnelWarn')!.hidden).toBe(false);
+    expect(doc.getElementById('geminiTunnelBack')!.hidden).toBe(false);
+    expect(doc.getElementById('geminiTunnelOff')!.hidden).toBe(true);
+    doc.getElementById('geminiTunnelBack')!.click();
+    expect(hooks.switchBackToOpenAi).toHaveBeenCalledOnce();
+  });
 });
 
-function app(over: { present?: boolean; roots?: number; kind?: string; url?: string } = {}): never {
+function app(over: { present?: boolean; roots?: number; kind?: string; url?: string; connected?: boolean;
+  side?: { state: 'starting' | 'connected' | 'error'; detail: string; url: string | null } } = {}): never {
   const url = over.url ?? null;
   return {
     bridge: { present: !!over.present, paired: !!over.present },
     config: { roots: Array.from({ length: over.roots ?? 0 }, (_, i) => ({ path: `C:/w${i}` })), tunnel: { kind: over.kind ?? 'openai' } },
-    status: { state: url ? 'connected' : 'disconnected', surfaces: [{ id: 'core', publicUrl: url }] },
+    status: { state: url || over.connected ? 'connected' : 'disconnected', surfaces: [{ id: 'core', publicUrl: url }], geminiTunnel: over.side ?? null },
   } as never;
 }
