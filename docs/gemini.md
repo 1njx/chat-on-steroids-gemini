@@ -68,11 +68,13 @@ each step turns green by itself when the app sees it done.
    own tunnel; when no tunnel ID is saved, Setup asks for it. Done when connected with an https
    Core address. "Keep the same address" runs your own Cloudflare tunnel instead of a quick one.
 5. **Add app** — "Add it in Gemini for me" uses the extension on your signed-in Gemini page. The
-   step says first what it will click: it opens custom apps and, when **Chat On Steroids Core** is
-   already there, reads its address. Same address: nothing to do. Old address: Gemini cannot edit
-   one, so it chooses **More options → Delete** (and Gemini's confirmation, if it asks). Then it
-   opens **Create custom app**, fills in the address, clicks **Next**, ticks Google's notice and
-   clicks **Connect**. It stores no Google password or cookie. A page it does not recognize gets nothing filled in, and
+   step says first what it will click: it opens custom apps and finds every app already there
+   named **Chat On Steroids Core** (any case, `-` or `_` for spaces, or a duplicate's "(2)"), and
+   reads each one's address. One with this address is kept and nothing is added. Each with an old
+   address, and each further copy, is deleted first: Gemini cannot edit an address, so it chooses
+   **More options → Delete** (and Gemini's confirmation, if it asks). With none kept it then opens
+   **Create custom app**, fills in the address, clicks **Next**, ticks Google's notice and clicks
+   **Connect**. It stores no Google password or cookie. A page it does not recognize gets nothing filled in, and
    the step says to add the app by hand. The step remembers a fingerprint of the address Gemini
    last got (copied, filled in or read there), never the address, so after a restart it says
    "Your Gemini custom app has an old address. Update it to …" instead of "not added".

@@ -7,8 +7,9 @@
  *   · send: select a mode/thinking level, optionally @-mention a connected app, send one prompt,
  *     then wait for Gemini's answer and report it
  *   · stop: press Stop on the running answer
- *   · fill-app: on the custom apps page, read the existing app's address or fill the new-app form,
- *     then highlight the button for the person to press. It never presses Next, Connect or Delete.
+ *   · fill-app: on the custom apps page, find every app already there under the connector's name,
+ *     delete each with an old address and each duplicate, then add the app with the new address
+ *     (Next, Google's notice, Connect), as the app's "Add it in Gemini for me" button says.
  *
  * The page never executes a local tool; Gemini calls CoS's MCP connector itself. Every result is
  * reported as observed: a send is "sent" only once Gemini accepted it, and "completed" only once
@@ -111,9 +112,9 @@
   }
 
   /**
-   * Fill in Gemini's custom app form with the app's address. Outcomes: 'current' (Gemini already
-   * has this address), 'old' (it has another; Gemini cannot edit one, so the person deletes it),
-   * 'filled' (the form holds the address; the person clicks Next). An unrecognized page fills nothing.
+   * Add the app in Gemini with this address. Outcomes: 'current' (Gemini already has this address;
+   * any duplicates and old addresses were deleted), 'connected' (old ones deleted, the new one added
+   * and connected). An unrecognized page fills nothing.
    */
   async function fillApp(command) {
     if (dom.signInState() === 'signed-out') return result(command, { stage: 'failed', error: 'signed-out', signedOut: true });
@@ -125,17 +126,25 @@
     }
     if (!(await dom.waitFor(dom.visibleCreate))) return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
     const name = command.connector || 'Chat On Steroids Core';
-    if (dom.customAppCard(name)) {
-      const existing = await dom.readCustomAppUrl(name);
+    // Every app already there under this name is found first. One with this address is kept; each
+    // with an old address, and each duplicate, is deleted before anything is added (Gemini cannot
+    // edit an address), as the app's button said before the person pressed it.
+    let kept = null;
+    for (let index = 0, rounds = 0; rounds < 10; rounds += 1) {
+      const cards = dom.customAppCards(name);
+      if (index >= cards.length) break;
+      const existing = await dom.readCustomAppUrl(cards[index]);
       if (!existing) { dom.backToList(); return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' }); }
-      if (existing === command.url) {
+      if (existing === command.url && !kept) {
+        kept = existing;
+        index += 1;
         dom.backToList();
-        return result(command, { stage: 'completed', outcome: 'current', existingUrl: existing });
+        if (!(await dom.waitFor(dom.visibleCreate))) return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
+        continue;
       }
-      // Gemini cannot edit an address: the app with the old one is deleted, then added again, as the
-      // app's button said before the person pressed it.
-      if (!(await dom.deleteCustomApp(name))) return result(command, { stage: 'failed', error: 'delete-failed' });
+      if (!(await dom.deleteCustomApp(name, 8000, cards.length))) return result(command, { stage: 'failed', error: 'delete-failed' });
     }
+    if (kept) return result(command, { stage: 'completed', outcome: 'current', existingUrl: kept });
     const next = await dom.fillCreateForm(command.url);
     if (!next) return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
     next.click();

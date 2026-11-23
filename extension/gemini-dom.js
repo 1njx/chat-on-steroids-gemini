@@ -367,10 +367,19 @@ var CLF_GEMINI_DOM = (() => {
   }
   const visibleCreate = () => [...document.querySelectorAll(CREATE_APP)].find(visible) || null;
 
-  /** The listed custom app with this exact name, or null. */
-  function customAppCard(name) {
+  /** An app name compared loosely: any case, "-"/"_" as spaces, and no " (2)" a duplicate may get. */
+  const appName = name => String(name || '').toLowerCase().replace(/[-_\s]+/g, ' ').replace(/\s*\(\d+\)$/, '').trim();
+
+  /** Every listed custom app with this name, first to last (an earlier add can leave duplicates). */
+  function customAppCards(name) {
+    const wanted = appName(name);
     return safe(() => [...document.querySelectorAll('button.card-primary-action')]
-      .find(b => (b.getAttribute('aria-label') || '').trim() === name) || null, null);
+      .filter(b => appName(b.getAttribute('aria-label')) === wanted), []);
+  }
+
+  /** The first listed custom app with this name, or null. */
+  function customAppCard(name) {
+    return customAppCards(name)[0] || null;
   }
 
   /** The "MCP URL" shown on the open app's details page, or null. */
@@ -382,9 +391,9 @@ var CLF_GEMINI_DOM = (() => {
     }, null);
   }
 
-  /** Opens the named app's details page and reads its address. Null when unreadable. */
-  async function readCustomAppUrl(name, ms = 6000) {
-    const card = customAppCard(name);
+  /** Opens an app's details page (by name: the first such app, or the given card) and reads its address. Null when unreadable. */
+  async function readCustomAppUrl(target, ms = 6000) {
+    const card = typeof target === 'string' ? customAppCard(target) : target;
     if (!card) return null;
     card.click();
     return waitFor(detailsUrl, ms);
@@ -420,10 +429,10 @@ var CLF_GEMINI_DOM = (() => {
 
   /**
    * Deletes the open app from its details page: More options → Delete (observed 2026-11-22), then
-   * the confirmation's Delete if Gemini asks (its shape was never seen live). True once the
-   * app's card is gone from the list.
+   * the confirmation's Delete if Gemini asks (its shape was never seen live). True once the list
+   * shows fewer apps with this name than `before` (one card, by default).
    */
-  async function deleteCustomApp(name, ms = 8000) {
+  async function deleteCustomApp(name, ms = 8000, before = 1) {
     const more = detailsMoreOptions();
     if (!more) return false;
     more.click();
@@ -435,7 +444,7 @@ var CLF_GEMINI_DOM = (() => {
     if (confirm) confirm.click();
     await sleep(800);
     if (!onCustomApps() || !visibleCreate()) backToList();
-    return !!(await waitFor(() => visibleCreate() && !customAppCard(name) ? true : null, ms));
+    return !!(await waitFor(() => visibleCreate() && customAppCards(name).length < before ? true : null, ms));
   }
 
   /** The step after Next: "Connect this MCP server", with Google's notice to tick and Connect. */
@@ -494,6 +503,6 @@ var CLF_GEMINI_DOM = (() => {
     selectThinkingLevel, insertPrompt, composerText, mentionOptions, mentionConnector, appendPrompt,
     send, stopGeneration, turns, errors,
     localized, snapshot, parseOption,
-    onCustomApps, customAppCard, readCustomAppUrl, backToList, detailsMoreOptions, fillCreateForm, highlight, waitFor, visibleCreate, deleteCustomApp, connectStep,
+    onCustomApps, customAppCard, customAppCards, readCustomAppUrl, backToList, detailsMoreOptions, fillCreateForm, highlight, waitFor, visibleCreate, deleteCustomApp, connectStep,
   };
 })();

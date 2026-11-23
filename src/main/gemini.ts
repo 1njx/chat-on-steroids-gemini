@@ -424,8 +424,9 @@ export function stopGemini(conversation: string): { ok: boolean; error?: string 
 }
 
 /**
- * Ask a signed-in Gemini page to fill in the custom app form with this address. The page fills in
- * and highlights; it never presses Next, Connect or Delete (gemini-content.js).
+ * Ask a signed-in Gemini page to add the custom app with this address: it deletes every app already
+ * there under the connector's name with an old address (and duplicates), then adds and connects
+ * the new one (gemini-content.js).
  */
 export function queueGeminiFill(url: unknown): { ok: true; id: string } | { ok: false; error: string } {
   const parsed = HTTPS_URL.safeParse(url);

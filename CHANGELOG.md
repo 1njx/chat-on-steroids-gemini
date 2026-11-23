@@ -9,6 +9,16 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.11] — Gemini edition: old Core apps deleted before adding
+
+### Fixed
+
+- **"Add it in Gemini for me" finds every Core app already in Gemini.** It deletes each one with
+  an old address, and any duplicate, before it adds the new one; one with this address is kept and
+  nothing is added. Before, only the first app with exactly that name was checked, so duplicates
+  stayed and a second copy made the delete fail. Names now match in any case, with `-` or `_` for
+  spaces and a duplicate's "(2)".
+
 ## [2.2.10] — Gemini edition: Gemini tabs kept awake in the background
 
 ### Fixed

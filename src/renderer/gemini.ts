@@ -266,7 +266,7 @@ export function fillPill(fill: GeminiCommandSummary, url: string | null): ['ok' 
   if (fill.stage !== 'completed') return ['off', STAGES[fill.stage]];
   if (fill.outcome === 'connected') return ['ok', 'Added in Gemini and connected. Mention the app in a Gemini chat to use it.'];
   if (fill.outcome === 'filled') return ['ok', 'Filled in. In Gemini, check the address, click the highlighted Next, tick Google\'s notice and Connect, then Connect once more to save.'];
-  if (fill.outcome === 'current') return ['ok', 'Gemini already has this app with this address. Nothing to change.'];
+  if (fill.outcome === 'current') return ['ok', 'Gemini already has this app with this address. Old copies, if there were any, are deleted.'];
   if (fill.outcome === 'old') return ['bad', `Gemini has the app with an old address and cannot edit it. In Gemini, open the highlighted More options and choose Delete, then press Add it in Gemini for me again${url ? ` to add ${url}` : ''}.`];
   return ['off', 'Done.'];
 }
