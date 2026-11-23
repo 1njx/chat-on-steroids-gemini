@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extension_name__",
-  "version": "2.2.9",
+  "version": "2.2.10",
   "description": "__MSG_extension_description__",
   "default_locale": "en",
   "minimum_chrome_version": "125",
@@ -98,6 +98,16 @@
         "gemini-content.js"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://gemini.google.com/*"
+      ],
+      "js": [
+        "gemini-awake.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start"
     }
   ],
   "icons": {

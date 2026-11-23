@@ -77,6 +77,7 @@ for (const relative of [
   'extension/content.js',
   'extension/gemini-dom.js',
   'extension/gemini-content.js',
+  'extension/gemini-awake.js',
   'extension/fiber.js',
   'extension/overlay.css',
   'extension/popup.html',

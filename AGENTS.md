@@ -2898,6 +2898,7 @@ browser; the user must use the profile containing the companion. There is no aut
 | `chatgpt-dom.js` | All provider selectors and DOM-shape assumptions, composer/upload/model/turn primitives. |
 | `fiber.js` | Bounded MAIN-world React evidence: messages, request ids, generation/model state and installed connector declarations. |
 | `usage.js` | Bounded account-usage and exact live stream request-origin observation. |
+| `gemini-awake.js` | Gemini only, MAIN world at document_start: gives idle callbacks a 1 s timeout and reports the page visible and focused, so a Gemini tab in a covered window still draws its model picker. |
 | `content.js` | Isolated-world recording, exact turn/navigation ownership, input/command execution, native-page companion UI. |
 | `background.js` | MV3 journal and HTTP transport, tab/document registry, command elections and durable ACK custody. |
 | `popup.*`, `overlay.css` | Pair/reconnect status and extension-owned presentation; no local tool authority. |

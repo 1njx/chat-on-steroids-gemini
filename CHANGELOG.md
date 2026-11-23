@@ -9,6 +9,16 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.10] — Gemini edition: Gemini tabs kept awake in the background
+
+### Fixed
+
+- **Gemini's models read from a tab in a covered or background window.** Gemini puts drawing its
+  model picker off until the browser is idle, which a covered window may never be, so the picker
+  never appeared there. The extension now keeps Gemini tabs awake, like the Focusly extension: that
+  idle work gets a 1-second timeout, and the page is told it is visible and focused. Tested live:
+  the covered tab drew the picker within 4.5 seconds, 3 times out of 3 (before: none after 27 s).
+
 ## [2.2.9] — Gemini edition: Gemini's model picker read correctly
 
 ### Fixed

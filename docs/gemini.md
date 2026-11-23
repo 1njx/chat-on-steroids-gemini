@@ -121,9 +121,13 @@ Refresh in Settings → Gemini reads them at once; the composer menu's reload bu
 without opening a Gemini page and says "Open Gemini in Chrome to read its models" when none is
 open. A failed read is shown beside Refresh, and no automatic read follows for 10 minutes.
 
-Gemini draws its picker (the model name, e.g. "Neon ⌄", beside the microphone) only once its tab
-has been on screen: a Gemini tab in a covered or background window has the composer but no picker,
-so a read there fails and Settings says to bring the tab to the front. The read opens the picker,
+Gemini draws its picker (the model name, e.g. "Neon ⌄", beside the microphone) in work it puts off
+until the browser is idle, and a tab in a covered or background window may never get idle time: on
+2026-11-22 such a tab had the composer but still no picker after 27 seconds. The extension therefore
+keeps Gemini tabs awake, as the Focusly extension does for any tab: in Gemini's own page it gives that
+idle work a 1-second timeout and tells the page it is visible and focused (`extension/gemini-awake.js`).
+With it, the same covered tab drew the picker within 4.5 seconds of loading, 3 times out of 3. If a
+read still finds no picker, Settings says to bring the tab to the front. The read opens the picker,
 reads it and shuts it again; it never clicks an option and never long-presses the button (a long
 press opens Gemini's "periodic table" instead). On the tested Google AI Pro account the picker
 offered (2026-11-20, unchanged on 2026-11-22):

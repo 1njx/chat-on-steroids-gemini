@@ -51,14 +51,16 @@ describe('extension release metadata', () => {
    * goes back to standing for one call. That is a regression with no symptom, which is
    * why it is pinned here.
    */
-  it('runs only the fiber and bounded usage readers in the page context', async () => {
+  it('runs only the fiber and bounded usage readers and the Gemini keep-awake in the page context', async () => {
     const manifest = JSON.parse(
       await fs.readFile(path.join(process.cwd(), 'extension', 'manifest.json'), 'utf8')
-    ) as { content_scripts: Array<{ js: string[]; world?: string }> };
+    ) as { content_scripts: Array<{ js: string[]; world?: string; matches: string[]; run_at?: string }> };
 
     const main = manifest.content_scripts.filter((entry) => entry.world === 'MAIN');
-    expect(main).toHaveLength(2);
-    expect(main.flatMap((entry) => entry.js).sort()).toEqual(['fiber.js', 'usage.js']);
+    expect(main).toHaveLength(3);
+    expect(main.flatMap((entry) => entry.js).sort()).toEqual(['fiber.js', 'gemini-awake.js', 'usage.js']);
+    expect(main.find((entry) => entry.js.includes('gemini-awake.js'))).toMatchObject(
+      { matches: ['https://gemini.google.com/*'], run_at: 'document_start' });
     // The rest stays isolated: the page must not be able to reach the code that talks to
     // the service worker, holds the bridge token, or decides what gets recorded.
     for (const entry of manifest.content_scripts) {
