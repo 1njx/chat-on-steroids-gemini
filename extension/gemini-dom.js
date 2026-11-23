@@ -428,23 +428,28 @@ var CLF_GEMINI_DOM = (() => {
   }
 
   /**
-   * Deletes the open app from its details page: More options → Delete (observed 2026-11-22), then
-   * the confirmation's Delete if Gemini asks (its shape was never seen live). True once the list
-   * shows fewer apps with this name than `before` (one card, by default).
+   * Deletes the open app from its details page: More options → Delete, then the confirmation
+   * "Remove <name>?" → Remove (both observed 2026-11-23; "Delete" is accepted there too). True once
+   * the list shows fewer apps with this name than `before` (one card, by default). On failure a
+   * confirmation still open is cancelled, so a retry starts from a clean page.
    */
   async function deleteCustomApp(name, ms = 8000, before = 1) {
+    const dialogs = () => [...document.querySelectorAll('mat-dialog-container, [role="dialog"], [role="alertdialog"]')].filter(visible);
+    const button = (labels, scope) => scope.flatMap(node => [...node.querySelectorAll('button')]
+      .filter(b => labels.includes(text(b)) && !b.disabled)).at(0) || null;
     const more = detailsMoreOptions();
     if (!more) return false;
     more.click();
     const item = await waitFor(() => [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].find(b => visible(b) && text(b) === 'Delete') || null, 3000);
-    if (!item) return false;
+    if (!item) { await closeMenus(); return false; }
     item.click();
-    const confirm = await waitFor(() => [...document.querySelectorAll('mat-dialog-container, [role="dialog"], [role="alertdialog"]')].filter(visible)
-      .flatMap(dialog => [...dialog.querySelectorAll('button')].filter(b => text(b) === 'Delete' && !b.disabled)).at(0) || null, 3000);
+    const confirm = await waitFor(() => button(['Remove', 'Delete'], dialogs()), 3000);
     if (confirm) confirm.click();
     await sleep(800);
     if (!onCustomApps() || !visibleCreate()) backToList();
-    return !!(await waitFor(() => visibleCreate() && customAppCards(name).length < before ? true : null, ms));
+    if (await waitFor(() => visibleCreate() && customAppCards(name).length < before ? true : null, ms)) return true;
+    button(['Cancel'], dialogs())?.click();
+    return false;
   }
 
   /** The step after Next: "Connect this MCP server", with Google's notice to tick and Connect. */

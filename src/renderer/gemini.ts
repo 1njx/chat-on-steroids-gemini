@@ -261,7 +261,8 @@ export function addPill(status: GeminiStatus | null, url: string | null, now = D
 export function fillPill(fill: GeminiCommandSummary, url: string | null): ['ok' | 'wait' | 'off' | 'bad', string] {
   if (fill.stage === 'queued' || fill.stage === 'claimed') return ['wait', 'Opening Gemini custom apps in your browser…'];
   if (fill.stage === 'failed') {
-    return ['bad', `${geminiErrorText(fill.error)}${fill.error === 'custom-apps-layout-unknown' ? '' : ' Add the app by hand: Open custom apps, click Custom, paste the address, then Next.'}`];
+    // Those two errors already say what to do by hand; a second instruction would contradict them.
+    return ['bad', `${geminiErrorText(fill.error)}${['custom-apps-layout-unknown', 'delete-failed'].includes(fill.error ?? '') ? '' : ' Add the app by hand: Open custom apps, click Custom, paste the address, then Next.'}`];
   }
   if (fill.stage !== 'completed') return ['off', STAGES[fill.stage]];
   if (fill.outcome === 'connected') return ['ok', 'Added in Gemini and connected. Mention the app in a Gemini chat to use it.'];

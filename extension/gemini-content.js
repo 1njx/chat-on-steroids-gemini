@@ -129,8 +129,8 @@
     // Every app already there under this name is found first. One with this address is kept; each
     // with an old address, and each duplicate, is deleted before anything is added (Gemini cannot
     // edit an address), as the app's button said before the person pressed it.
-    let kept = null;
-    for (let index = 0, rounds = 0; rounds < 10; rounds += 1) {
+    let kept = null, failures = 0;
+    for (let index = 0, rounds = 0; rounds < 15; rounds += 1) {
       const cards = dom.customAppCards(name);
       if (index >= cards.length) break;
       const existing = await dom.readCustomAppUrl(cards[index]);
@@ -142,7 +142,11 @@
         if (!(await dom.waitFor(dom.visibleCreate))) return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
         continue;
       }
-      if (!(await dom.deleteCustomApp(name, 8000, cards.length))) return result(command, { stage: 'failed', error: 'delete-failed' });
+      if (await dom.deleteCustomApp(name, 8000, cards.length)) { failures = 0; continue; }
+      // A delete that did not take is tried again from the list (3 tries), which also finds it done late.
+      if ((failures += 1) >= 3) return result(command, { stage: 'failed', error: 'delete-failed' });
+      dom.backToList();
+      if (!(await dom.waitFor(dom.visibleCreate))) return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
     }
     if (kept) return result(command, { stage: 'completed', outcome: 'current', existingUrl: kept });
     const next = await dom.fillCreateForm(command.url);

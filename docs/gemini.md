@@ -72,7 +72,8 @@ each step turns green by itself when the app sees it done.
    named **Chat On Steroids Core** (any case, `-` or `_` for spaces, or a duplicate's "(2)"), and
    reads each one's address. One with this address is kept and nothing is added. Each with an old
    address, and each further copy, is deleted first: Gemini cannot edit an address, so it chooses
-   **More options → Delete** (and Gemini's confirmation, if it asks). With none kept it then opens
+   **More options → Delete**, then **Remove** in Gemini's "Remove Chat On Steroids Core?"
+   confirmation. A delete that does not take is tried again, 3 times in all. With none kept it then opens
    **Create custom app**, fills in the address, clicks **Next**, ticks Google's notice and clicks
    **Connect**. It stores no Google password or cookie. A page it does not recognize gets nothing filled in, and
    the step says to add the app by hand. The step remembers a fingerprint of the address Gemini

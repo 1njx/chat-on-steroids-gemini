@@ -9,6 +9,17 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.12] — Gemini edition: old Core app deleted for real
+
+### Fixed
+
+- **"Add it in Gemini for me" can delete the old app.** Gemini confirms a delete with "Remove
+  Chat On Steroids Core?" and a **Remove** button; the app only pressed a button named Delete, so
+  every delete stopped at that question and failed. It now presses Remove.
+- **A delete that does not take is tried again**, 3 times in all, starting from the list each
+  time; a confirmation left open is cancelled first.
+- **One instruction when it fails.** The failure no longer also says to add the app by hand.
+
 ## [2.2.11] — Gemini edition: old Core apps deleted before adding
 
 ### Fixed

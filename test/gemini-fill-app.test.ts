@@ -16,7 +16,7 @@ interface App { name: string; url: string }
  * Gemini's custom apps page as observed on 2026-11-22: a card per app, a details page with the
  * MCP URL and More options → Delete, and Create custom app → Next → Google's notice → Connect.
  */
-async function addInGemini(apps: App[]) {
+async function addInGemini(apps: App[], { flakyMenus = 0 } = {}) {
   dom = new JSDOM(`<a aria-label="Google Account: Pat (pat@example.com)" href="#"></a>
     <button aria-label="Create custom app">Custom</button><section><h2>Custom apps</h2><div id="grid"></div></section>
     <div id="details"></div><div id="menus"></div><div id="dialogs"></div>`,
@@ -46,13 +46,23 @@ async function addInGemini(apps: App[]) {
     details.innerHTML = `<dl><dt>MCP URL</dt><dd>${app.url}</dd></dl>`;
     button(details, '<button aria-label="Back to Connectors"></button>', () => { details.innerHTML = ''; });
     button(details, '<button aria-label="More options"></button>', () => {
+      // A menu that does not open (a slow page) the first `flakyMenus` times.
+      if (flakyMenus > 0) { flakyMenus -= 1; pressed.push('menu did not open'); return; }
       const menu = doc.getElementById('menus')!;
       menu.innerHTML = '<div role="menu"></div>';
+      button(menu.firstElementChild!, '<button role="menuitem">Use now</button>', () => { throw new Error('never Use now'); });
       button(menu.firstElementChild!, '<button role="menuitem">Delete</button>', () => {
-        pressed.push(`delete ${app.url}`);
-        apps.splice(apps.indexOf(app), 1);
-        menu.innerHTML = ''; details.innerHTML = '';
-        render();
+        menu.innerHTML = '';
+        // Gemini's confirmation, as seen live on 2026-11-23: "Remove <name>?" with Cancel / Remove.
+        const dialogs = doc.getElementById('dialogs')!;
+        dialogs.innerHTML = `<mat-dialog-container role="dialog"><p>Remove ${app.name}? This removes the MCP server from Gemini.</p></mat-dialog-container>`;
+        button(dialogs.firstElementChild!, '<button>Cancel</button>', () => { dialogs.innerHTML = ''; });
+        button(dialogs.firstElementChild!, '<button>Remove</button>', () => {
+          pressed.push(`delete ${app.url}`);
+          apps.splice(apps.indexOf(app), 1);
+          dialogs.innerHTML = ''; details.innerHTML = '';
+          render();
+        });
       });
     });
   };
@@ -104,6 +114,17 @@ it('deletes every old and duplicate Core app first, keeps the one with this addr
   expect(pressed).toEqual([`delete ${address('old-one')}`, `delete ${address('old-two')}`, `delete ${NEW}`]);
   expect(apps.map(app => [app.name, app.url])).toEqual([['Other app', address('someone-else')], ['chat-on-steroids core (2)', NEW]]);
 }, 30_000);
+
+it('tries a delete that did not take again, and gives up after three tries without adding', async () => {
+  const retried = await addInGemini([{ name: 'Chat On Steroids Core', url: address('old-one') }], { flakyMenus: 2 });
+  expect(retried.final).toMatchObject({ stage: 'completed', outcome: 'connected' });
+  expect(retried.pressed).toEqual(['menu did not open', 'menu did not open', `delete ${address('old-one')}`, `add ${NEW}`]);
+  dom!.window.close(); dom = null;
+  const stuck = await addInGemini([{ name: 'Chat On Steroids Core', url: address('old-one') }], { flakyMenus: 9 });
+  expect(stuck.final).toMatchObject({ stage: 'failed', error: 'delete-failed' });
+  expect(stuck.pressed).toEqual(['menu did not open', 'menu did not open', 'menu did not open']);
+  expect(stuck.apps).toEqual([{ name: 'Chat On Steroids Core', url: address('old-one') }]);
+}, 60_000);
 
 it('deletes every old Core app before it adds and connects the new one', async () => {
   const { final, pressed, apps } = await addInGemini([
