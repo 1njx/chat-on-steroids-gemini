@@ -21,6 +21,13 @@ import { geminiUrlFingerprint, type GeminiCommandSummary, type GeminiMode, type 
 
 export const PAGE_LIVE_MS = 60_000;
 const QUEUE_MS = 3 * 60_000;
+/** Gemini's custom apps page: the one address "Add it in Gemini for me" opens in the default browser. */
+export const GEMINI_CUSTOM_APPS_URL = 'https://gemini.google.com/customize/connectors';
+/**
+ * How long a fill waits for the custom apps page the default browser opened before the extension
+ * opens one itself (in its own browser, when that is not the default one).
+ */
+export const FILL_OPEN_FALLBACK_MS = 15_000;
 const CLAIM_MS = 2 * 60_000;
 const SENDING_MS = 60_000;
 const ANSWER_MS = 35 * 60_000;
@@ -107,10 +114,13 @@ let modesFailure: { error: string; at: number } | null = null;
 const NO_SETTINGS: GeminiSettings = { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, httpsTunnel: false, givenUrlHash: null, namedTunnelHost: null };
 let settings: GeminiSettings = { ...NO_SETTINGS };
 let changed = (): void => {};
+/** Opens the custom apps page in the default browser (ipc.ts: Electron's shell.openExternal). */
+let openCustomApps = (): unknown => undefined;
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
 
-export function configureGemini(options: { changed: () => void }): void {
+export function configureGemini(options: { changed: () => void; openCustomApps?: () => unknown }): void {
   changed = options.changed;
+  if (options.openCustomApps) openCustomApps = options.openCustomApps;
   if (!sweepTimer) { sweepTimer = setInterval(() => { if (sweep()) changed(); }, 10_000); sweepTimer.unref?.(); }
 }
 
@@ -432,7 +442,11 @@ export function queueGeminiFill(url: unknown): { ok: true; id: string } | { ok: 
   const parsed = HTTPS_URL.safeParse(url);
   if (!parsed.success) return { ok: false, error: 'invalid-url' };
   for (const old of commands.filter(c => c.kind === 'fill-app' && !settled(c))) finish(old, 'cancelled');
-  return { ok: true, id: newCommand('fill-app', { url: parsed.data, connector: settings.connectorName }).id };
+  const id = newCommand('fill-app', { url: parsed.data, connector: settings.connectorName }).id;
+  // The default browser opens the custom apps page in front; the page there takes the command.
+  // Only that fixed page is opened, never the Core address (it ends in a secret token).
+  try { void Promise.resolve(openCustomApps()).catch(() => undefined); } catch { /* the extension's own fallback still opens it */ }
+  return { ok: true, id };
 }
 
 /** The automatic re-add queued last: its command and the fingerprint of the address it was for. */
@@ -507,7 +521,8 @@ export function geminiPagesToOpen(now = Date.now()): string[] {
   if (livePages(now).length) return [];
   const waiting = commands.find(c => c.stage === 'queued' && c.kind !== 'stop' && c.openPage);
   if (!waiting) return [];
-  if (waiting.kind === 'fill-app') return [`${PROVIDERS.gemini.origin}/customize/connectors`];
+  // The default browser was asked first; the extension opens its own page only if none reported by then.
+  if (waiting.kind === 'fill-app') return now - waiting.createdAt >= FILL_OPEN_FALLBACK_MS ? [GEMINI_CUSTOM_APPS_URL] : [];
   return [waiting.conversationId ? `${PROVIDERS.gemini.origin}/app/${waiting.conversationId}` : `${PROVIDERS.gemini.origin}/app`];
 }
 
@@ -540,5 +555,6 @@ export function resetGeminiForTests(): void {
   pages.clear(); commands = []; catalog = null; modesFailure = null; autoFill = null;
   settings = { ...NO_SETTINGS };
   changed = () => {};
+  openCustomApps = () => undefined;
   if (sweepTimer) { clearInterval(sweepTimer); sweepTimer = null; }
 }

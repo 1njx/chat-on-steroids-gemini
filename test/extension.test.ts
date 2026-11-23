@@ -2301,6 +2301,30 @@ describe('active agent tab discard protection', () => {
     expect(worker.tabsUpdate).toHaveBeenCalledWith(99, { active: true });
   });
 
+  it('brings the custom apps tab the default browser opened to the front instead of opening a second', async () => {
+    let handed = false;
+    const worker = loadWorker({
+      local: new FakeStorageArea(paired),
+      session: new FakeStorageArea(),
+      fetch: vi.fn(async (input: string) => {
+        const path = new URL(input).pathname;
+        if (path === '/hello') return response(200, { app: 'chat-on-steroids', paired: true });
+        if (path === '/status') {
+          const reply = handed ? {} : { geminiOpen: ['https://gemini.google.com/customize/connectors'] };
+          handed = true;
+          return response(200, { ok: true, repairs: [], ...reply });
+        }
+        return response(404, {});
+      }),
+      tabsQuery: async () => [{ id: 21, windowId: 7, url: 'https://gemini.google.com/customize/connectors', status: 'complete', active: false }],
+      windowsGet: async () => ({ focused: false, state: 'minimized' } as { focused?: boolean })
+    });
+    await worker.fireAlarm();
+    await vi.waitFor(() => expect(worker.windowsUpdate).toHaveBeenCalledWith(7, { state: 'normal', focused: true }));
+    expect(worker.tabsUpdate).toHaveBeenCalledWith(21, { active: true });
+    expect(worker.tabsCreate).not.toHaveBeenCalled();
+  });
+
   it("brings a Gemini page's own tab to the front when it asks, and nobody else's", async () => {
     const worker = loadWorker({
       local: new FakeStorageArea(paired), session: new FakeStorageArea(),

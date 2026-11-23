@@ -30,7 +30,7 @@ import { wakeBrowserWork } from './browser-wake.js';
 import { requestOpenaiSetup, requestPluginAdd, setupTaskStatus } from './setup-tasks.js';
 import { refreshKeepAwake } from './keep-awake.js';
 import { getChatModels, startChatModelDiscovery, configureChatModelDiscovery } from './chat-models.js';
-import { cancelGeminiCommand, configureGemini, followGeminiAddress, geminiNamedTunnelHost, geminiStatus, geminiWantsHttpsTunnel, queueGeminiFill, queueGeminiSend, requestGeminiModes, saveGeminiSettings, stopGemini } from './gemini.js';
+import { GEMINI_CUSTOM_APPS_URL, cancelGeminiCommand, configureGemini, followGeminiAddress, geminiNamedTunnelHost, geminiStatus, geminiWantsHttpsTunnel, queueGeminiFill, queueGeminiSend, requestGeminiModes, saveGeminiSettings, stopGemini } from './gemini.js';
 import { releaseSessionFinish, requestSessionFinishGoal } from './session/finish.js';
 import { GOAL_MARKER_INSTRUCTION } from '../shared/goal-templates.js';
 import { validateInputImages } from './session/input-images.js';
@@ -2936,7 +2936,8 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
     geminiPush = setTimeout(() => { geminiPush = null; push('gemini:changed', { ...geminiStatus(), connectorSeenAt: lastMcpClientRequestAt('gemini'), toolCallSeenAt: lastMcpClientToolCallAt('gemini') }); }, 250);
     geminiPush.unref?.();
   };
-  configureGemini({ changed: pushGeminiSoon });
+  // "Add it in Gemini for me" opens Gemini's custom apps in the default browser, in front: that one page only.
+  configureGemini({ changed: pushGeminiSoon, openCustomApps: () => shell.openExternal(GEMINI_CUSTOM_APPS_URL) });
   configureGeminiTunnel(geminiWantsHttpsTunnel, geminiNamedTunnelHost);
   // A quick tunnel's new address leaves Gemini's custom app stale: it is added again once (gemini.ts).
   onStatusChange(() => {

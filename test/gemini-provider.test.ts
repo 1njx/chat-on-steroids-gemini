@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { defaultConfig, initConfigPath, saveConfig } from '../src/main/config.js';
 import { flushDurable, initDurableStore, readDurable, resetDurableForTests, writeDurableSoon } from '../src/main/durable.js';
 import {
-  cancelGeminiCommand, completeGeminiCommand, configureGemini, followGeminiAddress, geminiPagesToOpen, geminiStatus, observeGeminiPage,
+  FILL_OPEN_FALLBACK_MS, cancelGeminiCommand, completeGeminiCommand, configureGemini, followGeminiAddress, geminiPagesToOpen, geminiStatus, observeGeminiPage,
   queueGeminiFill, queueGeminiSend, requestGeminiModes, resetGeminiForTests, restoreGemini, saveGeminiSettings, sweep,
 } from '../src/main/gemini.js';
 import { geminiUrlFingerprint } from '../src/shared/gemini.js';
@@ -228,9 +228,14 @@ describe('Gemini provider', () => {
     const old = `https://old-name.trycloudflare.com/mcp/core/${'b'.repeat(43)}`;
     expect(queueGeminiFill('http://localhost:1234/mcp/core/x')).toEqual({ ok: false, error: 'invalid-url' });
     expect(geminiPagesToOpen()).toEqual([]);
+    const opened: number[] = [];
+    configureGemini({ changed: () => undefined, openCustomApps: () => opened.push(1) });
     const { id } = queueGeminiFill(url) as { id: string };
-    // With no Gemini page reporting, the extension opens the custom apps page itself.
-    expect(geminiPagesToOpen()).toEqual(['https://gemini.google.com/customize/connectors']);
+    // The default browser is asked to open custom apps, once; the opener is never given the address.
+    expect(opened).toHaveLength(1);
+    // With no Gemini page reporting after 15 s, the extension opens the custom apps page itself.
+    expect(geminiPagesToOpen()).toEqual([]);
+    expect(geminiPagesToOpen(Date.now() + FILL_OPEN_FALLBACK_MS)).toEqual(['https://gemini.google.com/customize/connectors']);
     // Any idle signed-in page takes it, composer or not; a busy one does not.
     expect(observeGeminiPage({ tab: 2, snapshot: page({ generating: true }) }).commands).toEqual([]);
     const handed = observeGeminiPage({ tab: 1, snapshot: page({ url: 'https://gemini.google.com/customize/connectors', composerReady: false }) }).commands;
@@ -350,7 +355,7 @@ describe('Gemini app added again when the tunnel address changes', () => {
     expect(queued).toMatchObject({ stage: 'queued' });
     expect(geminiStatus().autoFill?.id).toBe(queued!.id);
     // The custom apps page is opened for it, in front (the extension focuses setup pages).
-    expect(geminiPagesToOpen()).toEqual(['https://gemini.google.com/customize/connectors']);
+    expect(geminiPagesToOpen(Date.now() + FILL_OPEN_FALLBACK_MS)).toEqual(['https://gemini.google.com/customize/connectors']);
     expect(followGeminiAddress(address('new-name'))).toBe(false);
     expect(fills()).toHaveLength(1);
 

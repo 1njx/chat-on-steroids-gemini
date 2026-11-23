@@ -38,7 +38,7 @@ export function paintGemini(status: GeminiStatus, now = Date.now()): void {
   byId('geminiConnectorStatus').textContent = (status.connectorSeenAt
     ? `Gemini last reached this app's MCP server ${ago(status.connectorSeenAt, now)}.`
     : 'No call from Gemini yet in this run. Add the Core URL below in Gemini, then mention it in a chat.') +
-    (autoFillText(status, now) ? ` ${autoFillText(status, now)}` : '');
+    [autoFillText(status, now), fillWaitText(status)].filter(Boolean).map(text => ` ${text}`).join('');
   const warnings = [
     ...(status.localized ? ['A Gemini page is not in English. Google offers custom apps in English only, and this integration needs the English page.'] : []),
     ...(status.quotaLimited ? ['Gemini shows a usage limit. Wait for the reset Gemini names; switching accounts or chats to avoid it is not supported.'] : []),
@@ -258,6 +258,19 @@ export function addPill(status: GeminiStatus | null, url: string | null, now = D
     : 'Waiting for Gemini to reach the app. A quick tunnel gets a new address at each start: add the app again with it.'];
 }
 
+/** Said when no page with the extension took "Add it in Gemini for me" (the default browser may have none). */
+export const UNCLAIMED = 'Open Gemini in the browser that has the Chat On Steroids extension.';
+const UNCLAIMED_HINT = `If nothing happens there: ${UNCLAIMED}`;
+
+/** The last "Add it in Gemini for me" for Settings → Gemini, while it waits for a page or when none took it; '' otherwise. */
+export function fillWaitText(status: GeminiStatus): string {
+  const fill = [...status.commands].reverse().find(c => c.kind === 'fill-app');
+  if (!fill || fill.id === status.autoFill?.id) return '';
+  if (fill.stage === 'queued') return `"Add it in Gemini for me" is opening Gemini custom apps in your default browser. ${UNCLAIMED_HINT}`;
+  if (fill.stage === 'failed' && fill.error === 'gemini-page-not-connected') return `"Add it in Gemini for me" found no Gemini page with the extension. ${UNCLAIMED}`;
+  return '';
+}
+
 /** The re-add the app started by itself when the tunnel address changed, in the person's words; '' when none. */
 export function autoFillText(status: GeminiStatus, now = Date.now()): string {
   const fill = status.autoFill ? status.commands.find(c => c.id === status.autoFill!.id) : null;
@@ -265,14 +278,17 @@ export function autoFillText(status: GeminiStatus, now = Date.now()): string {
   const name = status.settings.connectorName || 'Chat On Steroids Core';
   const lead = `Your tunnel address changed ${ago(status.autoFill!.at, now)}, so the app`;
   if (fill.stage === 'completed') return `${lead} added ${name} in Gemini again with the new address.`;
-  if (fill.stage === 'failed') return `${lead} tried to add ${name} in Gemini again, which failed: ${geminiErrorText(fill.error)}`;
+  if (fill.stage === 'failed') return `${lead} tried to add ${name} in Gemini again, which failed: ${fill.error === 'gemini-page-not-connected' ? UNCLAIMED : geminiErrorText(fill.error)}`;
   if (fill.stage === 'cancelled' || fill.stage === 'unknown') return `${lead} started adding ${name} in Gemini again, but that stopped. Use "Add it in Gemini for me" in Set up Gemini.`;
   return `${lead} is adding ${name} in Gemini again with the new address, in your browser.`;
 }
 
 /** What the last "Add it in Gemini for me" did, in the person's words. */
 export function fillPill(fill: GeminiCommandSummary, url: string | null): ['ok' | 'wait' | 'off' | 'bad', string] {
-  if (fill.stage === 'queued' || fill.stage === 'claimed') return ['wait', 'Opening Gemini custom apps in your browser…'];
+  if (fill.stage === 'queued') return ['wait', `Opening Gemini custom apps in your default browser… ${UNCLAIMED_HINT}`];
+  if (fill.stage === 'claimed') return ['wait', 'Gemini custom apps is open; the extension is adding the app there…'];
+  // Nothing took it: no Gemini page with the extension reported, e.g. the default browser has no extension.
+  if (fill.stage === 'failed' && fill.error === 'gemini-page-not-connected') return ['bad', UNCLAIMED];
   if (fill.stage === 'failed') {
     // Those two errors already say what to do by hand; a second instruction would contradict them.
     return ['bad', `${geminiErrorText(fill.error)}${['custom-apps-layout-unknown', 'delete-failed'].includes(fill.error ?? '') ? '' : ' Add the app by hand: Open custom apps, click Custom, paste the address, then Next.'}`];

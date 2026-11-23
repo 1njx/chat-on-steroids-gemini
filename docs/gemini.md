@@ -79,8 +79,12 @@ each step turns green by itself when the app sees it done.
    the step says to add the app by hand. The step remembers a fingerprint of the address Gemini
    last got (copied, filled in or read there), never the address, so after a restart it says
    "Your Gemini custom app has an old address. Update it to …" instead of "not added".
-   The custom apps page opens in your own browser window, in front (a covered or minimized page
-   barely loads), and a panel on it names each step until it says done or shows the error.
+   The button opens Gemini's custom apps page in your **default browser**, in front (only that page,
+   never the Core address). The extension takes the work there, or brings an already open custom
+   apps tab to the front instead of opening a second one. If no page with the extension reports
+   within 15 seconds, the extension opens custom apps in its own browser; if none ever takes it,
+   Settings → Gemini says "Open Gemini in the browser that has the Chat On Steroids extension."
+   A panel on the page names each step until it says done or shows the error.
    **A new tunnel address is added again by itself:** a quick tunnel gets a new address at every
    start, so once the app was added and Gemini's tunnel is on, a new Core address queues this same
    step once for that address (never while one is running, and not again after it failed for that

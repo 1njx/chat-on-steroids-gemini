@@ -1340,6 +1340,16 @@ describe('bounded IPC identities and OS launch results', () => {
     expect(reply.error).toMatch(/could not open.*access is denied/i);
   });
 
+  it('"Add it in Gemini for me" opens Gemini custom apps in the default browser once, never the Core address', async () => {
+    const core = `https://merit-totally-iowa-billion.trycloudflare.com/mcp/core/${'a'.repeat(43)}`;
+    expect(await handlers.get('gemini:fillApp')!(null, { url: core })).toEqual({ ok: true, data: { ok: true, id: expect.any(String) } });
+    expect(vi.mocked(shell.openExternal).mock.calls).toEqual([['https://gemini.google.com/customize/connectors']]);
+    expect(JSON.stringify(vi.mocked(shell.openExternal).mock.calls)).not.toContain('trycloudflare');
+    // A refused address opens nothing.
+    expect(await handlers.get('gemini:fillApp')!(null, { url: 'http://localhost:1/mcp/core/x' })).toEqual({ ok: true, data: { ok: false, error: 'invalid-url' } });
+    expect(shell.openExternal).toHaveBeenCalledTimes(1);
+  });
+
   it('opens the extension recovery ZIP from the installed app version, never releases/latest', async () => {
     vi.mocked(app.getVersion).mockReturnValueOnce('1.8.8');
     const reply = await handlers.get('bridge:downloadExtension')!(null, undefined);

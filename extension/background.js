@@ -4614,7 +4614,8 @@ function geminiSender(sender) {
 /**
  * When the app holds Gemini work and no Gemini page could take it, open one (once per URL per
  * 2 min). Chats open quietly in the background; custom apps is setup, shown in the person's own
- * window in front, since a covered or minimized page barely loads.
+ * window in front, since a covered or minimized page barely loads. A custom apps tab already open
+ * (the app opens one in the default browser) is brought to the front instead of a second one.
  */
 const geminiOpened = new Map();
 async function openGeminiPages(urls) {
@@ -4623,8 +4624,11 @@ async function openGeminiPages(urls) {
     if (typeof url !== 'string' || !/^https:\/\/gemini\.google\.com\/(app(\/[0-9a-f]{8,32})?|customize\/connectors)$/.test(url)) continue;
     if (Date.now() - (geminiOpened.get(url) || 0) < 120_000) continue;
     geminiOpened.set(url, Date.now());
-    if (url.endsWith('/customize/connectors')) await createChatTab(url, false).then(focusTab).catch(() => undefined);
-    else await createChatTab(url, true).catch(() => undefined);
+    if (url.endsWith('/customize/connectors')) {
+      // The app opened this page in the default browser already: show that tab, never a second one.
+      const [open] = await chrome.tabs.query({ url: `${url}*` }).catch(() => []);
+      await (open ? focusTab(open) : createChatTab(url, false).then(focusTab)).catch(() => undefined);
+    } else await createChatTab(url, true).catch(() => undefined);
   }
 }
 

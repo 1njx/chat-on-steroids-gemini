@@ -9,6 +9,21 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.14] — Gemini edition: "Add it in Gemini for me" opens your default browser
+
+### Fixed
+
+- **"Add it in Gemini for me" opens Gemini in your default browser.** It opens Gemini's custom apps
+  page there, in front (only that page, never the Core address), and the extension does the steps
+  in it. Before, it only queued the work and the extension opened the page in a window you could
+  not see.
+- **No second tab.** The extension brings a custom apps tab that is already open to the front
+  (restoring a minimized window) instead of opening another. It opens one itself only when no page
+  with the extension reported within 15 seconds, e.g. when the default browser is another one.
+- **Not silent when no browser takes it.** When no Gemini page with the extension takes the work,
+  Settings → Gemini and the Add step say "Open Gemini in the browser that has the Chat On Steroids
+  extension."
+
 ## [2.2.13] — Gemini edition: setup in front, with a status panel
 
 ### Fixed

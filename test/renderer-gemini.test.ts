@@ -205,6 +205,19 @@ describe('Gemini custom app address', () => {
     expect(dom.window.document.getElementById('geminiConnectorStatus')!.textContent).not.toContain('trycloudflare');
   });
 
+  it('says to open Gemini in the browser with the extension when no page takes "Add it in Gemini for me"', async () => {
+    const { fillPill, fillWaitText, paintGemini, UNCLAIMED } = await import('../src/renderer/gemini.js');
+    expect(UNCLAIMED).toBe('Open Gemini in the browser that has the Chat On Steroids extension.');
+    const base = { id: 'fill', kind: 'fill-app', createdAt: 1, updatedAt: 1, conversation: null, sessionId: null, modeId: null, promptPreview: null, answerChars: null, outcome: null } as const;
+    const unclaimed = { ...base, stage: 'failed', error: 'gemini-page-not-connected' } as const;
+    expect(fillPill(unclaimed, url)).toEqual(['bad', UNCLAIMED]);
+    expect(fillPill({ ...base, stage: 'queued', error: null }, url)[1]).toContain(`If nothing happens there: ${UNCLAIMED}`);
+    expect(fillWaitText(status({ commands: [unclaimed] }))).toContain(UNCLAIMED);
+    expect(fillWaitText(status({ commands: [{ ...base, stage: 'completed', error: null, outcome: 'connected' }] }))).toBe('');
+    paintGemini(status({ pages: 0, commands: [unclaimed] }));
+    expect(dom.window.document.getElementById('geminiConnectorStatus')!.textContent).toContain(UNCLAIMED);
+  });
+
   it('falls back to the manual steps in plain words when the custom apps page is not recognized', async () => {
     const { fillPill } = await import('../src/renderer/gemini.js');
     const base = { id: 'x', kind: 'fill-app', createdAt: 1, updatedAt: 1, conversation: null, sessionId: null, modeId: null, promptPreview: null, answerChars: null } as const;
