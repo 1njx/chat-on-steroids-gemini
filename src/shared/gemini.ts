@@ -55,6 +55,8 @@ export interface GeminiStatus {
   connectorSeenAt?: number | null;
   /** When Gemini last called one of this app's tools in this run (null: never). */
   toolCallSeenAt?: number | null;
+  /** The fill-app the app queued by itself because the Core address changed (quick tunnel), this run. */
+  autoFill?: { id: string; at: number } | null;
 }
 
 /**

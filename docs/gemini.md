@@ -79,6 +79,12 @@ each step turns green by itself when the app sees it done.
    the step says to add the app by hand. The step remembers a fingerprint of the address Gemini
    last got (copied, filled in or read there), never the address, so after a restart it says
    "Your Gemini custom app has an old address. Update it to …" instead of "not added".
+   The custom apps page opens in your own browser window, in front (a covered or minimized page
+   barely loads), and a panel on it names each step until it says done or shows the error.
+   **A new tunnel address is added again by itself:** a quick tunnel gets a new address at every
+   start, so once the app was added and Gemini's tunnel is on, a new Core address queues this same
+   step once for that address (never while one is running, and not again after it failed for that
+   address). Settings → Gemini says so and how it went.
    "Copy URL" copies the Core MCP address (treat it like a password), "Open
    custom apps" opens Gemini's connectors page. Pictures show: **+ Custom** → paste the
    address → **Next** → tick Google's notice → **Connect**; then **Connect** again under

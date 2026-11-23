@@ -9,6 +9,27 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.13] — Gemini edition: setup in front, with a status panel
+
+### Fixed
+
+- **Setup pages open in front.** The ChatGPT plugin pages, platform.openai.com and Gemini's custom
+  apps open in your own browser window, as the active tab, with the window focused and restored
+  if it was minimized (also when a setup tab is reused or reloaded). A covered or minimized page
+  barely loads, which made setup steps fail with "The page did not finish this step" or "Gemini
+  did not finish in time". Chats still open quietly in the background.
+- **The Gemini app follows a new tunnel address.** A quick tunnel gets a new address at every
+  start, which left Gemini's custom app on the old one. Once the app was added and Gemini's tunnel
+  is on, a new address adds it again by itself, once per address; Settings → Gemini says so.
+
+### Added
+
+- **A status panel on the setup page** while the extension works there: "Chat On Steroids is
+  setting this up — please don't click or type in this tab until it says done", each step as it
+  happens (for Gemini: opening custom apps, checking existing apps, deleting the old app with its
+  try count, adding, Next, the notice, Connect), then done in green or the exact error in red. It
+  takes no clicks and never shows an address or key.
+
 ## [2.2.12] — Gemini edition: old Core app deleted for real
 
 ### Fixed

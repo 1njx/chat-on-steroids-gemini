@@ -75,7 +75,10 @@
     if (names.length !== 1 || descriptions.length !== 1 || !create || !workspace) return null;
     return { dialog, name: names[0], description: descriptions[0], workspace, create };
   }
+  /** The status panel on this page (setup-panel.js); absent in tests that load this file alone. */
+  const panel = () => globalThis.CLF_SETUP_PANEL || null;
   async function createTunnel(task) {
+    panel()?.step('Creating the tunnel');
     const open = await waitFor(() => button(document, 'Create tunnel'), 15_000);
     if (!open) return { error: LAYOUT };
     const form = await openDialog(open, tunnelForm, 5_000);
@@ -117,18 +120,21 @@
     return null;
   }
   async function createKey(task) {
+    panel()?.step('Opening Create new secret key');
     const open = await waitFor(() => button(document, 'Create new secret key'), 15_000);
     if (!open) return { error: LAYOUT };
     const form = await openDialog(open, keyForm, 8_000);
     if (!form) return { error: LAYOUT };
     if (form.you.getAttribute('aria-checked') !== 'true') form.you.click();
     if (!fill(form.name, task.keyName)) return { error: LAYOUT };
+    panel()?.step('Choosing the project');
     press(form.project);
     const projects = await waitFor(() => options().length ? options() : null, 5_000);
     const project = projects && (projects.find(option => plain(option) === 'Default project') || (projects.length === 1 ? projects[0] : null));
     if (!project) return { error: 'Choose a project for the key by hand at platform.openai.com' };
     press(project);
     await sleep(400);
+    panel()?.step('Setting Restricted with Tunnels: Read and Use');
     form.restricted.click();
     const tunnels = await waitFor(() => form.restricted.getAttribute('aria-checked') === 'true' && form.tunnels(), 3_000);
     if (!tunnels) return { error: LAYOUT };
@@ -138,6 +144,7 @@
     for (const scope of scopes) if (scope.getAttribute('aria-selected') !== 'true') { press(scope); await sleep(300); }
     const ready = await waitFor(() => scopes.every(scope => scope.getAttribute('aria-selected') === 'true') && !form.submit.disabled, 3_000);
     if (!ready) return { error: LAYOUT };
+    panel()?.step('Creating the key');
     form.submit.click();
     const key = await waitFor(shownKey, 15_000);
     return key ? { key } : { error: 'OpenAI created the key but it could not be read here: copy it from the open page into Setup' };
@@ -147,27 +154,36 @@
     try { const id = new URL(location.href).searchParams.get('cos-task'); return /^[a-f0-9-]{36}$/i.test(id || '') ? id : null; }
     catch { return null; }
   })();
-  const report = (action, extra = {}) => chrome.runtime.sendMessage({ type: 'setup_task', action, id: taskId, ...extra }).catch(() => null);
+  const report = (action, extra = {}) => {
+    // The status panel shows how this ends; a key passes to the app only, never to the panel.
+    if (action === 'done') panel()?.done('Done: the tunnel and the restricted key are set up.');
+    if (action === 'fail') panel()?.fail(extra.error);
+    return chrome.runtime.sendMessage({ type: 'setup_task', action, id: taskId, ...extra }).catch(() => null);
+  };
   async function run() {
     const task = (await report('get'))?.task;
     if (!task || task.kind !== 'openai-setup') return;
     const tunnelsPage = location.pathname === '/settings/organization/tunnels', keysPage = location.pathname === '/settings/organization/api-keys';
     if (task.state === 'requested' && tunnelsPage) {
       if ((await report('claim'))?.ok !== true) return;
+      panel()?.start('Looking for the tunnel');
       // The table loads after the Create button: an existing tunnel must be seen before creating one.
       await waitFor(() => tunnelRows().length ? true : null, 20_000);
       const found = findTunnel(task);
       const made = found ? { tunnelId: found } : await createTunnel(task);
       if (!made.tunnelId) return report('fail', { error: made.error });
       if ((await report('progress', { progress: 'tunnel', tunnelId: made.tunnelId }))?.ok !== true) return;
+      panel()?.step('Tunnel ready; opening API keys');
       location.assign(`/settings/organization/api-keys?cos-task=${taskId}`);
       return;
     }
     if (task.progress === 'tunnel' && keysPage) {
       // A claim that lapsed on the way here is taken again by this same helper tab.
       if (task.state === 'requested' && (await report('claim'))?.ok !== true) return;
+      panel()?.start('Tunnel ready');
       const made = await createKey(task);
       if (!made.key) return report('fail', { error: made.error });
+      panel()?.step('Handing the key to the app');
       if ((await report('progress', { progress: 'key', key: made.key }))?.ok !== true) return report('fail', { error: 'The app did not take the key' });
       const done = [...document.querySelectorAll('[role="dialog"] button')].find(node => plain(node) === 'Done');
       if (done) done.click();

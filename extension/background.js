@@ -2190,6 +2190,21 @@ async function inAppGroup(tab) {
   if (!groupsAvailable() || !Number.isInteger(tab?.groupId) || tab.groupId < 0) return false;
   return (await storedBackgroundGroup())?.id === tab.groupId;
 }
+/**
+ * Shows a tab the extension works in for setup: active in its window, the window focused and,
+ * when minimized, restored. A page in a covered or minimized window barely loads or draws.
+ */
+async function focusTab(tabOrId) {
+  const tab = Number.isInteger(tabOrId) ? await chrome.tabs.get(tabOrId) : tabOrId;
+  if (!Number.isInteger(tab?.id)) return null;
+  const shown = tab.active === true ? tab : await chrome.tabs.update(tab.id, { active: true });
+  const windowId = shown?.windowId ?? tab.windowId;
+  if (typeof chrome.windows?.update !== 'function' || !Number.isInteger(windowId)) return shown;
+  const window = await chrome.windows.get(windowId).catch(() => null);
+  await chrome.windows.update(windowId, window?.state === 'minimized' ? { state: 'normal', focused: true } : { focused: true });
+  return shown;
+}
+
 /** Only app-owned windows are sized; no tab placement changes window focus/state. */
 async function createChatTab(url, background = false, active = !background) {
   if (!background) return createUserWindowTab(url, active);
@@ -2826,11 +2841,14 @@ function inspectSetupTasks(list) {
       else if (waited > 120_000) {
         await chrome.tabs.update(tab.id, { url });
         await chrome.storage.session.set({ setupTaskTab: { ...helper, openedAt: Date.now() } });
+        await focusTab(tab.id).catch(() => undefined);
       }
       return;
     }
+    // The person watches setup happen: the helper opens in their own window, in front.
     const target = tab && !tab.pinned ? await chrome.tabs.update(tab.id, { url, active: true }) : await createChatTab(url, false);
     await chrome.storage.session.set({ setupTaskTab: { tab: target.id, taskId: task.id, openedAt: Date.now() } });
+    await focusTab(target).catch(() => undefined);
   })().catch(() => undefined).finally(() => { setupTaskFlight = null; });
   return setupTaskFlight;
 }
@@ -4593,7 +4611,11 @@ function geminiSender(sender) {
   catch { return null; }
 }
 
-/** When the app holds Gemini work and no Gemini page could take it, open one quietly (once per URL per 2 min). */
+/**
+ * When the app holds Gemini work and no Gemini page could take it, open one (once per URL per
+ * 2 min). Chats open quietly in the background; custom apps is setup, shown in the person's own
+ * window in front, since a covered or minimized page barely loads.
+ */
 const geminiOpened = new Map();
 async function openGeminiPages(urls) {
   if (!Array.isArray(urls)) return;
@@ -4601,7 +4623,8 @@ async function openGeminiPages(urls) {
     if (typeof url !== 'string' || !/^https:\/\/gemini\.google\.com\/(app(\/[0-9a-f]{8,32})?|customize\/connectors)$/.test(url)) continue;
     if (Date.now() - (geminiOpened.get(url) || 0) < 120_000) continue;
     geminiOpened.set(url, Date.now());
-    await createChatTab(url, true).catch(() => undefined);
+    if (url.endsWith('/customize/connectors')) await createChatTab(url, false).then(focusTab).catch(() => undefined);
+    else await createChatTab(url, true).catch(() => undefined);
   }
 }
 
@@ -4628,6 +4651,12 @@ const HANDLERS = {
       return { ok: true };
     } catch { return { ok: false }; }
     finally { await chrome.debugger.detach(target).catch(() => undefined); }
+  },
+  /** Brings the sender's own Gemini tab to the front before it does setup there (fill-app). */
+  async gemini_focus(_message, sender) {
+    const tabId = geminiSender(sender);
+    if (tabId === null) return { ok: false };
+    try { await focusTab(tabId); return { ok: true }; } catch { return { ok: false }; }
   },
   async gemini_result(message, sender) {
     const tab = geminiSender(sender);

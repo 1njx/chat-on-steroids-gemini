@@ -467,6 +467,8 @@ class FakeStorageArea {
 
 interface WorkerHarness {
   sendPopup(message: Record<string, unknown>): Promise<any>;
+  /** A message from this extension's own content script in a top frame, as Chrome addresses it. */
+  sendFrom(message: Record<string, unknown>, sender: { tab: { id: number }; url: string }): Promise<any>;
   /** Fires tabs.onUpdated with the tab Chrome passes alongside. */
   updateTab(tabId: number, changeInfo: { url?: string; status?: string }, tab: Record<string, unknown>): void;
   send(message: Record<string, unknown>, tabId?: number, documentId?: string, senderUrl?: string): Promise<any>;
@@ -684,6 +686,9 @@ function loadWorker(options: {
 
   return {
     updateTab: (tabId, changeInfo, tab) => { for (const fn of tabUpdatedListeners) fn(tabId, changeInfo, tab); },
+    sendFrom: (message, sender) => new Promise(resolve => {
+      listener!(message, { id: chrome.runtime.id, frameId: 0, ...sender }, resolve);
+    }),
     sendPopup: message => new Promise(resolve => {
       listener!(message, { id: chrome.runtime.id, url: chrome.runtime.getURL('popup.html') }, resolve);
     }),
@@ -2268,6 +2273,46 @@ describe('active agent tab discard protection', () => {
       expect(worker.tabsCreate).toHaveBeenCalledTimes(1);
       expect(worker.tabsCreate).toHaveBeenCalledWith({ url: `https://chatgpt.com/c/${TARGET}`, active: true });
     }
+  });
+
+  // A covered or minimized setup page barely loads: every setup tab opens in front, in a focused window.
+  it.each([
+    ['a ChatGPT plugin task', { setupTasks: [{ id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', kind: 'plugin-add', state: 'requested' }] },
+      'https://chatgpt.com/plugins?cos-task=aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'],
+    ['a platform.openai.com task', { setupTasks: [{ id: 'aaaaaaaa-bbbb-4ccc-8ddd-ffffffffffff', kind: 'openai-setup', state: 'requested' }] },
+      'https://platform.openai.com/settings/organization/tunnels?cos-task=aaaaaaaa-bbbb-4ccc-8ddd-ffffffffffff'],
+    ["Gemini's custom apps", { geminiOpen: ['https://gemini.google.com/customize/connectors'] }, 'https://gemini.google.com/customize/connectors']
+  ])('opens the setup page for %s active, in a focused and restored window', async (_name, data, url) => {
+    let handed = false;
+    const worker = loadWorker({
+      local: new FakeStorageArea(paired),
+      session: new FakeStorageArea(),
+      fetch: vi.fn(async (input: string) => {
+        const path = new URL(input).pathname;
+        if (path === '/hello') return response(200, { app: 'chat-on-steroids', paired: true });
+        if (path === '/status') { const reply = handed ? {} : data; handed = true; return response(200, { ok: true, repairs: [], ...reply }); }
+        return response(404, {});
+      }),
+      windowsGet: async () => ({ focused: false, state: 'minimized' } as { focused?: boolean })
+    });
+    await worker.fireAlarm();
+    await vi.waitFor(() => expect(worker.windowsUpdate).toHaveBeenCalledWith(7, { state: 'normal', focused: true }));
+    expect(worker.tabsCreate).toHaveBeenCalledWith({ url, active: true });
+    expect(worker.tabsUpdate).toHaveBeenCalledWith(99, { active: true });
+  });
+
+  it("brings a Gemini page's own tab to the front when it asks, and nobody else's", async () => {
+    const worker = loadWorker({
+      local: new FakeStorageArea(paired), session: new FakeStorageArea(),
+      tabsGet: async () => ({ id: 12, url: 'https://gemini.google.com/customize/connectors', status: 'complete' }),
+      windowsGet: async () => ({ focused: false, state: 'normal' } as { focused?: boolean })
+    });
+    expect(await worker.sendFrom({ type: 'gemini_focus' }, { tab: { id: 12 }, url: 'https://gemini.google.com/customize/connectors' })).toEqual({ ok: true });
+    expect(worker.tabsUpdate).toHaveBeenCalledWith(12, { active: true });
+    expect(worker.windowsUpdate).toHaveBeenCalledWith(7, { focused: true });
+    worker.windowsUpdate.mockClear();
+    expect(await worker.sendFrom({ type: 'gemini_focus' }, { tab: { id: 13 }, url: 'https://example.com/' })).toEqual({ ok: false });
+    expect(worker.windowsUpdate).not.toHaveBeenCalled();
   });
 
   // CodeRabbit on #2027: taking a chat is not showing it. A show that fails is reported, so the app can

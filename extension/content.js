@@ -14637,15 +14637,28 @@
   })();
   let setupTaskBusy = false;
   const PLUGIN_ADD_LAYOUT = "ChatGPT's Add custom MCP server dialog did not look as expected, so nothing was created";
+  /** What the status panel says when a ChatGPT setup step ends, by its outcome. */
+  const SETUP_DONE_TEXT = {
+    created: 'Done: the plugin is created.', exists: 'Done: ChatGPT already has this plugin.',
+    set: 'Done: Allow all tools is on.', already: 'Done: Allow all tools was already on.',
+    unavailable: "Done: this account has no Permissions page; ChatGPT asks at the first tool call."
+  };
   async function runSetupTask() {
     if (!setupTaskId || setupTaskBusy) return false;
     setupTaskBusy = true;
-    const report = (action, extra = {}) => ask({ type: 'setup_task', action, id: setupTaskId, ...extra });
+    const panel = globalThis.CLF_SETUP_PANEL;
+    // The status panel follows what this page reports: each end shows as done or the exact error.
+    const report = (action, extra = {}) => {
+      if (action === 'done') panel?.done(SETUP_DONE_TEXT[extra.outcome] || 'Done.');
+      if (action === 'fail') panel?.fail(extra.error);
+      return ask({ type: 'setup_task', action, id: setupTaskId, ...extra });
+    };
     const fail = async error => { await report('fail', { error }); return false; };
     try {
       const task = (await report('get'))?.task;
       if (!task || !['plugin-add', 'plugin-permission'].includes(task.kind) || task.state !== 'requested') return false;
       if ((await report('claim'))?.ok !== true) return false;
+      panel?.start('Checking your ChatGPT sign-in');
       const session = await fetch(`${location.origin}/api/auth/session`, { credentials: 'include' }).then(reply => reply.ok ? reply.json() : null).catch(() => null);
       if (typeof session?.accessToken !== 'string' || !session.accessToken) return fail('Sign in to ChatGPT in this browser, then press the button again');
       return task.kind === 'plugin-add' ? await addChatgptPlugin(task, report, fail) : await allowAllTools(task, report, fail);
@@ -14660,11 +14673,14 @@
     const addLabels = Array.isArray(request.addLabels) ? request.addLabels : ['Add'];
     const itemLabels = Array.isArray(request.itemLabels) ? request.itemLabels : ['Add custom MCP server'];
     const here = () => alive && location.pathname === '/plugins';
+    const panel = globalThis.CLF_SETUP_PANEL;
+    panel?.step('Checking existing plugins');
     const control = await waitPageView(() => CLF_DOM.pluginAddControl(addLabels), here, 20_000, 250);
     // Two plugins cannot share a name: an existing one is left as it is.
     if (CLF_DOM.installedPluginNamed(request.name))
       return (await report('done', { outcome: 'exists', ...(CLF_DOM.installedPluginAppId(request.name) ? { appId: CLF_DOM.installedPluginAppId(request.name) } : {}) }))?.ok === true;
     if (!control) return fail(PLUGIN_ADD_LAYOUT);
+    panel?.step('Opening Add custom MCP server');
     // ChatGPT's Add menu opens on pointer-down; a bare click() leaves it shut (measured 2026-11-22).
     control.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 0, pointerType: 'mouse', isPrimary: true }));
     const item = await waitPageView(() => CLF_DOM.pluginAddMenuItem(itemLabels), here, 5_000, 250);
@@ -14672,6 +14688,7 @@
     item.click();
     const form = await waitPageView(() => CLF_DOM.pluginAddForm(), here, 8_000, 250);
     if (!form) return fail(PLUGIN_ADD_LAYOUT);
+    panel?.step('Filling in the plugin details');
     const toggle = tunnel ? form.tunnelToggle : form.urlToggle;
     if (toggle.getAttribute('aria-pressed') !== 'true') toggle.click();
     const connection = await waitPageView(() => CLF_DOM.pluginConnectionInput(form.dialog, tunnel), here, 5_000, 250);
@@ -14680,10 +14697,12 @@
         !CLF_DOM.fillField(connection, tunnel ? request.tunnelId : request.url) || !CLF_DOM.fillField(form.auth, 'NONE')) return fail(PLUGIN_ADD_LAYOUT);
     // Changing the connection clears ChatGPT's consent box, so it is ticked last, once.
     await new Promise(resolve => setTimeout(resolve, 300));
+    panel?.step("Ticking ChatGPT's consent box");
     if (form.consent.getAttribute('aria-checked') !== 'true') form.consent.click();
     const ready = await waitPageView(() => !form.submit.disabled && form.consent.getAttribute('aria-checked') === 'true' &&
       form.name.value === request.name && form.auth.value === 'NONE', here, 5_000, 250);
     if (!ready) return fail(CLF_DOM.pluginAddError(form.dialog) || 'ChatGPT did not accept the plugin details');
+    panel?.step('Creating the plugin');
     form.submit.click();
     const closed = await waitPageView(() => !form.dialog.isConnected || form.dialog.getClientRects().length === 0, () => alive, 20_000, 250);
     if (!closed) return fail(CLF_DOM.pluginAddError(form.dialog) || 'ChatGPT did not create the plugin');
@@ -14692,10 +14711,13 @@
     return (await report('done', { outcome: 'created', ...(appId ? { appId } : {}) }))?.ok === true;
   }
   async function allowAllTools(task, report, fail) {
+    const panel = globalThis.CLF_SETUP_PANEL;
+    panel?.step("Opening the plugin's Permissions");
     const radio = await waitPageView(() => CLF_DOM.pluginPermissionRadio(), () => alive, 25_000, 250);
     // Not every account type has Permissions: the first tool call asks instead.
     if (!radio) return (await report('done', { outcome: 'unavailable' }))?.ok === true;
     if (radio.checked) return (await report('done', { outcome: 'already' }))?.ok === true;
+    panel?.step('Choosing Allow all tools');
     radio.click();
     const settled = await waitPageView(() => CLF_DOM.openDialog() ? 'dialog' : radio.isConnected && radio.checked ? 'set' : null, () => alive, 5_000, 250);
     // A confirmation was never seen on the live page; it stays open for the person to answer.

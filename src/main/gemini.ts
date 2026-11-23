@@ -435,6 +435,28 @@ export function queueGeminiFill(url: unknown): { ok: true; id: string } | { ok: 
   return { ok: true, id: newCommand('fill-app', { url: parsed.data, connector: settings.connectorName }).id };
 }
 
+/** The automatic re-add queued last: its command and the fingerprint of the address it was for. */
+let autoFill: { id: string; urlHash: string; at: number } | null = null;
+
+/**
+ * A quick tunnel (trycloudflare) gets a new address at every start, which leaves Gemini's custom
+ * app on the old one. Once the app was added before (givenUrlHash) and Gemini's connected Core
+ * address differs, add it again once for that address: never while a fill is pending, and never
+ * again for an address whose automatic re-add already ran, failed included. Returns whether it queued.
+ */
+export function followGeminiAddress(url: string | null, now = Date.now()): boolean {
+  if (!url || !HTTPS_URL.safeParse(url).success || !settings.httpsTunnel || !settings.givenUrlHash) return false;
+  const urlHash = geminiUrlFingerprint(url);
+  if (urlHash === settings.givenUrlHash || urlHash === autoFill?.urlHash) return false;
+  if (commands.some(c => c.kind === 'fill-app' && !settled(c))) return false;
+  const queued = queueGeminiFill(url);
+  if (!queued.ok) return false;
+  autoFill = { id: queued.id, urlHash, at: now };
+  logInfo('gemini app address changed; re-adding it in Gemini');
+  changed();
+  return true;
+}
+
 /** Withdraw a command that no page has been authorized to send. */
 export function cancelGeminiCommand(id: string): { ok: boolean; error?: string } {
   const command = commands.find(c => c.id === id);
@@ -510,11 +532,12 @@ export function geminiStatus(now = Date.now()): GeminiStatus {
     modesFailure: modesFailure ? { ...modesFailure, retryAt: modesFailure.at + MODES_BACKOFF_MS } : null,
     settings: { ...settings },
     commands: commands.slice(-20).map(summary),
+    autoFill: autoFill ? { id: autoFill.id, at: autoFill.at } : null,
   };
 }
 
 export function resetGeminiForTests(): void {
-  pages.clear(); commands = []; catalog = null; modesFailure = null;
+  pages.clear(); commands = []; catalog = null; modesFailure = null; autoFill = null;
   settings = { ...NO_SETTINGS };
   changed = () => {};
   if (sweepTimer) { clearInterval(sweepTimer); sweepTimer = null; }

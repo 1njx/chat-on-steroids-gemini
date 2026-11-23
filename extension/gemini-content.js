@@ -112,20 +112,40 @@
   }
 
   /**
+   * The setup errors in the same words the app shows (src/shared/gemini.ts GEMINI_ERRORS), for the
+   * status panel on the page. test/gemini-fill-app.test.ts keeps the two equal.
+   */
+  const FILL_ERRORS = {
+    'signed-out': 'Gemini is signed out in the browser. Sign in at gemini.google.com.',
+    'page-not-english': 'The Gemini page is not in English. Custom MCP apps and this integration require Gemini in English.',
+    'invalid-url': 'Gemini needs an https address. Finish the Tunnel step first.',
+    'custom-apps-layout-unknown': "Gemini's custom apps page did not look as expected, so nothing was filled in. Add the app by hand: click Custom, paste the address, then Next.",
+    'delete-failed': 'Gemini did not delete the app with the old address after 3 tries. Delete it by hand (open it, More options, Delete, then Remove), then press the button again.',
+    'connect-failed': "Gemini did not finish connecting the app. Check the open Gemini tab, or add the app by hand: click Custom, paste the address, then Next and Connect.",
+  };
+
+  /**
    * Add the app in Gemini with this address. Outcomes: 'current' (Gemini already has this address;
    * any duplicates and old addresses were deleted), 'connected' (old ones deleted, the new one added
-   * and connected). An unrecognized page fills nothing.
+   * and connected). An unrecognized page fills nothing. The tab is brought to the front first (a
+   * covered page barely loads) and a status panel on the page shows each step.
    */
   async function fillApp(command) {
-    if (dom.signInState() === 'signed-out') return result(command, { stage: 'failed', error: 'signed-out', signedOut: true });
-    if (dom.localized()) return result(command, { stage: 'failed', error: 'page-not-english' });
-    if (typeof command.url !== 'string' || !command.url.startsWith('https://')) return result(command, { stage: 'failed', error: 'invalid-url' });
+    const panel = globalThis.CLF_SETUP_PANEL;
+    const failed = (error, extra = {}) => { panel?.fail(FILL_ERRORS[error] || error); return result(command, { stage: 'failed', error, ...extra }); };
+    await message({ type: 'gemini_focus' });
+    if (dom.signInState() === 'signed-out') return failed('signed-out', { signedOut: true });
+    if (dom.localized()) return failed('page-not-english');
+    if (typeof command.url !== 'string' || !command.url.startsWith('https://')) return failed('invalid-url');
     if (!dom.onCustomApps()) {
+      panel?.start('Opening custom apps');
       location.assign('/customize/connectors');
       return result(command, { stage: 'navigating' });
     }
-    if (!(await dom.waitFor(dom.visibleCreate))) return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
+    panel?.start('Opening custom apps');
+    if (!(await dom.waitFor(dom.visibleCreate))) return failed('custom-apps-layout-unknown');
     const name = command.connector || 'Chat On Steroids Core';
+    panel?.step('Checking existing apps');
     // Every app already there under this name is found first. One with this address is kept; each
     // with an old address, and each duplicate, is deleted before anything is added (Gemini cannot
     // edit an address), as the app's button said before the person pressed it.
@@ -134,32 +154,39 @@
       const cards = dom.customAppCards(name);
       if (index >= cards.length) break;
       const existing = await dom.readCustomAppUrl(cards[index]);
-      if (!existing) { dom.backToList(); return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' }); }
+      if (!existing) { dom.backToList(); return failed('custom-apps-layout-unknown'); }
       if (existing === command.url && !kept) {
         kept = existing;
         index += 1;
         dom.backToList();
-        if (!(await dom.waitFor(dom.visibleCreate))) return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
+        if (!(await dom.waitFor(dom.visibleCreate))) return failed('custom-apps-layout-unknown');
         continue;
       }
+      panel?.step(`Deleting the old app (try ${failures + 1} of 3)`);
       if (await dom.deleteCustomApp(name, 8000, cards.length)) { failures = 0; continue; }
       // A delete that did not take is tried again from the list (3 tries), which also finds it done late.
-      if ((failures += 1) >= 3) return result(command, { stage: 'failed', error: 'delete-failed' });
+      if ((failures += 1) >= 3) return failed('delete-failed');
       dom.backToList();
-      if (!(await dom.waitFor(dom.visibleCreate))) return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
+      if (!(await dom.waitFor(dom.visibleCreate))) return failed('custom-apps-layout-unknown');
     }
-    if (kept) return result(command, { stage: 'completed', outcome: 'current', existingUrl: kept });
+    if (kept) {
+      panel?.done(`Done: Gemini already has ${name} with this address.`);
+      return result(command, { stage: 'completed', outcome: 'current', existingUrl: kept });
+    }
+    panel?.step('Adding the app');
     const next = await dom.fillCreateForm(command.url);
-    if (!next) return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
+    if (!next) return failed('custom-apps-layout-unknown');
+    panel?.step('Next');
     next.click();
     const step = await dom.waitFor(dom.connectStep, 15000);
-    if (!step) return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
+    if (!step) return failed('custom-apps-layout-unknown');
+    panel?.step("Ticking Google's notice");
     if (!step.checkbox.checked) step.checkbox.click();
-    if (!(await dom.waitFor(() => step.checkbox.checked && !step.connect.disabled ? true : null, 3000)))
-      return result(command, { stage: 'failed', error: 'custom-apps-layout-unknown' });
+    if (!(await dom.waitFor(() => step.checkbox.checked && !step.connect.disabled ? true : null, 3000))) return failed('custom-apps-layout-unknown');
+    panel?.step('Connect');
     step.connect.click();
-    if (!(await dom.waitFor(() => !step.dialog.isConnected || step.dialog.getClientRects().length === 0 ? true : null, 20000)))
-      return result(command, { stage: 'failed', error: 'connect-failed' });
+    if (!(await dom.waitFor(() => !step.dialog.isConnected || step.dialog.getClientRects().length === 0 ? true : null, 20000))) return failed('connect-failed');
+    panel?.done(`Done: ${name} is added and connected in Gemini.`);
     return result(command, { stage: 'completed', outcome: 'connected' });
   }
 
@@ -181,6 +208,7 @@
         await result(command, { stage: 'failed', error: 'unknown-command' });
       }
     } catch (error) {
+      if (command.kind === 'fill-app') globalThis.CLF_SETUP_PANEL?.fail(`The page stopped with an error: ${String(error?.message || error).slice(0, 200)}`);
       await result(command, { stage: 'failed', error: `page-error: ${String(error?.message || error).slice(0, 200)}` });
     } finally {
       running.delete(command.id);

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { defaultConfig, initConfigPath, saveConfig } from '../src/main/config.js';
 import { flushDurable, initDurableStore, readDurable, resetDurableForTests, writeDurableSoon } from '../src/main/durable.js';
 import {
-  cancelGeminiCommand, completeGeminiCommand, configureGemini, geminiPagesToOpen, geminiStatus, observeGeminiPage,
+  cancelGeminiCommand, completeGeminiCommand, configureGemini, followGeminiAddress, geminiPagesToOpen, geminiStatus, observeGeminiPage,
   queueGeminiFill, queueGeminiSend, requestGeminiModes, resetGeminiForTests, restoreGemini, saveGeminiSettings, sweep,
 } from '../src/main/gemini.js';
 import { geminiUrlFingerprint } from '../src/shared/gemini.js';
@@ -332,5 +332,49 @@ describe('Gemini models read by themselves', () => {
     expect(geminiPagesToOpen()).toEqual([]);
     expect(requestGeminiModes().id).toBe(id);
     expect(geminiPagesToOpen()).toEqual(['https://gemini.google.com/app']);
+  });
+});
+
+describe('Gemini app added again when the tunnel address changes', () => {
+  const address = (host: string) => `https://${host}.trycloudflare.com/mcp/core/${'a'.repeat(43)}`;
+  const fills = () => geminiStatus().commands.filter(c => c.kind === 'fill-app');
+
+  it('queues one fill for a new address, none for the same one, while one is pending, or after it failed', async () => {
+    expect(saveGeminiSettings({ httpsTunnel: true, givenUrlHash: geminiUrlFingerprint(address('old-name')) })).toEqual({ ok: true });
+    expect(followGeminiAddress(address('old-name'))).toBe(false);
+    expect(followGeminiAddress(null)).toBe(false);
+    expect(fills()).toEqual([]);
+
+    expect(followGeminiAddress(address('new-name'))).toBe(true);
+    const [queued] = fills();
+    expect(queued).toMatchObject({ stage: 'queued' });
+    expect(geminiStatus().autoFill?.id).toBe(queued!.id);
+    // The custom apps page is opened for it, in front (the extension focuses setup pages).
+    expect(geminiPagesToOpen()).toEqual(['https://gemini.google.com/customize/connectors']);
+    expect(followGeminiAddress(address('new-name'))).toBe(false);
+    expect(fills()).toHaveLength(1);
+
+    const handed = observeGeminiPage({ tab: 1, snapshot: page({ url: 'https://gemini.google.com/customize/connectors', composerReady: false }) }).commands;
+    expect(handed).toEqual([expect.objectContaining({ id: queued!.id, kind: 'fill-app', url: address('new-name') })]);
+    expect(await completeGeminiCommand({ id: queued!.id, tab: 1, stage: 'failed', error: 'delete-failed' })).toEqual({ ok: true });
+    // Failed for this address: not tried again by itself. A later address is.
+    expect(followGeminiAddress(address('new-name'))).toBe(false);
+    expect(fills()).toHaveLength(1);
+    expect(followGeminiAddress(address('newer-name'))).toBe(true);
+    expect(fills()).toHaveLength(2);
+  });
+
+  it('waits for a fill the person started, and does nothing before the app was ever added or without the https tunnel', () => {
+    expect(saveGeminiSettings({ httpsTunnel: true, givenUrlHash: geminiUrlFingerprint(address('old-name')) })).toEqual({ ok: true });
+    queueGeminiFill(address('by-hand'));
+    expect(followGeminiAddress(address('new-name'))).toBe(false);
+    expect(fills()).toHaveLength(1);
+
+    resetGeminiForTests();
+    expect(saveGeminiSettings({ httpsTunnel: true, givenUrlHash: null })).toEqual({ ok: true });
+    expect(followGeminiAddress(address('new-name'))).toBe(false);
+    expect(saveGeminiSettings({ httpsTunnel: false, givenUrlHash: geminiUrlFingerprint(address('old-name')) })).toEqual({ ok: true });
+    expect(followGeminiAddress(address('new-name'))).toBe(false);
+    expect(fills()).toEqual([]);
   });
 });

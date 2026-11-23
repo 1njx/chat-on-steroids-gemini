@@ -1,9 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import { afterEach, expect, it } from 'vitest';
+import { GEMINI_ERRORS } from '../src/shared/gemini.js';
 
 const domSource = readFileSync(new URL('../extension/gemini-dom.js', import.meta.url), 'utf8');
 const contentSource = readFileSync(new URL('../extension/gemini-content.js', import.meta.url), 'utf8');
+const panelSource = readFileSync(new URL('../extension/setup-panel.js', import.meta.url), 'utf8');
 const address = (host: string) => `https://${host}.trycloudflare.com/mcp/core/${'a'.repeat(43)}`;
 const NEW = address('new-name');
 
@@ -86,20 +88,25 @@ async function addInGemini(apps: App[], { flakyMenus = 0 } = {}) {
   render();
 
   const results: Array<Record<string, unknown>> = [];
+  const sent: string[] = [];
   let handed = false;
   (window as unknown as { chrome: unknown }).chrome = { runtime: { id: 'test', lastError: undefined, sendMessage(payload: Record<string, unknown>, reply: (value: unknown) => void) {
     if (payload.type === 'gemini_result') results.push(payload);
+    if (payload.type !== 'gemini_state') sent.push(String(payload.type));
     const commands = payload.type === 'gemini_state' && !handed ? [{ id: 'fill-1', kind: 'fill-app', url: NEW, connector: null }] : [];
     if (commands.length) handed = true;
     setTimeout(() => reply({ ok: true, commands }), 0);
   } } };
   window.eval(domSource);
+  window.eval(panelSource);
   window.eval(contentSource);
   for (const end = Date.now() + 25_000; Date.now() < end; await new Promise(resolve => setTimeout(resolve, 100))) {
     const last = results.at(-1);
     if (last && ['completed', 'failed'].includes(String(last.stage))) break;
   }
-  return { final: results.at(-1), pressed, apps };
+  const panel = (window as unknown as { CLF_SETUP_PANEL: { read(): { state: string; title: string; steps: string[]; ending: string | null } | null } }).CLF_SETUP_PANEL.read();
+  const style = (window.document.getElementById('cos-setup-panel') as HTMLElement | null)?.style.pointerEvents ?? null;
+  return { final: results.at(-1), pressed, apps, sent, panel, style, html: window.document.body.innerHTML };
 }
 
 it('deletes every old and duplicate Core app first, keeps the one with this address, and adds nothing', async () => {
@@ -135,3 +142,31 @@ it('deletes every old Core app before it adds and connects the new one', async (
   expect(pressed).toEqual([`delete ${address('old-one')}`, `delete ${address('old-two')}`, `add ${NEW}`]);
   expect(apps).toEqual([{ name: 'Chat On Steroids Core', url: NEW }]);
 }, 30_000);
+
+const DELETE_STEP = (n: number) => `Deleting the old app (try ${n} of 3)`;
+
+it('brings its tab to the front first, and the panel names each step, then done, never the address', async () => {
+  const { sent, panel, style, html } = await addInGemini([{ name: 'Chat On Steroids Core', url: address('old-one') }]);
+  expect(sent[0]).toBe('gemini_focus');
+  expect(panel).toMatchObject({
+    state: 'done', title: "Chat On Steroids is setting this up — please don't click or type in this tab until it says done",
+    steps: ['Opening custom apps', 'Checking existing apps', DELETE_STEP(1), 'Adding the app', 'Next', "Ticking Google's notice", 'Connect'],
+    ending: 'Done: Chat On Steroids Core is added and connected in Gemini.'
+  });
+  expect(style).toBe('none');
+  // The panel never shows the Core address (it ends in a secret token).
+  expect(html.split('cos-setup-panel')[1]).not.toContain('trycloudflare');
+}, 30_000);
+
+it('counts the delete tries in the panel and ends red with the same words the app shows', async () => {
+  const { panel } = await addInGemini([{ name: 'Chat On Steroids Core', url: address('old-one') }], { flakyMenus: 9 });
+  expect(panel).toMatchObject({ state: 'failed', steps: ['Opening custom apps', 'Checking existing apps', DELETE_STEP(1), DELETE_STEP(2), DELETE_STEP(3)],
+    ending: `${GEMINI_ERRORS['delete-failed']} The app shows the same message in Setup.` });
+}, 60_000);
+
+it("says the panel's errors in exactly the app's words", () => {
+  const table = /const FILL_ERRORS = \{([\s\S]*?)\n  \};/.exec(contentSource)![1]!;
+  const entries = [...table.matchAll(/'([a-z-]+)': (['"])(.*?)\2,/g)].map(match => [match[1], match[3]!.replace(/\\'/g, "'")]);
+  expect(entries.length).toBe(6);
+  for (const [code, text] of entries) expect(text).toBe(GEMINI_ERRORS[code!]);
+});

@@ -189,6 +189,22 @@ describe('Gemini custom app address', () => {
     expect(addPill(withGiven(old, { connectorSeenAt: Date.now() }), url)[0]).toBe('ok');
   });
 
+  it('says in Settings → Gemini that the app is adding itself again after the tunnel address changed, and how it went', async () => {
+    const { autoFillText, paintGemini } = await import('../src/renderer/gemini.js');
+    const now = 1_000_000_000;
+    const base = { id: 'auto', kind: 'fill-app', createdAt: now, updatedAt: now, conversation: null, sessionId: null, modeId: null, promptPreview: null, answerChars: null, outcome: null } as const;
+    const withFill = (stage: 'queued' | 'completed' | 'failed', error: string | null = null) =>
+      status({ autoFill: { id: 'auto', at: now - 120_000 }, commands: [{ ...base, stage, error }] });
+    expect(autoFillText(status(), now)).toBe('');
+    expect(autoFillText(withFill('queued'), now)).toMatch(/^Your tunnel address changed .*, so the app is adding Chat On Steroids Core in Gemini again with the new address, in your browser\.$/);
+    expect(autoFillText(withFill('completed'), now)).toContain('so the app added Chat On Steroids Core in Gemini again with the new address.');
+    expect(autoFillText(withFill('failed', 'delete-failed'), now)).toContain('which failed: Gemini did not delete the app with the old address after 3 tries.');
+    paintGemini(withFill('queued'), now);
+    expect(dom.window.document.getElementById('geminiConnectorStatus')!.textContent).toContain('so the app is adding Chat On Steroids Core in Gemini again');
+    // The address itself is never shown there.
+    expect(dom.window.document.getElementById('geminiConnectorStatus')!.textContent).not.toContain('trycloudflare');
+  });
+
   it('falls back to the manual steps in plain words when the custom apps page is not recognized', async () => {
     const { fillPill } = await import('../src/renderer/gemini.js');
     const base = { id: 'x', kind: 'fill-app', createdAt: 1, updatedAt: 1, conversation: null, sessionId: null, modeId: null, promptPreview: null, answerChars: null } as const;

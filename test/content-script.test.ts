@@ -27085,3 +27085,53 @@ describe('reconciling discarded streaming assistant messages via turn_messages',
     });
   });
 });
+
+// A setup page shows what the extension does in it, step by step, and how it ended.
+describe('ChatGPT setup status panel', () => {
+  const TASK = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+  /** The plugin's Permissions page in the helper tab; its Allow all tools radio switches or ignores the click. */
+  async function allowAllTools(switches: boolean) {
+    const panelSource = await fs.readFile(path.join(process.cwd(), 'extension', 'setup-panel.js'), 'utf8');
+    const reports: Array<Record<string, any>> = [];
+    let read: Record<string, unknown> | null = null;
+    live = await harness(`https://chatgpt.com/settings/plugins-settings/plugin_asdk_app_abc/permissions?cos-task=${TASK}`, {
+      setup_task: message => {
+        reports.push(message);
+        return message.action === 'get' ? { ok: true, task: { id: TASK, kind: 'plugin-permission', state: 'requested' } } : { ok: true };
+      }
+    }, (document, dom) => {
+      const window = dom.window as unknown as Record<string, unknown> & { eval(code: string): unknown };
+      window.fetch = async () => ({ ok: true, json: async () => ({ accessToken: 'token' }) });
+      window.eval(panelSource);
+      // The panel as it ends: the harness runs timers at once, so its hide would come before any read.
+      const panel = (window as unknown as { CLF_SETUP_PANEL: Record<string, (text?: string) => unknown> }).CLF_SETUP_PANEL;
+      for (const end of ['done', 'fail']) {
+        const original = panel[end]!.bind(panel);
+        panel[end] = text => { original(text); read = panel.read!() as Record<string, unknown> | null; };
+      }
+      const main = document.querySelector('main') ?? document.body.appendChild(document.createElement('main'));
+      for (const value of ['always_ask', 'ask_before_writes', 'review_important_actions', 'full_access']) {
+        const radio = document.createElement('input');
+        radio.type = 'radio'; radio.name = 'permission'; radio.value = value;
+        if (!switches) radio.addEventListener('click', event => event.preventDefault());
+        main.append(radio);
+      }
+    });
+    for (let round = 0; round < 80 && !reports.some(report => ['done', 'fail'].includes(report.action)); round++) await settle();
+    return { actions: reports.map(report => report.action), read };
+  }
+
+  it('names each Allow all tools step and ends green', async () => {
+    const { actions, read } = await allowAllTools(true);
+    expect(actions).toEqual(['get', 'claim', 'done']);
+    expect(read).toMatchObject({ state: 'done', ending: 'Done: Allow all tools is on.',
+      steps: ['Checking your ChatGPT sign-in', "Opening the plugin's Permissions", 'Choosing Allow all tools'] });
+  });
+
+  it('ends red with the exact error when ChatGPT does not switch', async () => {
+    const { actions, read } = await allowAllTools(false);
+    expect(actions).toEqual(['get', 'claim', 'fail']);
+    expect(read).toMatchObject({ state: 'failed',
+      ending: 'ChatGPT did not switch the plugin to Allow all tools The app shows the same message in Setup.' });
+  });
+});

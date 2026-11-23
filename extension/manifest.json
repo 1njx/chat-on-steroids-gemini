@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extension_name__",
-  "version": "2.2.12",
+  "version": "2.2.13",
   "description": "__MSG_extension_description__",
   "default_locale": "en",
   "minimum_chrome_version": "125",
@@ -51,6 +51,7 @@
         "i18n.js",
         "chatgpt-dom.js",
         "app-palette.js",
+        "setup-panel.js",
         "content.js"
       ],
       "css": [
@@ -85,6 +86,7 @@
         "https://platform.openai.com/*"
       ],
       "js": [
+        "setup-panel.js",
         "openai-setup.js"
       ],
       "run_at": "document_idle"
@@ -95,6 +97,7 @@
       ],
       "js": [
         "gemini-dom.js",
+        "setup-panel.js",
         "gemini-content.js"
       ],
       "run_at": "document_idle"

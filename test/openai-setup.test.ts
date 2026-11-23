@@ -125,6 +125,17 @@ describe('platform.openai.com API keys page', () => {
     expect(submitted).toEqual(['Chat On Steroids']);
   });
 
+  it('names each key step in the status panel and never shows the key', async () => {
+    keys();
+    page.window.eval(readFileSync(new URL('../extension/setup-panel.js', import.meta.url), 'utf8'));
+    const panel = (page.window as unknown as { CLF_SETUP_PANEL: { start(first: string): void; read(): { steps: string[] } | null } }).CLF_SETUP_PANEL;
+    panel.start('Tunnel ready');
+    expect(await api().createKey({ keyName: 'Chat On Steroids' })).toEqual({ key: KEY });
+    expect(panel.read()!.steps).toEqual(['Tunnel ready', 'Opening Create new secret key', 'Choosing the project',
+      'Setting Restricted with Tunnels: Read and Use', 'Creating the key']);
+    expect(page.window.document.getElementById('cos-setup-panel')!.textContent).not.toContain('sk-proj');
+  });
+
   it('creates nothing when the form does not look as observed', async () => {
     const submitted = keys({ restricted: false });
     expect((await api().createKey({ keyName: 'Chat On Steroids' })).error).toMatch(/did not look as expected/);

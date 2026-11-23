@@ -30,7 +30,7 @@ import { wakeBrowserWork } from './browser-wake.js';
 import { requestOpenaiSetup, requestPluginAdd, setupTaskStatus } from './setup-tasks.js';
 import { refreshKeepAwake } from './keep-awake.js';
 import { getChatModels, startChatModelDiscovery, configureChatModelDiscovery } from './chat-models.js';
-import { cancelGeminiCommand, configureGemini, geminiNamedTunnelHost, geminiStatus, geminiWantsHttpsTunnel, queueGeminiFill, queueGeminiSend, requestGeminiModes, saveGeminiSettings, stopGemini } from './gemini.js';
+import { cancelGeminiCommand, configureGemini, followGeminiAddress, geminiNamedTunnelHost, geminiStatus, geminiWantsHttpsTunnel, queueGeminiFill, queueGeminiSend, requestGeminiModes, saveGeminiSettings, stopGemini } from './gemini.js';
 import { releaseSessionFinish, requestSessionFinishGoal } from './session/finish.js';
 import { GOAL_MARKER_INSTRUCTION } from '../shared/goal-templates.js';
 import { validateInputImages } from './session/input-images.js';
@@ -2938,6 +2938,12 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
   };
   configureGemini({ changed: pushGeminiSoon });
   configureGeminiTunnel(geminiWantsHttpsTunnel, geminiNamedTunnelHost);
+  // A quick tunnel's new address leaves Gemini's custom app stale: it is added again once (gemini.ts).
+  onStatusChange(() => {
+    const live = getStatus();
+    followGeminiAddress(live.geminiTunnel ? (live.geminiTunnel.state === 'connected' ? live.geminiTunnel.url : null)
+      : live.surfaces.find(surface => surface.id === 'core' && surface.state === 'live')?.publicUrl ?? null);
+  });
   configureChatModelDiscovery({ changed: () => push('chatModels:changed', getChatModels()), wake: async (nonce, allowOpen) => {
     if (!await startBridge()) throw new Error('The browser bridge could not start');
     if (allowOpen) {

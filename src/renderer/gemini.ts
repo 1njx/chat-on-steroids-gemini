@@ -35,9 +35,10 @@ export function paintGemini(status: GeminiStatus, now = Date.now()): void {
   byId('geminiAccountStatus').textContent = status.signIn === 'signed-in'
     ? `Signed in${status.account?.plan ? ` · Google AI ${status.account.plan}` : ''}${status.selectedMode ? ` · Gemini shows ${status.selectedMode}` : ''}`
     : status.signIn === 'signed-out' ? 'Signed out. Sign in at gemini.google.com.' : 'Unknown until a Gemini page reports.';
-  byId('geminiConnectorStatus').textContent = status.connectorSeenAt
+  byId('geminiConnectorStatus').textContent = (status.connectorSeenAt
     ? `Gemini last reached this app's MCP server ${ago(status.connectorSeenAt, now)}.`
-    : 'No call from Gemini yet in this run. Add the Core URL below in Gemini, then mention it in a chat.';
+    : 'No call from Gemini yet in this run. Add the Core URL below in Gemini, then mention it in a chat.') +
+    (autoFillText(status, now) ? ` ${autoFillText(status, now)}` : '');
   const warnings = [
     ...(status.localized ? ['A Gemini page is not in English. Google offers custom apps in English only, and this integration needs the English page.'] : []),
     ...(status.quotaLimited ? ['Gemini shows a usage limit. Wait for the reset Gemini names; switching accounts or chats to avoid it is not supported.'] : []),
@@ -255,6 +256,18 @@ export function addPill(status: GeminiStatus | null, url: string | null, now = D
   return ['off', status?.settings.namedTunnelHost
     ? 'Waiting for Gemini to reach the app. Your own tunnel keeps this address across restarts.'
     : 'Waiting for Gemini to reach the app. A quick tunnel gets a new address at each start: add the app again with it.'];
+}
+
+/** The re-add the app started by itself when the tunnel address changed, in the person's words; '' when none. */
+export function autoFillText(status: GeminiStatus, now = Date.now()): string {
+  const fill = status.autoFill ? status.commands.find(c => c.id === status.autoFill!.id) : null;
+  if (!fill) return '';
+  const name = status.settings.connectorName || 'Chat On Steroids Core';
+  const lead = `Your tunnel address changed ${ago(status.autoFill!.at, now)}, so the app`;
+  if (fill.stage === 'completed') return `${lead} added ${name} in Gemini again with the new address.`;
+  if (fill.stage === 'failed') return `${lead} tried to add ${name} in Gemini again, which failed: ${geminiErrorText(fill.error)}`;
+  if (fill.stage === 'cancelled' || fill.stage === 'unknown') return `${lead} started adding ${name} in Gemini again, but that stopped. Use "Add it in Gemini for me" in Set up Gemini.`;
+  return `${lead} is adding ${name} in Gemini again with the new address, in your browser.`;
 }
 
 /** What the last "Add it in Gemini for me" did, in the person's words. */
