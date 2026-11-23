@@ -136,8 +136,41 @@ describe('Gemini page adapter', () => {
     expect(api.readOpenModes()).toEqual([]);
   });
 
-  it('reads no models from the 2026-11-22 layout without a picker, and presses nothing', async () => {
-    // Live page 2026-11-22: the mode picker is gone; the composer offers a Chat / Task switch instead.
+  it('reads the 2026-11-22 popover picker: waits for it, titles from .label, shuts it, selects nothing', async () => {
+    // Live 2026-11-22: the switcher renders after the composer, options split into .label/.sublabel,
+    // and the menu is a popover that ignores Escape; only its button closes it.
+    const old = document.querySelector('bard-mode-switcher')!;
+    old.remove();
+    const option = (id: string, label: string, sub: string, checked = false) =>
+      `<gem-menu-item role="menuitemradio" data-mode-id="${id}" aria-checked="${checked}" aria-disabled="false">` +
+      `<div class="label-container"><span class="label">${label}</span><div class="sublabel">${sub}</div></div></gem-menu-item>`;
+    setTimeout(() => {
+      const switcher = document.createElement('bard-mode-switcher');
+      switcher.innerHTML = '<button data-test-id="bard-mode-menu-button" aria-label="Open mode picker, currently Neon" aria-expanded="false">Neon</button>' +
+        '<gem-menu id="picker" data-visible="false"></gem-menu>';
+      document.querySelector('input-area-v2')!.append(switcher);
+      const button = switcher.querySelector('button')!, menu = switcher.querySelector('gem-menu')!;
+      button.addEventListener('click', () => {
+        const open = button.getAttribute('aria-expanded') !== 'true';
+        button.setAttribute('aria-expanded', String(open));
+        menu.innerHTML = open ? option('8c46e95b1a07cecc', 'Auto', 'Adapts to your needs') + option('56fdd199312815e2', 'Everyday help', '4 Hydrogen') +
+          option('e6fa609c3fa255c0', 'Deeper analysis', '4 Neon', true) + option('upsell_MODE_CATEGORY_ULTRA', 'Code &amp; complex work', '4 Carbon') : '';
+      });
+    }, 400);
+    const result = await api.inspectModes();
+    expect(result!.modes.map(m => [m.title, m.model, m.available, m.selected])).toEqual([
+      ['Auto', null, true, false],
+      ['Everyday help', 'Gemini 4 Hydrogen', true, false],
+      ['Deeper analysis', 'Gemini 4 Neon', true, true],
+      ['Code & complex work', 'Gemini 4 Carbon', false, false],
+    ]);
+    expect(document.querySelector('[data-test-id="bard-mode-menu-button"]')!.getAttribute('aria-expanded')).toBe('false');
+    expect(api.readOpenModes()).toEqual([]);
+    expect(api.selectedModeLabel()).toBe('Neon');
+  });
+
+  it('reads no models from a page without a picker, and presses nothing', async () => {
+    // A tab not yet on screen (2026-11-22): the composer and Chat / Task switch, but no picker.
     document.querySelector('bard-mode-switcher')!.outerHTML =
       '<gem-segmented-button><button aria-pressed="true">Chat</button><button aria-pressed="false">Task</button></gem-segmented-button>';
     const clicked: string[] = [];

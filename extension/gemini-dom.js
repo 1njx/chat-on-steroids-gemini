@@ -13,7 +13,10 @@
  *     (its id is Gemini's own turn id) holding `user-query` and `model-response`
  *   · answer prose: `model-response message-content .markdown`
  *   · mode picker: `[data-test-id="bard-mode-menu-button"]` and its `gem-menu-item[role=menuitemradio]`
- *     options, each with a stable `data-mode-id`; an `upsell_*` id is a model the account cannot use
+ *     options, each with a stable `data-mode-id`; an `upsell_*` id is a model the account cannot use.
+ *     2026-11-22: it renders after the composer and only once the tab has been on screen (a covered
+ *     window has none), sits beside a Chat / Task switch, is a popover that ignores Escape, and a
+ *     long press opens a "periodic table" dialog instead (never pressed here)
  *   · account: the Google Account button's aria-label, and the plan badge under the side-nav avatar
  *   · custom apps (/customize/connectors, observed 2026-11-22): a "Custom apps" section of
  *     `customize-card`s whose `button.card-primary-action` carries the app name as aria-label; its
@@ -102,12 +105,16 @@ var CLF_GEMINI_DOM = (() => {
     }, null);
   }
 
-  /** Parse one picker option: "Deeper analysis 4 Neon New" → title, model "4 Neon", badge. */
+  /**
+   * Parse one picker option: "Deeper analysis 4 Neon New" → title, model "4 Neon", badge. The live
+   * option (2026-11-22) splits it into `.label` "Auto" and `.sublabel` "Adapts to your needs".
+   */
   function parseOption(node) {
     const id = node.getAttribute('data-mode-id') || '';
     const full = text(node);
-    const model = (full.match(/\b(\d+(?:\.\d+)?\s+[A-Z][A-Za-z]+)\b/) || [])[1] || null;
-    const title = model ? full.slice(0, full.indexOf(model)).trim() : full;
+    const named = /\b(\d+(?:\.\d+)?\s+[A-Z][A-Za-z]+)\b/;
+    const model = (text(node.querySelector('.sublabel')).match(named) || full.match(named) || [])[1] || null;
+    const title = text(node.querySelector('.label')) || (model ? full.slice(0, full.indexOf(model)).trim() : full);
     const upsell = /^upsell_/i.test(id);
     return {
       id,
@@ -133,13 +140,21 @@ var CLF_GEMINI_DOM = (() => {
       .filter(l => /^(Low|Medium|High|Extra)$/i.test(l.label)), []);
   }
 
-  function closeMenus() {
+  async function closeMenus() {
     safe(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })), null);
     safe(() => document.querySelector('.cdk-overlay-backdrop')?.click(), null);
+    // The 2026-11-22 picker is a popover that ignores Escape and has no backdrop; its button shuts it.
+    await sleep(50);
+    safe(() => {
+      const button = document.querySelector(MODE_BUTTON);
+      if (button?.getAttribute('aria-expanded') === 'true') button.click();
+    }, null);
   }
 
   async function openPicker(current = () => true) {
-    const button = document.querySelector(MODE_BUTTON);
+    // The picker renders a moment after the composer; wait up to 3 s before calling it missing.
+    let button = null;
+    for (let i = 0; i < 30 && current() && !(button = document.querySelector(MODE_BUTTON)); i += 1) await sleep(100);
     if (!button) return false;
     if (button.getAttribute('aria-expanded') !== 'true') button.click();
     for (let i = 0; i < 20 && current(); i += 1) {
@@ -159,7 +174,7 @@ var CLF_GEMINI_DOM = (() => {
     const levelsItem = [...document.querySelectorAll(MENU_ITEM)].find(n => /Thinking level/i.test(text(n)));
     if (levelsItem && !readOpenThinkingLevels().length) { levelsItem.click(); await sleep(150); }
     const thinkingLevels = readOpenThinkingLevels();
-    closeMenus();
+    await closeMenus();
     return { modes, thinkingLevels };
   }
 
@@ -169,10 +184,10 @@ var CLF_GEMINI_DOM = (() => {
     if (!(await openPicker(current))) return false;
     const node = [...document.querySelectorAll(MODE_OPTION)].find(n => n.getAttribute('data-mode-id') === modeId);
     const option = node && parseOption(node);
-    if (!option || !option.available) { closeMenus(); return false; }
+    if (!option || !option.available) { await closeMenus(); return false; }
     if (!option.selected) node.click();
     await sleep(150);
-    closeMenus();
+    await closeMenus();
     return true;
   }
 
@@ -187,7 +202,7 @@ var CLF_GEMINI_DOM = (() => {
     const ok = !!node && node.getAttribute('aria-disabled') !== 'true';
     if (ok && node.getAttribute('aria-checked') !== 'true') node.click();
     await sleep(100);
-    closeMenus();
+    await closeMenus();
     return ok;
   }
 
@@ -252,7 +267,7 @@ var CLF_GEMINI_DOM = (() => {
       clear();
       if (await openMenu()) option = await find(25);
     }
-    if (!option) { key('keydown', 'Escape'); closeMenus(); clear(); return false; }
+    if (!option) { key('keydown', 'Escape'); await closeMenus(); clear(); return false; }
     option.node.click();
     for (let i = 0; i < 20; i += 1) {
       if ([...box.querySelectorAll('strong')].some(n => text(n).toLowerCase() === `@${wanted}`)) return true;

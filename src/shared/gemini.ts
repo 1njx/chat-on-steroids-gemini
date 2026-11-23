@@ -95,7 +95,7 @@ export const GEMINI_ERRORS: Record<string, string> = {
   'conversation-id-not-observed': 'Gemini answered but the chat id could not be read.',
   'navigation-loop': 'The Gemini page kept navigating instead of opening the chat.',
   'mode-picker-unreadable': 'The Gemini model picker could not be read.',
-  'no-model-picker': "Gemini's page shows no model picker on this account (only Chat and Task), so there are no models to list. Sending still works with Gemini's own choice.",
+  'no-model-picker': "Gemini's model picker was not on the page. Gemini draws it only once its tab has been on screen: bring the Gemini tab to the front, then press Refresh (or wait for the next automatic read).",
   'mode-list-invalid': "Gemini's model picker did not look as expected, so no models were read.",
   'invalid-request': 'The request was not valid.',
   'invalid-conversation': 'That is not a Gemini chat.',

@@ -121,9 +121,12 @@ Refresh in Settings → Gemini reads them at once; the composer menu's reload bu
 without opening a Gemini page and says "Open Gemini in Chrome to read its models" when none is
 open. A failed read is shown beside Refresh, and no automatic read follows for 10 minutes.
 
-On 2026-11-22 Gemini's page showed **no model picker** on the tested account, only a **Chat / Task**
-switch: there is then nothing to list, Settings says so, and Send uses Gemini's own choice. Earlier
-(2026-11-20) the tested Google AI Pro account's picker offered:
+Gemini draws its picker (the model name, e.g. "Neon ⌄", beside the microphone) only once its tab
+has been on screen: a Gemini tab in a covered or background window has the composer but no picker,
+so a read there fails and Settings says to bring the tab to the front. The read opens the picker,
+reads it and shuts it again; it never clicks an option and never long-presses the button (a long
+press opens Gemini's "periodic table" instead). On the tested Google AI Pro account the picker
+offered (2026-11-20, unchanged on 2026-11-22):
 
 | Option in Gemini | Model | Available on the tested Pro account |
 | --- | --- | --- |

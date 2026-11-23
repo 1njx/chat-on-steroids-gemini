@@ -9,6 +9,19 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.9] — Gemini edition: Gemini's model picker read correctly
+
+### Fixed
+
+- **Gemini's models read on today's page.** The read now waits for the picker, which Gemini draws
+  a moment after the composer, instead of giving up at once.
+- **The picker is shut after a read.** Gemini's picker is now a popover that ignores Escape, so a
+  read left it open; the app now closes it with its own button. Your selection is never changed.
+- **"Auto" is named "Auto"**, not "Auto Adapts to your needs".
+- **A missing picker is explained correctly.** 2.2.8 said Gemini's page had no model picker; it has
+  one, drawn only once the Gemini tab has been on screen. Settings now says to bring the tab to the
+  front and press Refresh.
+
 ## [2.2.8] — Gemini edition: Gemini's models read by themselves
 
 ### Fixed
@@ -20,8 +33,8 @@ the app refuses the extension and asks you to reload the matching copy.
   Settings → Gemini shows the failure and when it tries again, beside Refresh.
 - **The composer's Reload works without an open Gemini page.** It queues the read for the next
   Gemini page and says "Open Gemini in Chrome to read its models". It never opens a page itself.
-- **No model picker on Gemini's page** (seen 2026-11-22: only Chat / Task) is named as such instead
-  of "could not be read"; Send still uses Gemini's own choice.
+- **No model picker on Gemini's page** is named as such instead of "could not be read" (2.2.9
+  corrects the cause: the picker appears only once the Gemini tab has been on screen).
 
 ## [2.2.7] — Gemini edition: setup done for you in your signed-in tabs
 
