@@ -3976,5 +3976,6 @@
   "Could not add it: {0}. Use the steps above.": "无法添加：{0}。请按上面的步骤操作。",
   "Setting Allow all tools in ChatGPT…": "正在 ChatGPT 中设置“允许所有工具”…",
   "Created in ChatGPT, with Allow all tools.": "已在 ChatGPT 中创建，并设为“允许所有工具”。",
-  "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "已在 ChatGPT 中创建。这里没有权限设置，因此首次调用工具时会询问；扩展会允许此应用自己的插件。"
+  "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "已在 ChatGPT 中创建。这里没有权限设置，因此首次调用工具时会询问；扩展会允许此应用自己的插件。",
+  "Open Gemini in Chrome to read its models": "在 Chrome 中打开 Gemini 以读取其模型"
 }

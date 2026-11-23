@@ -4144,5 +4144,6 @@
   "Could not add it: {0}. Use the steps above.": "Impossible de l’ajouter : {0}. Suis les étapes ci-dessus.",
   "Setting Allow all tools in ChatGPT…": "Réglage de « Autoriser tous les outils » dans ChatGPT…",
   "Created in ChatGPT, with Allow all tools.": "Créé dans ChatGPT, avec « Autoriser tous les outils ».",
-  "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "Créé dans ChatGPT. Il n’y a pas de réglage des autorisations ici, donc le premier appel d’outil demandera ; l’extension autorise alors les plugins de cette app."
+  "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "Créé dans ChatGPT. Il n’y a pas de réglage des autorisations ici, donc le premier appel d’outil demandera ; l’extension autorise alors les plugins de cette app.",
+  "Open Gemini in Chrome to read its models": "Ouvrez Gemini dans Chrome pour lire ses modèles"
 }

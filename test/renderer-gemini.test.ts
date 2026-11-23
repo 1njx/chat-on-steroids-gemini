@@ -60,6 +60,12 @@ describe('Settings → Gemini', () => {
     expect(doc.getElementById('geminiCommands')!.textContent).toContain('it was not sent again');
     expect(geminiErrorText('sent; answer-timeout')).toBe('Sent, then: Gemini did not finish answering within 30 minutes.');
     expect(geminiErrorText('Some text Gemini showed')).toBe('Some text Gemini showed');
+    // A failed model read is shown beside Refresh with when it tries again.
+    const at = Date.now() - 60_000;
+    paintGemini(status({ catalog: null, modesFailure: { error: 'mode-list-invalid', at, retryAt: at + 600_000 } }));
+    const models = doc.getElementById('geminiModelList')!.textContent!;
+    expect(models).toContain("Reading Gemini's models failed 1 min ago: Gemini's model picker did not look as expected");
+    expect(models).toContain('tries again by itself in 9 min; Refresh tries now.');
   });
 
   it('never offers the OpenAI Secure Tunnel as a Gemini address', async () => {

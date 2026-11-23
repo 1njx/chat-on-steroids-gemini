@@ -832,5 +832,11 @@ it('offers every model Gemini web showed beside ChatGPT\'s in a new chat, only G
   gemini('hydrogen').click();
   expect(composerGeminiChoice()).toEqual({ modeId: 'hydrogen', thinkingLevel: 'High' });
   doc.getElementById('refreshComposerModels')!.click();
-  expect(requestGeminiModes).toHaveBeenCalledOnce();
+  expect(requestGeminiModes).toHaveBeenCalledExactlyOnceWith({ openPage: false });
+  expect(doc.querySelector('.toast')).toBeNull();
+  // With no Gemini page reporting, Reload still queues the read and says what to do.
+  pushGemini({ ...geminiStatus('neon'), pages: 0 });
+  doc.getElementById('refreshComposerModels')!.click();
+  expect(requestGeminiModes).toHaveBeenCalledTimes(2);
+  expect(doc.querySelector('.toast')!.textContent).toBe('Open Gemini in Chrome to read its models');
 });

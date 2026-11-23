@@ -2189,7 +2189,10 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
     if (queued.ok) void startBridge().catch(() => undefined);
     return queued;
   });
-  handle('gemini:requestModes', async () => { void startBridge().catch(() => undefined); return requestGeminiModes(); });
+  handle('gemini:requestModes', async (payload) => {
+    void startBridge().catch(() => undefined);
+    return requestGeminiModes({ openPage: z.object({ openPage: z.boolean() }).safeParse(payload).data?.openPage !== false });
+  });
   handle('gemini:stop', async (payload) => stopGemini(z.object({ conversation: z.string().max(80) }).parse(payload).conversation));
   handle('gemini:cancel', async (payload) => cancelGeminiCommand(z.object({ id: z.string().uuid() }).parse(payload).id));
   handle('gemini:settings', async (payload) => {

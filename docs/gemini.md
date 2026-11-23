@@ -92,8 +92,7 @@ Desktop and Plugins URLs the same way (Plugins page and Setup show them).
 ### Sending from the app
 
 **From the chat composer.** The composer's model menu lists every model Gemini's own picker
-showed (Refresh in Settings → Gemini, or the menu's reload button while a Gemini page is open),
-under a **Gemini** heading below ChatGPT's. A model that needs a higher plan is listed greyed out
+showed, under a **Gemini** heading below ChatGPT's. A model that needs a higher plan is listed greyed out
 with that reason. Pick one and the thinking slider offers Gemini's thinking levels (for example
 Low, Medium, High). Send then goes to Gemini instead of ChatGPT: a new Gemini chat opens in the
 app once Gemini has answered, and its messages keep going to that Gemini chat. In a Gemini chat
@@ -115,8 +114,16 @@ Google AI Pro) instead of trying it.
 
 ## Models
 
-The app reads the account's models from Gemini's own picker (Refresh) and never guesses. On the
-tested Google AI Pro account the picker offered:
+The app reads the account's models from Gemini's own picker and never guesses or changes your
+selection. It reads them by itself when a signed-in, idle Gemini page reports and no list is saved
+or the saved one is older than 24 hours (one read at a time, never while Gemini is answering).
+Refresh in Settings → Gemini reads them at once; the composer menu's reload button asks for a read
+without opening a Gemini page and says "Open Gemini in Chrome to read its models" when none is
+open. A failed read is shown beside Refresh, and no automatic read follows for 10 minutes.
+
+On 2026-11-22 Gemini's page showed **no model picker** on the tested account, only a **Chat / Task**
+switch: there is then nothing to list, Settings says so, and Send uses Gemini's own choice. Earlier
+(2026-11-20) the tested Google AI Pro account's picker offered:
 
 | Option in Gemini | Model | Available on the tested Pro account |
 | --- | --- | --- |

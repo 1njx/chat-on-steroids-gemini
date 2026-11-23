@@ -9,6 +9,20 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.8] — Gemini edition: Gemini's models read by themselves
+
+### Fixed
+
+- **Gemini's models are read by themselves.** When a signed-in, idle Gemini page reports and no
+  list is saved (or it is older than 24 hours), the app asks that page to read Gemini's model
+  picker once, without changing your selection. Before, nothing read it until Refresh was pressed.
+- **A failed read backs off.** After a failed read no automatic read follows for 10 minutes;
+  Settings → Gemini shows the failure and when it tries again, beside Refresh.
+- **The composer's Reload works without an open Gemini page.** It queues the read for the next
+  Gemini page and says "Open Gemini in Chrome to read its models". It never opens a page itself.
+- **No model picker on Gemini's page** (seen 2026-11-22: only Chat / Task) is named as such instead
+  of "could not be read"; Send still uses Gemini's own choice.
+
 ## [2.2.7] — Gemini edition: setup done for you in your signed-in tabs
 
 ### Added

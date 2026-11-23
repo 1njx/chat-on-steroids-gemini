@@ -157,7 +157,7 @@
       if (command.kind === 'inspect-modes') {
         const found = await dom.inspectModes();
         await result(command, found ? { stage: 'completed', modes: found.modes, thinkingLevels: found.thinkingLevels }
-          : { stage: 'failed', error: 'mode-picker-unreadable' });
+          : { stage: 'failed', error: document.querySelector('[data-test-id="bard-mode-menu-button"]') ? 'mode-picker-unreadable' : 'no-model-picker' });
       } else if (command.kind === 'send') {
         await send(command);
       } else if (command.kind === 'fill-app') {

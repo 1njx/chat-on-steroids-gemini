@@ -3976,5 +3976,6 @@
   "Could not add it: {0}. Use the steps above.": "Không thêm được: {0}. Hãy làm theo các bước ở trên.",
   "Setting Allow all tools in ChatGPT…": "Đang đặt “Cho phép mọi công cụ” trong ChatGPT…",
   "Created in ChatGPT, with Allow all tools.": "Đã tạo trong ChatGPT, với “Cho phép mọi công cụ”.",
-  "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "Đã tạo trong ChatGPT. Ở đây không có cài đặt quyền, nên lần gọi công cụ đầu tiên sẽ hỏi; tiện ích sẽ cho phép các plugin của chính ứng dụng này."
+  "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "Đã tạo trong ChatGPT. Ở đây không có cài đặt quyền, nên lần gọi công cụ đầu tiên sẽ hỏi; tiện ích sẽ cho phép các plugin của chính ứng dụng này.",
+  "Open Gemini in Chrome to read its models": "Mở Gemini trong Chrome để đọc các mô hình của nó"
 }

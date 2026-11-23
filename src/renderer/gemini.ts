@@ -47,10 +47,13 @@ export function paintGemini(status: GeminiStatus, now = Date.now()): void {
   byId('geminiWarningText').textContent = warnings.join(' ');
 
   const modes = status.catalog?.modes ?? [];
-  byId('geminiModelList').textContent = modes.length
+  const failure = status.modesFailure && (!status.catalog || status.modesFailure.at > status.catalog.observedAt) ? status.modesFailure : null;
+  byId('geminiModelList').textContent = (modes.length
     ? modes.map(m => `${m.model ?? m.title}${m.available ? '' : ` (unavailable${m.reason === 'requires-upgrade' ? ': needs a higher plan' : ''})`}`).join(' · ') +
       ` — read ${ago(status.catalog!.observedAt, now)}`
-    : 'Not read yet. Refresh reads Gemini\'s picker without changing it.';
+    : failure ? '' : 'Not read yet. It is read by itself when a signed-in Gemini page is open; Refresh reads it now. Reading never changes your model.') +
+    (failure ? `${modes.length ? '. ' : ''}Reading Gemini's models failed ${ago(failure.at, now)}: ${geminiErrorText(failure.error)} ` +
+      (failure.retryAt > now ? `It tries again by itself in ${Math.ceil((failure.retryAt - now) / 60_000)} min; Refresh tries now.` : 'Refresh to try again.') : '');
   fillSelect(byId<HTMLSelectElement>('geminiDefaultMode'), 'As in Gemini',
     modes.filter(m => m.available).map(m => [m.id, m.model ? `${m.model} (${m.title})` : m.title]), status.settings.defaultModeId ?? '');
   fillSelect(byId<HTMLSelectElement>('geminiThinking'), 'As in Gemini',

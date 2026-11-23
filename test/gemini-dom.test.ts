@@ -136,6 +136,18 @@ describe('Gemini page adapter', () => {
     expect(api.readOpenModes()).toEqual([]);
   });
 
+  it('reads no models from the 2026-11-22 layout without a picker, and presses nothing', async () => {
+    // Live page 2026-11-22: the mode picker is gone; the composer offers a Chat / Task switch instead.
+    document.querySelector('bard-mode-switcher')!.outerHTML =
+      '<gem-segmented-button><button aria-pressed="true">Chat</button><button aria-pressed="false">Task</button></gem-segmented-button>';
+    const clicked: string[] = [];
+    document.addEventListener('click', event => clicked.push((event.target as Element).textContent ?? ''), true);
+    expect(await api.inspectModes()).toBeNull();
+    expect(api.selectedModeLabel()).toBeNull();
+    expect(clicked).toEqual([]);
+    expect(document.querySelector('[aria-pressed="true"]')!.textContent).toBe('Chat');
+  });
+
   it('selects Neon by its stable id and refuses the locked model', async () => {
     expect(await api.selectMode('e6fa609c3fa255c0')).toBe(true);
     expect(api.selectedModeLabel()).toBe('Neon');

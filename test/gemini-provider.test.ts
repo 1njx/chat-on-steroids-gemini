@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { defaultConfig, initConfigPath, saveConfig } from '../src/main/config.js';
-import { flushDurable, initDurableStore, readDurable, resetDurableForTests } from '../src/main/durable.js';
+import { flushDurable, initDurableStore, readDurable, resetDurableForTests, writeDurableSoon } from '../src/main/durable.js';
 import {
   cancelGeminiCommand, completeGeminiCommand, configureGemini, geminiPagesToOpen, geminiStatus, observeGeminiPage,
   queueGeminiFill, queueGeminiSend, requestGeminiModes, resetGeminiForTests, restoreGemini, saveGeminiSettings, sweep,
@@ -60,6 +60,13 @@ describe('provider descriptors', () => {
 });
 
 describe('Gemini provider', () => {
+  // A fresh saved model list, so pages here do not also read the models by themselves.
+  beforeEach(async () => {
+    writeDurableSoon('gemini', { catalog: { modes: MODES, thinkingLevels: [], observedAt: Date.now() } });
+    await flushDurable();
+    await restoreGemini();
+  });
+
   it('reports page status without the Google address and drops pages that stop reporting', () => {
     expect(geminiStatus().pages).toBe(0);
     observeGeminiPage({ tab: 7, snapshot: page() }, 1_000);
@@ -259,5 +266,71 @@ describe('Gemini provider', () => {
     expect(saveGeminiSettings({ namedTunnelHost: 'https://x' })).toEqual({ ok: false, error: 'invalid-settings' });
     expect(saveGeminiSettings({ namedTunnelHost: 'Gemini.Example.com' })).toEqual({ ok: true });
     expect(geminiStatus().settings.namedTunnelHost).toBe('gemini.example.com');
+  });
+});
+
+describe('Gemini models read by themselves', () => {
+  const reads = () => geminiStatus().commands.filter(c => c.kind === 'inspect-modes' && !['completed', 'failed', 'cancelled'].includes(c.stage));
+  const fail = (id: string, tab = 1) => completeGeminiCommand({ id, tab, stage: 'completed', modes: [], thinkingLevels: [] });
+
+  it('queues one read when a signed-in idle page reports with no saved list, never while it generates or signed out', async () => {
+    expect(observeGeminiPage({ tab: 1, snapshot: page({ generating: true }) }).commands).toEqual([]);
+    expect(observeGeminiPage({ tab: 1, snapshot: page({ signIn: 'signed-out' }) }).commands).toEqual([]);
+    expect(observeGeminiPage({ tab: 1, snapshot: page({ composerReady: false }) }).commands).toEqual([]);
+    expect(reads()).toEqual([]);
+    const handed = observeGeminiPage({ tab: 1, snapshot: page() }).commands;
+    expect(handed).toEqual([expect.objectContaining({ kind: 'inspect-modes' })]);
+    // Further reports and a second page reuse the pending read.
+    expect(observeGeminiPage({ tab: 1, snapshot: page() }).commands.map(c => c.id)).toEqual([handed[0]!.id]);
+    observeGeminiPage({ tab: 2, snapshot: page() });
+    expect(reads()).toHaveLength(1);
+    // Reading never opens a page by itself.
+    resetGeminiForTests();
+    observeGeminiPage({ tab: 1, snapshot: page() }, Date.now() - 2 * 60_000);
+    expect(geminiPagesToOpen()).toEqual([]);
+  });
+
+  it('queues none while the saved list is under 24 h old, and one when it is older', async () => {
+    await loadModes();
+    observeGeminiPage({ tab: 1, snapshot: page() });
+    expect(reads()).toEqual([]);
+    const later = Date.now() + 24 * 60 * 60_000 + 1;
+    expect(observeGeminiPage({ tab: 1, snapshot: page() }, later).commands).toEqual([expect.objectContaining({ kind: 'inspect-modes' })]);
+  });
+
+  it('backs off 10 min after a failed read, shows the failure, and a successful read clears it', async () => {
+    const [first] = observeGeminiPage({ tab: 1, snapshot: page() }).commands;
+    await fail(first!.id as string);
+    const failure = geminiStatus().modesFailure!;
+    expect(failure).toMatchObject({ error: 'mode-list-invalid' });
+    expect(failure.retryAt - failure.at).toBe(10 * 60_000);
+    // No retry loop: reports inside the backoff queue nothing.
+    expect(observeGeminiPage({ tab: 1, snapshot: page() }).commands).toEqual([]);
+    expect(observeGeminiPage({ tab: 1, snapshot: page() }, failure.at + 9 * 60_000).commands).toEqual([]);
+    expect(reads()).toEqual([]);
+    const [retry] = observeGeminiPage({ tab: 1, snapshot: page() }, failure.at + 10 * 60_000).commands;
+    expect(retry).toMatchObject({ kind: 'inspect-modes' });
+    expect(await completeGeminiCommand({ id: retry!.id, tab: 1, stage: 'completed', modes: MODES, thinkingLevels: [] })).toEqual({ ok: true });
+    expect(geminiStatus().modesFailure).toBeNull();
+    expect(geminiStatus().catalog?.modes).toHaveLength(4);
+  });
+
+  it('lets Refresh read during the backoff; a queue timeout is not a read failure', async () => {
+    const [first] = observeGeminiPage({ tab: 1, snapshot: page({ generating: false }) }).commands;
+    await completeGeminiCommand({ id: first!.id, tab: 1, stage: 'failed', error: 'mode-picker-unreadable' });
+    expect(geminiStatus().modesFailure).toMatchObject({ error: 'mode-picker-unreadable' });
+    const { id } = requestGeminiModes();
+    expect(observeGeminiPage({ tab: 1, snapshot: page() }).commands.map(c => c.id)).toEqual([id]);
+    resetGeminiForTests();
+    requestGeminiModes({ openPage: false });
+    sweep(Date.now() + 4 * 60_000);
+    expect(geminiStatus().modesFailure).toBeNull();
+  });
+
+  it('opens a Gemini page for Settings → Refresh, but not for the composer\'s Reload', () => {
+    const { id } = requestGeminiModes({ openPage: false });
+    expect(geminiPagesToOpen()).toEqual([]);
+    expect(requestGeminiModes().id).toBe(id);
+    expect(geminiPagesToOpen()).toEqual(['https://gemini.google.com/app']);
   });
 });

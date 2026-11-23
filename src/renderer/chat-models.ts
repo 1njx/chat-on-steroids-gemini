@@ -5,7 +5,7 @@ import type { Config } from '../shared/types.js';
 import type { ReasoningEffort } from '../shared/session.js';
 import type { GeminiStatus } from '../shared/gemini.js';
 import type { ProviderId } from '../shared/providers.js';
-import { $, el, icon, run } from './dom.js';
+import { $, el, icon, run, toast } from './dom.js';
 
 let catalog: ChatModelCatalog = { state: 'unknown', requestedAt: null, observedAt: null, models: [] };
 let generation = 0;
@@ -21,6 +21,8 @@ let composerContext: { scope: string | null; observation: ObservedSelection | nu
   provider?: ProviderId; gemini?: GeminiChoice | null } | null = null;
 /** The models Gemini's own picker showed (src/main/gemini.ts); null until a Gemini page reported them. */
 let gemini: Pick<GeminiStatus, 'catalog' | 'settings' | 'pages'> | null = null;
+/** Opening an empty model menu presses Reload itself; that press shows no notice. */
+let autoReload = false;
 const geminiLevels = (): string[] => gemini?.catalog?.thinkingLevels.filter(level => level.available).map(level => level.label) ?? [];
 const geminiModeLabel = (modeId: string): string => {
   const mode = gemini?.catalog?.modes.find(item => item.id === modeId);
@@ -690,7 +692,7 @@ export function initChatModels(onPaint?: () => void): void {
   });
   modelMenu?.addEventListener('toggle', () => {
     if (!modelMenu.open) closeModelChoices();
-    else if (!catalog.models.length) $('refreshComposerModels').click();
+    else if (!catalog.models.length) { autoReload = true; $('refreshComposerModels').click(); autoReload = false; }
   });
   for (const [modelId, effortId, allowEmpty] of pairs) {
     document.getElementById(modelId)?.addEventListener('change', () => {
@@ -713,8 +715,11 @@ export function initChatModels(onPaint?: () => void): void {
     });
   }
   for (const id of ['refreshChatModels', 'refreshComposerModels']) document.getElementById(id)?.addEventListener('click', () => { void discoverModels(); });
-  // Gemini's list is read only from a Gemini page that is already open; Reload never opens one.
-  document.getElementById('refreshComposerModels')?.addEventListener('click', () => { if (gemini?.pages) void window.api.requestGeminiModes?.(); });
+  // Gemini's list is read only from a Gemini page; Reload never opens one, it waits for one the person opens.
+  document.getElementById('refreshComposerModels')?.addEventListener('click', () => {
+    void window.api.requestGeminiModes?.({ openPage: false });
+    if (!gemini?.pages && !autoReload) toast(t("Open Gemini in Chrome to read its models"));
+  });
   const takeGemini = (status: GeminiStatus | null | undefined): void => {
     if (!status) return;
     const next = { catalog: status.catalog, settings: status.settings, pages: status.pages };

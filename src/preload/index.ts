@@ -414,7 +414,8 @@ const api = {
   getGeminiStatus: () => call<GeminiStatus>('gemini:status'),
   sendToGemini: (request: { prompt: string; modeId?: string | null; thinkingLevel?: string | null; conversation?: string | null; connector?: string | null }) =>
     call<{ ok: true; id: string } | { ok: false; error: string }>('gemini:send', request),
-  requestGeminiModes: () => call<{ ok: true; id: string }>('gemini:requestModes'),
+  /** `openPage: false`: wait for a Gemini page the person opens instead of opening one. */
+  requestGeminiModes: (options?: { openPage?: boolean }) => call<{ ok: true; id: string }>('gemini:requestModes', options),
   stopGemini: (conversation: string) => call<{ ok: boolean; error?: string }>('gemini:stop', { conversation }),
   cancelGeminiCommand: (id: string) => call<{ ok: boolean; error?: string }>('gemini:cancel', { id }),
   saveGeminiSettings: (patch: Partial<GeminiStatus['settings']>) => call<{ ok: boolean; error?: string }>('gemini:settings', patch),

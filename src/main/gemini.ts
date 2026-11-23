@@ -27,6 +27,12 @@ const ANSWER_MS = 35 * 60_000;
 const MAX_PROMPT = 100_000;
 const MAX_COMMANDS = 40;
 const MAX_NAVIGATIONS = 3;
+/** A saved model list older than this is read again when a signed-in page reports. */
+export const MODES_STALE_MS = 24 * 60 * 60_000;
+/** After a failed read, no automatic read for this long (Refresh still reads at once). */
+export const MODES_BACKOFF_MS = 10 * 60_000;
+// Queue timeouts mean no page took the read, not that reading failed: no backoff for those.
+const NOT_A_READ_FAILURE = ['gemini-page-not-connected', 'no-ready-gemini-page'];
 
 type Stage = 'queued' | 'claimed' | 'sending' | 'sent' | 'completed' | 'failed' | 'cancelled' | 'unknown';
 type Kind = 'send' | 'inspect-modes' | 'stop' | 'fill-app';
@@ -52,6 +58,8 @@ interface Command {
   /** fill-app: the https address to fill in Gemini's custom app form. */
   url: string | null;
   outcome: string | null;
+  /** Whether the extension may open a Gemini page for this command when none reports. */
+  openPage: boolean;
 }
 
 const snapshotSchema = z.object({
@@ -94,6 +102,8 @@ export type GeminiSettings = z.infer<typeof settingsSchema>;
 const pages = new Map<number, { snapshot: Snapshot; seenAt: number }>();
 let commands: Command[] = [];
 let catalog: { modes: GeminiMode[]; thinkingLevels: GeminiThinkingLevel[]; observedAt: number } | null = null;
+/** The last failed read of Gemini's model picker; cleared by a successful read. */
+let modesFailure: { error: string; at: number } | null = null;
 const NO_SETTINGS: GeminiSettings = { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, httpsTunnel: false, givenUrlHash: null, namedTunnelHost: null };
 let settings: GeminiSettings = { ...NO_SETTINGS };
 let changed = (): void => {};
@@ -129,6 +139,9 @@ function finish(command: Command, stage: Stage, error: string | null = null): vo
   command.stage = stage;
   command.error = error;
   command.updatedAt = Date.now();
+  if (command.kind === 'inspect-modes' && stage === 'failed' && !NOT_A_READ_FAILURE.includes(error ?? '')) {
+    modesFailure = { error: error ?? 'failed', at: command.updatedAt };
+  }
   if (stage === 'failed' || stage === 'unknown') logWarn(`gemini: ${command.kind} ${command.id.slice(0, 8)} ${stage}${error ? ` (${error})` : ''}`);
   else logInfo(`gemini: ${command.kind} ${command.id.slice(0, 8)} ${stage}`);
 }
@@ -186,6 +199,14 @@ function wire(command: Command): Record<string, unknown> {
   };
 }
 
+/** An idle signed-in page reads the models by itself when none are saved or they are stale: one read at a time, none during backoff. */
+function modesWanted(page: Snapshot, now: number): boolean {
+  if (page.signIn !== 'signed-in' || !page.composerReady || page.generating) return false;
+  if (catalog && now - catalog.observedAt < MODES_STALE_MS) return false;
+  if (modesFailure && now - modesFailure.at < MODES_BACKOFF_MS) return false;
+  return !commands.some(c => c.kind === 'inspect-modes' && !settled(c));
+}
+
 /** A Gemini page's report. Returns the commands this exact tab should run now. */
 export function observeGeminiPage(body: unknown, now = Date.now()): { ok: boolean; commands: Array<Record<string, unknown>> } {
   const parsed = z.object({ tab: z.number().int().nonnegative(), snapshot: z.unknown() }).safeParse(body);
@@ -194,6 +215,10 @@ export function observeGeminiPage(body: unknown, now = Date.now()): { ok: boolea
   const { tab } = parsed.data;
   const before = JSON.stringify(pages.get(tab)?.snapshot ?? null);
   pages.set(tab, { snapshot, seenAt: now });
+  if (modesWanted(snapshot, now)) {
+    logInfo(`gemini: reading Gemini's models (${catalog ? 'saved list older than 24 h' : 'no saved list'})`);
+    newCommand('inspect-modes', { openPage: false }, now);
+  }
   const live = livePages(now);
   const handed: Array<Record<string, unknown>> = [];
   for (const command of commands) {
@@ -273,6 +298,7 @@ export async function completeGeminiCommand(body: unknown, now = Date.now()): Pr
     const levels = z.array(levelSchema).safeParse(result.thinkingLevels ?? []);
     if (!modes.success || !modes.data.length || !levels.success) { finish(command, 'failed', 'mode-list-invalid'); changed(); return { ok: true }; }
     catalog = { modes: modes.data, thinkingLevels: levels.data, observedAt: now };
+    modesFailure = null;
     persist();
     finish(command, 'completed');
     changed();
@@ -379,10 +405,15 @@ export function queueGeminiSend(input: GeminiSendRequest): { ok: true; id: strin
   return { ok: true, id: command.id };
 }
 
-/** Ask a signed-in Gemini page to read the mode picker (never changes the selection). */
-export function requestGeminiModes(): { ok: true; id: string } {
+/**
+ * Ask a signed-in Gemini page to read the mode picker (never changes the selection). With
+ * `openPage: false` it waits for a page the person opens instead of opening one.
+ */
+export function requestGeminiModes(options: { openPage?: boolean } = {}): { ok: true; id: string } {
+  const openPage = options.openPage !== false;
   const pending = commands.find(c => c.kind === 'inspect-modes' && !settled(c));
-  return { ok: true, id: (pending ?? newCommand('inspect-modes', {})).id };
+  if (pending) { pending.openPage ||= openPage; return { ok: true, id: pending.id }; }
+  return { ok: true, id: newCommand('inspect-modes', { openPage }).id };
 }
 
 export function stopGemini(conversation: string): { ok: boolean; error?: string } {
@@ -413,12 +444,11 @@ export function cancelGeminiCommand(id: string): { ok: boolean; error?: string }
   return { ok: true };
 }
 
-function newCommand(kind: Kind, fields: Partial<Command>): Command {
-  const now = Date.now();
+function newCommand(kind: Kind, fields: Partial<Command>, now = Date.now()): Command {
   const command: Command = {
     id: randomUUID(), kind, stage: 'queued', prompt: null, modeId: null, thinkingLevel: null, connector: null,
     conversationId: null, tab: null, navigations: 0, createdAt: now, updatedAt: now, sentAt: null, error: null,
-    sessionId: null, answerChars: null, url: null, outcome: null, ...fields,
+    sessionId: null, answerChars: null, url: null, outcome: null, openPage: true, ...fields,
   };
   commands.push(command);
   sweep(now);
@@ -452,7 +482,7 @@ export function geminiNamedTunnelHost(): string | null { return settings.namedTu
 /** Pages the extension should open: only when work waits and no Gemini page is reporting at all. */
 export function geminiPagesToOpen(now = Date.now()): string[] {
   if (livePages(now).length) return [];
-  const waiting = commands.find(c => c.stage === 'queued' && c.kind !== 'stop');
+  const waiting = commands.find(c => c.stage === 'queued' && c.kind !== 'stop' && c.openPage);
   if (!waiting) return [];
   if (waiting.kind === 'fill-app') return [`${PROVIDERS.gemini.origin}/customize/connectors`];
   return [waiting.conversationId ? `${PROVIDERS.gemini.origin}/app/${waiting.conversationId}` : `${PROVIDERS.gemini.origin}/app`];
@@ -476,13 +506,14 @@ export function geminiStatus(now = Date.now()): GeminiStatus {
     errors: any?.errors.map(e => e.text) ?? [],
     quotaLimited: live.some(([, p]) => p.errors.some(e => e.quota)),
     catalog: catalog ? structuredClone(catalog) : null,
+    modesFailure: modesFailure ? { ...modesFailure, retryAt: modesFailure.at + MODES_BACKOFF_MS } : null,
     settings: { ...settings },
     commands: commands.slice(-20).map(summary),
   };
 }
 
 export function resetGeminiForTests(): void {
-  pages.clear(); commands = []; catalog = null;
+  pages.clear(); commands = []; catalog = null; modesFailure = null;
   settings = { ...NO_SETTINGS };
   changed = () => {};
   if (sweepTimer) { clearInterval(sweepTimer); sweepTimer = null; }
