@@ -90,7 +90,9 @@ each step turns green by itself when the app sees it done.
    (never while one is running). One that fails is tried again 2 minutes later, 3 tries in all per
    address; one you cancel is not. Settings → Gemini says so and how it went.
    **Old copies always go first:** two apps cannot share a name, so the list is read only once it
-   stops changing, each app is matched by its title (a card's label is "Name, description"), and
+   stops changing, each app is matched by its title (a card's label is "Name, description"), an
+   app's address is read only once Gemini synced its details (Gemini first shows them from a cache
+   that can still hold a deleted app's address, then replaces them about 0.3 s later), and
    nothing is added while an app with the name is left. After **Connect** the list must show
    exactly one app with the name, holding the new address, or the step fails with
    `verify-failed`.
@@ -121,13 +123,21 @@ app once Gemini has answered, and its messages keep going to that Gemini chat. I
 the menu lists only Gemini's models; in a ChatGPT chat only ChatGPT's. Gemini gets text only:
 files, plans and edits are refused with a message.
 
+**Which browser.** Gemini always runs in your own browser with the Chat On Steroids extension,
+signed in to Google, even when chats use the app's built-in browser: Google does not allow signing
+in inside an embedded browser. Gemini pages in the built-in browser are ignored and none is opened
+there. A send that finds only a Gemini page without a composer (for example custom apps) opens a
+new chat in that tab.
+
 **Settings → Gemini → Send to Gemini** sends a message into a new (or a recent) Gemini chat in
 your browser through the extension, waits for the answer and records the turn in the app's
 history as a `gemini:<id>` chat. It:
 
 - selects the model and thinking level you chose (or keeps Gemini's), **before** typing, because
   Gemini hides its model picker while a long draft is open;
-- starts the message with an @-mention of the connector name you set (default empty = no mention);
+- starts the message with an @-mention of the app name you set; with none set, of **Chat On Steroids Core**
+  once the app was added in Gemini (no mention before that). Without the mention Gemini answers without
+  the app's tools, so it could not see your folders;
 - sends **at most once**. If the page was allowed to press Send but never confirmed, the message is
   reported as **Outcome unknown** and is never sent again. Failures show Gemini's own words.
 

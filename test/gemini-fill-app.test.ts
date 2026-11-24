@@ -18,7 +18,7 @@ interface App { name: string; url: string }
  * Gemini's custom apps page as observed on 2026-11-22: a card per app, a details page with the
  * MCP URL and More options → Delete, and Create custom app → Next → Google's notice → Connect.
  */
-async function addInGemini(apps: App[], { flakyMenus = 0, lateMs = 0, duplicateOnAdd = false } = {}) {
+async function addInGemini(apps: App[], { flakyMenus = 0, lateMs = 0, duplicateOnAdd = false, staleDetails = false } = {}) {
   dom = new JSDOM(`<a aria-label="Google Account: Pat (pat@example.com)" href="#"></a>
     <button aria-label="Create custom app">Custom</button><section><h2>Custom apps</h2><div id="grid"></div></section>
     <div id="details"></div><div id="menus"></div><div id="dialogs"></div>`,
@@ -47,7 +47,14 @@ async function addInGemini(apps: App[], { flakyMenus = 0, lateMs = 0, duplicateO
   };
   const open = (app: App) => {
     const details = doc.getElementById('details')!;
-    details.innerHTML = `<dl><dt>MCP URL</dt><dd>${app.url}</dd></dl>`;
+    details.innerHTML = `<dl><dt>MCP URL</dt><dd>${app.url}</dd><dt>Last synced</dt><dd>now</dd></dl>`;
+    // As seen live on 2026-11-24: the details are painted first from a cache holding a deleted app's address, then synced.
+    if (staleDetails) {
+      const dl = details.querySelector('dl')!;
+      const synced = dl.innerHTML;
+      dl.innerHTML = `<dt>MCP URL</dt><dd>${address('cached-old')}</dd><dt>Last synced</dt><dd>yesterday</dd>`;
+      setTimeout(() => { if (dl.isConnected) dl.innerHTML = synced; }, 400);
+    }
     button(details, '<button aria-label="Back to Connectors"></button>', () => { details.innerHTML = ''; });
     button(details, '<button aria-label="More options"></button>', () => {
       // A menu that does not open (a slow page) the first `flakyMenus` times.
@@ -154,6 +161,16 @@ it('finds an old Core app in a list that loads late, and deletes it before addin
   expect(pressed).toEqual([`delete ${address('old-one')}`, `add ${NEW}`]);
   expect(apps).toEqual([{ name: 'Chat On Steroids Core', url: NEW }]);
 }, 30_000);
+
+it("reads an app's address only once Gemini synced its details, so a cached old address neither deletes the current app nor fails the check", async () => {
+  const current = await addInGemini([{ name: 'Chat On Steroids Core', url: NEW }], { staleDetails: true });
+  expect(current.final).toMatchObject({ stage: 'completed', outcome: 'current', existingUrl: NEW, verified: true });
+  expect(current.pressed).toEqual([]);
+  dom!.window.close(); dom = null;
+  const replaced = await addInGemini([{ name: 'Chat On Steroids Core', url: address('old-one') }], { staleDetails: true });
+  expect(replaced.final).toMatchObject({ stage: 'completed', outcome: 'connected', verified: true });
+  expect(replaced.pressed).toEqual([`delete ${address('old-one')}`, `add ${NEW}`]);
+}, 60_000);
 
 it('fails the add when the list afterwards does not show exactly one app with this name and address', async () => {
   const { final } = await addInGemini([], { duplicateOnAdd: true });

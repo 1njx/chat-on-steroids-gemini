@@ -164,11 +164,13 @@ function finish(command: Command, stage: Stage, error: string | null = null): vo
 /** Expire work nobody can take or that went silent. Returns true when anything changed. */
 export function sweep(now = Date.now()): boolean {
   let any = false;
-  const pagesLive = livePages(now).length > 0;
+  const live = livePages(now);
+  const pagesLive = live.length > 0;
+  const signedOutOnly = pagesLive && live.every(([, page]) => page.signIn === 'signed-out');
   for (const command of commands) {
     const age = now - command.updatedAt;
     if (command.stage === 'queued' && age > QUEUE_MS) {
-      finish(command, 'failed', pagesLive ? 'no-ready-gemini-page' : 'gemini-page-not-connected'); any = true;
+      finish(command, 'failed', !pagesLive ? 'gemini-page-not-connected' : signedOutOnly ? 'signed-out' : 'no-ready-gemini-page'); any = true;
     } else if (command.stage === 'claimed' && age > CLAIM_MS) {
       finish(command, 'failed', 'page-did-not-respond'); any = true;
     } else if (command.stage === 'sending' && age > SENDING_MS) {
@@ -194,7 +196,13 @@ function eligible(command: Command, tab: number, page: Snapshot, live: Array<[nu
   if (command.kind === 'stop') return page.conversationId === command.conversationId;
   // Filling the custom app form needs no composer: any idle page can open the custom apps page.
   if (command.kind === 'fill-app') return !page.generating;
-  if (!page.composerReady) return false;
+  if (!page.composerReady) {
+    // A page without a composer (custom apps, settings) opens a chat page for a send, when no page with
+    // one can take it: otherwise a send waited for a page that never came (seen live 2026-11-24 after
+    // "Add it in Gemini for me" left only the custom apps page open).
+    return command.kind === 'send' && !page.generating &&
+      !live.some(([other, p]) => other !== tab && p.signIn === 'signed-in' && p.composerReady && !p.generating);
+  }
   if (command.kind === 'inspect-modes') return !page.generating;
   if (page.generating) return false;
   if (command.conversationId) {
@@ -398,6 +406,17 @@ const sendSchema = z.object({
   connector: z.string().trim().max(80).nullable().optional(),
 });
 
+/** The app's name in Gemini when none is set (the name "Add it in Gemini for me" looks for). */
+export const GEMINI_CORE_NAME = 'Chat On Steroids Core';
+
+/**
+ * The app a send @-mentions by default: the set name, else the Core once it was added in Gemini.
+ * Without a mention Gemini answers without the app's tools, so an app chat could not see any folder.
+ */
+function defaultConnector(): string | null {
+  return settings.connectorName ?? (settings.givenUrlHash ? GEMINI_CORE_NAME : null);
+}
+
 /** Queue one prompt. Refuses a mode the account showed as unavailable instead of trying it. */
 export function queueGeminiSend(input: GeminiSendRequest): { ok: true; id: string } | { ok: false; error: string } {
   const parsed = sendSchema.safeParse(input);
@@ -418,7 +437,7 @@ export function queueGeminiSend(input: GeminiSendRequest): { ok: true; id: strin
   const command = newCommand('send', {
     prompt: request.prompt, modeId: modeId ?? null,
     thinkingLevel: request.thinkingLevel === undefined ? settings.defaultThinkingLevel : request.thinkingLevel,
-    connector: request.connector === undefined ? settings.connectorName : request.connector || null,
+    connector: request.connector === undefined ? defaultConnector() : request.connector || null,
     conversationId,
   });
   return { ok: true, id: command.id };

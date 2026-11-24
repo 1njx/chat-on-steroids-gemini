@@ -60,6 +60,8 @@ var CLF_GEMINI_DOM = (() => {
   }
 
   function composer() { return safe(() => document.querySelector(COMPOSER), null); }
+  /** A chat page (/app, a chat, or a Gem), as opposed to custom apps, settings and the like. */
+  const onChatPage = () => safe(() => /^\/(?:u\/\d+\/)?(?:app|gem\/[^/]+)(?:\/|$)/.test(location.pathname), false);
   function sendButton() { return safe(() => [...document.querySelectorAll(SEND)].find(visible) || null, null); }
   function stopButton() { return safe(() => [...document.querySelectorAll(STOP)].find(visible) || null, null); }
   function generating() { return !!stopButton(); }
@@ -399,21 +401,35 @@ var CLF_GEMINI_DOM = (() => {
     return customAppCards(name)[0] || null;
   }
 
+  /** A row's value on the open app's details page ("MCP URL", "Last synced"), or ''. */
+  const detailsValue = label => safe(() => text([...document.querySelectorAll('dt')].find(dt => text(dt) === label)?.nextElementSibling), '');
+
   /** The "MCP URL" shown on the open app's details page, or null. */
   function detailsUrl() {
-    return safe(() => {
-      const label = [...document.querySelectorAll('dt')].find(dt => text(dt) === 'MCP URL');
-      const value = text(label?.nextElementSibling);
-      return /^https:\/\/\S+$/.test(value) ? value : null;
-    }, null);
+    const value = detailsValue('MCP URL');
+    return /^https:\/\/\S+$/.test(value) ? value : null;
   }
 
-  /** Opens an app's details page (by name: the first such app, or the given card) and reads its address. Null when unreadable. */
-  async function readCustomAppUrl(target, ms = 6000) {
+  /**
+   * Opens an app's details page (by name: the first such app, or the given card) and reads its address. Null when unreadable.
+   * Gemini first paints the details from a cache that can still hold a deleted app with the same name (seen live
+   * 2026-11-24: the day before's address, replaced 0.3 s later along with "Last synced"). So the address is read once it
+   * synced: 0.3 s after "Last synced" or the address changed, or once both stayed the same for 2 s.
+   */
+  async function readCustomAppUrl(target, ms = 10000) {
     const card = typeof target === 'string' ? customAppCard(target) : target;
     if (!card) return null;
     card.click();
-    return waitFor(detailsUrl, ms);
+    let first = null, last = null, since = 0;
+    for (const end = Date.now() + ms; Date.now() < end; await sleep(100)) {
+      const url = detailsUrl();
+      if (!url) continue;
+      const state = `${url}\n${detailsValue('Last synced')}`;
+      first ??= state;
+      if (state !== last) { last = state; since = Date.now(); continue; }
+      if (Date.now() - since >= (state === first ? 2000 : 300)) return url;
+    }
+    return null;
   }
 
   function backToList() {
@@ -520,7 +536,7 @@ var CLF_GEMINI_DOM = (() => {
   }
 
   return {
-    conversationId, composer, sendButton, stopButton, generating, signInState, account,
+    conversationId, composer, onChatPage, sendButton, stopButton, generating, signInState, account,
     selectedModeLabel, readOpenModes, readOpenThinkingLevels, inspectModes, selectMode,
     selectThinkingLevel, insertPrompt, composerText, mentionOptions, mentionConnector, appendPrompt,
     send, stopGeneration, turns, errors,

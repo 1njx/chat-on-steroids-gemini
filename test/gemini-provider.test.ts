@@ -217,6 +217,43 @@ describe('Gemini provider', () => {
     expect(await readDurable<{ settings: { connectorName: string } }>('gemini')).toMatchObject({ settings: { connectorName: 'Chat On Steroids Core' } });
   });
 
+  it('mentions Chat On Steroids Core by default once the app was added in Gemini, and nothing before that', () => {
+    queueGeminiSend({ prompt: 'before' });
+    expect(observeGeminiPage({ tab: 1, snapshot: page() }).commands[0]).toMatchObject({ prompt: 'before', connector: null });
+    expect(saveGeminiSettings({ givenUrlHash: geminiUrlFingerprint(`https://x.trycloudflare.com/mcp/core/${'a'.repeat(43)}`) })).toEqual({ ok: true });
+    queueGeminiSend({ prompt: 'after' });
+    queueGeminiSend({ prompt: 'none', connector: null });
+    expect(observeGeminiPage({ tab: 2, snapshot: page() }).commands[0]).toMatchObject({ prompt: 'after', connector: 'Chat On Steroids Core' });
+    expect(observeGeminiPage({ tab: 3, snapshot: page() }).commands[0]).toMatchObject({ prompt: 'none', connector: null });
+  });
+
+  it('hands a send to a page without a composer (custom apps) only when no chat page can take it', () => {
+    const connectors = page({ url: 'https://gemini.google.com/customize/connectors', composerReady: false });
+    // An idle chat page that reports takes it first.
+    observeGeminiPage({ tab: 2, snapshot: page() });
+    const { id } = queueGeminiSend({ prompt: 'hi' }) as { id: string };
+    expect(observeGeminiPage({ tab: 1, snapshot: connectors }).commands).toEqual([]);
+    expect(observeGeminiPage({ tab: 2, snapshot: page() }).commands.map(c => c.id)).toEqual([id]);
+    // Only custom apps open (as "Add it in Gemini for me" leaves it): it takes the send and opens /app (gemini-content.js).
+    resetGeminiForTests();
+    const second = (queueGeminiSend({ prompt: 'hi' }) as { id: string }).id;
+    expect(observeGeminiPage({ tab: 1, snapshot: { ...connectors, generating: true } }).commands).toEqual([]);
+    expect(observeGeminiPage({ tab: 1, snapshot: connectors }).commands.map(c => c.id)).toEqual([second]);
+    // Model reads still need a page with the picker.
+    resetGeminiForTests();
+    requestGeminiModes();
+    expect(observeGeminiPage({ tab: 1, snapshot: connectors }).commands).toEqual([]);
+  });
+
+  it('says Gemini is signed out when the only pages that report are signed out', () => {
+    const { id } = queueGeminiSend({ prompt: 'hi' }) as { id: string };
+    const now = Date.now();
+    // The page keeps reporting, signed out, the whole time.
+    for (let t = now; t <= now + 3 * 60_000 + 1; t += 30_000) observeGeminiPage({ tab: 1, snapshot: page({ signIn: 'signed-out' }) }, t);
+    sweep(now + 3 * 60_000 + 1);
+    expect(geminiStatus(now).commands.find(c => c.id === id)).toMatchObject({ stage: 'failed', error: 'signed-out' });
+  });
+
   it('bounds retained command history', () => {
     for (let i = 0; i < 60; i += 1) { const r = queueGeminiSend({ prompt: `p${i}` }) as { id: string }; cancelGeminiCommand(r.id); }
     sweep();

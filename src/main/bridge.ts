@@ -778,6 +778,10 @@ function opensNewWork(req: http.IncomingMessage, route: string, conversationId: 
 }
 const WITHHELD_LOG_MS = 60_000;
 const withheldLoggedAt = new Map<string, number>();
+/** A request from the built-in (CoS) browser's copy of the extension, chosen or not. */
+function builtInBrowser(req: http.IncomingMessage): boolean {
+  return req.headers['x-extension-host'] === 'cos';
+}
 function chosenBuiltInBrowser(req: http.IncomingMessage): boolean {
   return getConfig().ui.chatBrowser === 'cos' && req.headers['x-extension-host'] === 'cos';
 }
@@ -3468,6 +3472,10 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
     return json(res, effects ? 200 : 409, { ok: !!effects }, origin);
   }
   if (route === '/gemini/state' && req.method === 'POST') {
+    // A Gemini page in the built-in browser is never signed in (Google refuses embedded browsers, so
+    // its sign-in leaves for the person's own browser): it neither counts as a page nor takes work.
+    // Seen live 2026-11-24: its signed-out page was the only one, so a send waited 3 minutes and failed.
+    if (builtInBrowser(req)) { await readBody(req); return json(res, 200, { ok: true, commands: [] }, origin); }
     const reply = observeGeminiPage(await readBody(req));
     return json(res, reply.ok ? 200 : 400, reply, origin);
   }
@@ -3663,8 +3671,9 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
         conversations: live,
         stopTurns: await pendingStopCommands(),
         modelCatalogRequest: otherBrowser ? null : pendingChatModelRequest(),
-        // Gemini work waiting for a page while no Gemini page reports (src/main/gemini.ts).
-        geminiOpen: otherBrowser ? [] : geminiPagesToOpen(),
+        // Gemini work waiting for a page while no Gemini page reports (src/main/gemini.ts): opened in the
+        // person's own browser even when the built-in one is chosen, since Google refuses sign-in there.
+        geminiOpen: builtInBrowser(req) ? [] : geminiPagesToOpen(),
         // This install's connector names, so the extension recognizes exactly its own traffic.
         connectorNames: connectorNames(getConfig().connectorSuffix),
         // Apps proven to be this install's connectors, so a renamed connector is still recognized.

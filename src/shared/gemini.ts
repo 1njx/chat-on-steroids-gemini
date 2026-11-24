@@ -98,7 +98,7 @@ export const GEMINI_ERRORS: Record<string, string> = {
   'busy': 'Gemini was still answering in that chat.',
   'answer-timeout': 'Gemini did not finish answering within 30 minutes.',
   'no-ready-gemini-page': 'No signed-in, idle Gemini page took the message within 3 minutes.',
-  'gemini-page-not-connected': 'No Gemini page is connected. Open gemini.google.com in the browser with the extension.',
+  'gemini-page-not-connected': "No Gemini page is connected. Open gemini.google.com, signed in, in your own browser with the Chat On Steroids extension (Google does not allow signing in inside the app's built-in browser).",
   'page-did-not-respond': 'The Gemini page stopped responding before sending.',
   'send-outcome-not-observed': 'The page was told to send but never confirmed. Check the Gemini chat; it was not sent again.',
   'answer-not-observed': 'The message was sent but the answer was not observed.',

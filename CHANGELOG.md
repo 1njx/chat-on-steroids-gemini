@@ -9,6 +9,25 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.17] — Gemini edition: chats from the app reach Gemini, with the Core app
+
+### Fixed
+
+- **Messages to Gemini from the app's chat no longer wait 3 minutes and fail.** With chats in the
+  built-in browser, a send opened Gemini there, where Google refuses sign-in, and that signed-out
+  page was the only one that could take it (`no-ready-gemini-page`, seen live 2026-11-24). Gemini
+  pages in the built-in browser are now ignored and none is opened there: Gemini runs in your own
+  browser with the extension. A Gemini tab without a message box (for example custom apps) now
+  opens a new chat for a send when no chat page can take it, and a send that finds only
+  signed-out pages says Gemini is signed out.
+- **App chats use the Core app.** With no app name set, sends had no @-mention, so Gemini answered
+  without the app's tools and could not see any folder. Empty now means "Chat On Steroids Core"
+  once the app was added in Gemini.
+- **"Add it in Gemini for me" no longer fails `verify-failed` on an app it did add.** Gemini first
+  shows an app's details from a cache that can hold a deleted app's address and replaces them about
+  0.3 s later; the address was read from the cache. It is now read once the details synced, which
+  also keeps a later try from deleting the current app.
+
 ## [2.2.16] — Gemini edition: old copies always deleted first, and checks before trying it
 
 ### Fixed

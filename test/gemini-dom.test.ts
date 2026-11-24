@@ -322,7 +322,7 @@ describe('Gemini custom apps page', () => {
   it('reads the address an existing custom app has', async () => {
     expect(api.customAppCard('Chat On Steroids Core')).not.toBeNull();
     expect(api.customAppCard('Someone else')).toBeNull();
-    expect(await api.readCustomAppUrl('Chat On Steroids Core', 500)).toBe(`https://old-name.trycloudflare.com/mcp/core/${'b'.repeat(43)}`);
+    expect(await api.readCustomAppUrl('Chat On Steroids Core', 3000)).toBe(`https://old-name.trycloudflare.com/mcp/core/${'b'.repeat(43)}`);
   });
 
   it('fills only the address, leaves the optional fields empty and returns Next without pressing it', async () => {
@@ -352,7 +352,7 @@ describe('Gemini custom apps page', () => {
   // More options on the details page offers Use now and Delete (live, 2026-11-22).
   it('deletes the app with the old address through More options → Delete, and confirms only a Delete', async () => {
     const doc = document;
-    expect(await api.readCustomAppUrl('Chat On Steroids Core', 500)).toMatch(/old-name/);
+    expect(await api.readCustomAppUrl('Chat On Steroids Core', 3000)).toMatch(/old-name/);
     const pressed: string[] = [];
     doc.querySelector('#details button[aria-label="More options"]')!.addEventListener('click', () => {
       doc.body.insertAdjacentHTML('beforeend', '<div role="menu"><button role="menuitem">Use now</button><button role="menuitem" id="del">Delete</button></div>');

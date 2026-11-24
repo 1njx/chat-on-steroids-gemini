@@ -20,6 +20,7 @@ import { userPromptText } from '../src/shared/user-prompt.js';
 import { currentCoreInstructions } from '../src/main/mcp/instructions.js';
 import { browserControl } from '../src/main/browser-control.js';
 import { cosSignInTransfer } from '../src/main/cos-browser/sign-in-transfer.js';
+import { geminiStatus, queueGeminiSend, resetGeminiForTests } from '../src/main/gemini.js';
 import { foldProgress, type SessionEvent } from '../src/shared/session.js';
 import type { ContinuationSnapshot } from '../src/main/session/continuation.js';
 import type { SwarmSnapshot } from '../src/main/agents.js';
@@ -812,6 +813,23 @@ describe('who is allowed to talk to it', () => {
     await saveConfig({ ...getConfig(), ui: { ...getConfig().ui, language: 'en' } });
     const status = await request('POST', '/status', { body: { openConversations: [] } });
     expect(status.body).toMatchObject({ language: 'en', browserPreferences: { overwrite: false, durations: true } });
+  });
+
+  // 2026-11-24, live: with the built-in browser chosen, Gemini opened there signed out and a send failed.
+  it("keeps Gemini work in the person's own browser: the built-in one neither opens Gemini nor takes its work", async () => {
+    await pair();
+    resetGeminiForTests();
+    await saveConfig({ ...getConfig(), ui: { ...getConfig().ui, chatBrowser: 'cos' } });
+    const sent = queueGeminiSend({ prompt: 'hi' }) as { id: string };
+    const signedIn = { url: 'https://gemini.google.com/app', conversationId: null, signIn: 'signed-in', composerReady: true, generating: false };
+    expect((await request('POST', '/status', { host: 'cos', body: { openConversations: [] } })).body.geminiOpen).toEqual([]);
+    expect((await request('POST', '/status', { host: 'browser', body: { openConversations: [] } })).body.geminiOpen).toEqual(['https://gemini.google.com/app']);
+    expect((await request('POST', '/gemini/state', { host: 'cos', body: { tab: 5, snapshot: signedIn } })).body).toEqual({ ok: true, commands: [] });
+    expect(geminiStatus().pages).toBe(0);
+    const taken = await request('POST', '/gemini/state', { host: 'browser', body: { tab: 9, snapshot: signedIn } });
+    // (beside a model read: no list is saved in the test)
+    expect(taken.body.commands.filter((c: { kind: string }) => c.kind === 'send').map((c: { id: string }) => c.id)).toEqual([sent.id]);
+    resetGeminiForTests();
   });
 
   // 2026-11-01: the popup looks like the app: its colors for both themes and the theme it shows.

@@ -81,10 +81,13 @@
       location.assign(`/app/${encodeURIComponent(command.conversationId)}`);
       return result(command, { stage: 'navigating' });
     }
-    if (!command.conversationId && dom.conversationId()) {
+    // A new chat starts on /app: from another chat, or from a page without a composer (custom apps, settings).
+    if (!command.conversationId && (dom.conversationId() || !dom.onChatPage())) {
       location.assign('/app');
       return result(command, { stage: 'navigating' });
     }
+    // A page that just loaded draws its composer a moment later.
+    if (!(await dom.waitFor(dom.composer, 15000))) return result(command, { stage: 'failed', error: 'composer-unavailable' });
     if (dom.generating()) return result(command, { stage: 'failed', error: 'busy' });
     if (command.modeId && !(await dom.selectMode(command.modeId))) {
       return result(command, { stage: 'failed', error: 'mode-unavailable' });
