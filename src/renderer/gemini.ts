@@ -278,6 +278,8 @@ export function autoFillText(status: GeminiStatus, now = Date.now()): string {
   const name = status.settings.connectorName || 'Chat On Steroids Core';
   const lead = `Your tunnel address changed ${ago(status.autoFill!.at, now)}, so the app`;
   if (fill.stage === 'completed') return `${lead} added ${name} in Gemini again with the new address.`;
+  const retryAt = status.autoFill!.retryAt;
+  if (retryAt) return `${lead} tried to add ${name} in Gemini again, which did not finish${fill.error ? `: ${fill.error === 'gemini-page-not-connected' ? UNCLAIMED : geminiErrorText(fill.error)}` : '.'} It tries again by itself ${retryAt <= now ? 'now' : `in ${Math.ceil((retryAt - now) / 60_000)} min`}.`;
   if (fill.stage === 'failed') return `${lead} tried to add ${name} in Gemini again, which failed: ${fill.error === 'gemini-page-not-connected' ? UNCLAIMED : geminiErrorText(fill.error)}`;
   if (fill.stage === 'cancelled' || fill.stage === 'unknown') return `${lead} started adding ${name} in Gemini again, but that stopped. Use "Add it in Gemini for me" in Set up Gemini.`;
   return `${lead} is adding ${name} in Gemini again with the new address, in your browser.`;

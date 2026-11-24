@@ -86,9 +86,9 @@ each step turns green by itself when the app sees it done.
    Settings → Gemini says "Open Gemini in the browser that has the Chat On Steroids extension."
    A panel on the page names each step until it says done or shows the error.
    **A new tunnel address is added again by itself:** a quick tunnel gets a new address at every
-   start, so once the app was added and Gemini's tunnel is on, a new Core address queues this same
-   step once for that address (never while one is running, and not again after it failed for that
-   address). Settings → Gemini says so and how it went.
+   start, so once the app was added, a new Core address queues this same step for that address
+   (never while one is running). One that fails is tried again 2 minutes later, 3 tries in all per
+   address; one you cancel is not. Settings → Gemini says so and how it went.
    "Copy URL" copies the Core MCP address (treat it like a password), "Open
    custom apps" opens Gemini's connectors page. Pictures show: **+ Custom** → paste the
    address → **Next** → tick Google's notice → **Connect**; then **Connect** again under

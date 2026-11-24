@@ -199,6 +199,9 @@ describe('Gemini custom app address', () => {
     expect(autoFillText(withFill('queued'), now)).toMatch(/^Your tunnel address changed .*, so the app is adding Chat On Steroids Core in Gemini again with the new address, in your browser\.$/);
     expect(autoFillText(withFill('completed'), now)).toContain('so the app added Chat On Steroids Core in Gemini again with the new address.');
     expect(autoFillText(withFill('failed', 'delete-failed'), now)).toContain('which failed: Gemini did not delete the app with the old address after 3 tries.');
+    const retrying = (retryAt: number) => status({ autoFill: { id: 'auto', at: now - 120_000, retryAt }, commands: [{ ...base, stage: 'failed', error: 'gemini-page-not-connected' }] });
+    expect(autoFillText(retrying(now + 90_000), now)).toMatch(/which did not finish: Open Gemini in the browser that has the Chat On Steroids extension\. It tries again by itself in 2 min\.$/);
+    expect(autoFillText(retrying(now - 1), now)).toMatch(/It tries again by itself now\.$/);
     paintGemini(withFill('queued'), now);
     expect(dom.window.document.getElementById('geminiConnectorStatus')!.textContent).toContain('so the app is adding Chat On Steroids Core in Gemini again');
     // The address itself is never shown there.

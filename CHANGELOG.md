@@ -9,6 +9,16 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.15] — Gemini edition: the Gemini app reconnects by itself
+
+### Fixed
+
+- **A new tunnel address re-adds the Gemini app by itself, also without Gemini's own tunnel.**
+  The automatic re-add only ran when Gemini had its own tunnel beside OpenAI's, so with Gemini on
+  the Core quick tunnel the app in Gemini kept the old, dead address until you went to Settings.
+- **A failed re-add is tried again.** One that fails or never finishes is tried again 2 minutes
+  later, 3 tries in all per address; one you cancel is not. Settings → Gemini says when.
+
 ## [2.2.14] — Gemini edition: "Add it in Gemini for me" opens your default browser
 
 ### Fixed

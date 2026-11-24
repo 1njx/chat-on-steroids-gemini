@@ -121,7 +121,7 @@ let sweepTimer: ReturnType<typeof setInterval> | null = null;
 export function configureGemini(options: { changed: () => void; openCustomApps?: () => unknown }): void {
   changed = options.changed;
   if (options.openCustomApps) openCustomApps = options.openCustomApps;
-  if (!sweepTimer) { sweepTimer = setInterval(() => { if (sweep()) changed(); }, 10_000); sweepTimer.unref?.(); }
+  if (!sweepTimer) { sweepTimer = setInterval(() => { if (sweep()) changed(); followGeminiAddress(followedUrl); }, 10_000); sweepTimer.unref?.(); }
 }
 
 export async function restoreGemini(): Promise<void> {
@@ -449,24 +449,46 @@ export function queueGeminiFill(url: unknown): { ok: true; id: string } | { ok: 
   return { ok: true, id };
 }
 
-/** The automatic re-add queued last: its command and the fingerprint of the address it was for. */
-let autoFill: { id: string; urlHash: string; at: number } | null = null;
+/** Automatic re-adds for one address: the first and the retries after a failed one. */
+export const AUTO_FILL_TRIES = 3;
+export const AUTO_FILL_RETRY_MS = 2 * 60_000;
+
+/** The automatic re-add queued last: its command, the fingerprint of the address it was for, and the tries so far. */
+let autoFill: { id: string; urlHash: string; at: number; tries: number } | null = null;
+/** Gemini's Core address as last reported (ipc.ts); the sweep follows it too, so a retry needs no status change. */
+let followedUrl: string | null = null;
+
+/** When a failed or unobserved automatic re-add is tried again, or null when it is not. */
+function autoFillRetryAt(fill: NonNullable<typeof autoFill>): number | null {
+  const last = commands.find(c => c.id === fill.id);
+  // Cancelled means the person stopped it or pressed the button themselves: theirs to redo.
+  if (!last || !['failed', 'unknown'].includes(last.stage) || fill.tries >= AUTO_FILL_TRIES) return null;
+  return last.updatedAt + AUTO_FILL_RETRY_MS;
+}
 
 /**
  * A quick tunnel (trycloudflare) gets a new address at every start, which leaves Gemini's custom
  * app on the old one. Once the app was added before (givenUrlHash) and Gemini's connected Core
- * address differs, add it again once for that address: never while a fill is pending, and never
- * again for an address whose automatic re-add already ran, failed included. Returns whether it queued.
+ * address differs, add it again for that address: never while a fill is pending; a failed or
+ * unobserved re-add is tried again after AUTO_FILL_RETRY_MS, AUTO_FILL_TRIES in all per address
+ * (each opens the custom apps page in front). Returns whether it queued.
  */
 export function followGeminiAddress(url: string | null, now = Date.now()): boolean {
-  if (!url || !HTTPS_URL.safeParse(url).success || !settings.httpsTunnel || !settings.givenUrlHash) return false;
+  followedUrl = url;
+  if (!url || !HTTPS_URL.safeParse(url).success || !settings.givenUrlHash) return false;
   const urlHash = geminiUrlFingerprint(url);
-  if (urlHash === settings.givenUrlHash || urlHash === autoFill?.urlHash) return false;
+  if (urlHash === settings.givenUrlHash) return false;
+  let tries = 1;
+  if (urlHash === autoFill?.urlHash) {
+    const retryAt = autoFillRetryAt(autoFill);
+    if (retryAt === null || now < retryAt) return false;
+    tries = autoFill.tries + 1;
+  }
   if (commands.some(c => c.kind === 'fill-app' && !settled(c))) return false;
   const queued = queueGeminiFill(url);
   if (!queued.ok) return false;
-  autoFill = { id: queued.id, urlHash, at: now };
-  logInfo('gemini app address changed; re-adding it in Gemini');
+  autoFill = { id: queued.id, urlHash, at: now, tries };
+  logInfo(`gemini app address changed; re-adding it in Gemini (try ${tries} of ${AUTO_FILL_TRIES})`);
   changed();
   return true;
 }
@@ -547,12 +569,12 @@ export function geminiStatus(now = Date.now()): GeminiStatus {
     modesFailure: modesFailure ? { ...modesFailure, retryAt: modesFailure.at + MODES_BACKOFF_MS } : null,
     settings: { ...settings },
     commands: commands.slice(-20).map(summary),
-    autoFill: autoFill ? { id: autoFill.id, at: autoFill.at } : null,
+    autoFill: autoFill ? { id: autoFill.id, at: autoFill.at, retryAt: autoFillRetryAt(autoFill) } : null,
   };
 }
 
 export function resetGeminiForTests(): void {
-  pages.clear(); commands = []; catalog = null; modesFailure = null; autoFill = null;
+  pages.clear(); commands = []; catalog = null; modesFailure = null; autoFill = null; followedUrl = null;
   settings = { ...NO_SETTINGS };
   changed = () => {};
   openCustomApps = () => undefined;
