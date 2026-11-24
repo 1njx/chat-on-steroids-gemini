@@ -47,6 +47,8 @@ export interface GeminiStatus {
     connectorName: string | null; defaultModeId: string | null; defaultThinkingLevel: string | null; httpsTunnel?: boolean;
     /** geminiUrlFingerprint of the address last given for Gemini's custom app (copied, filled in, or read there). */
     givenUrlHash?: string | null;
+    /** geminiUrlFingerprint of the address Gemini's list showed exactly once under the name after the last add. */
+    verifiedUrlHash?: string | null;
     /** The hostname of the person's own Cloudflare tunnel for Gemini; its token is in the secret store. */
     namedTunnelHost?: string | null;
   };
@@ -57,6 +59,12 @@ export interface GeminiStatus {
   toolCallSeenAt?: number | null;
   /** The fill-app the app queued by itself because the Core address changed (quick tunnel), this run. */
   autoFill?: { id: string; at: number; retryAt?: number | null } | null;
+  /** When Gemini last listed this app's tools in this run (null: never). */
+  toolsListedAt?: number | null;
+  /** Gemini's current Core address (fingerprint) and since when, this run. */
+  address?: { urlHash: string; since: number } | null;
+  /** The last check that the Core address answers from outside, through the tunnel. */
+  reach?: { urlHash: string; ok: boolean; at: number } | null;
 }
 
 /**
@@ -106,4 +114,5 @@ export const GEMINI_ERRORS: Record<string, string> = {
   'invalid-url': 'Gemini needs an https address. Finish the Tunnel step first.',
   'delete-failed': "Gemini did not delete the app with the old address after 3 tries. Delete it by hand (open it, More options, Delete, then Remove), then press the button again.",
   'connect-failed': "Gemini did not finish connecting the app. Check the open Gemini tab, or add the app by hand: click Custom, paste the address, then Next and Connect.",
+  'verify-failed': "After adding, Gemini's custom apps did not show exactly one app with this name and address. Check the list in Gemini (delete any extra copy), then press the button again.",
 };

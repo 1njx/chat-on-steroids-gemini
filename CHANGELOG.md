@@ -9,6 +9,24 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.16] — Gemini edition: old copies always deleted first, and checks before trying it
+
+### Fixed
+
+- **The old Chat On Steroids Core app is always deleted before the new one is added.** Gemini
+  labels each app card "Name, description", and the whole label was compared with the name, so an
+  app showing a description was never found and never deleted (two apps cannot share a name).
+  The name is now read from the card's title; the list is read only once it stops changing;
+  nothing is added while an app with the name is left; and after Connect the list must show
+  exactly one app with the name, holding the new address (`verify-failed` otherwise).
+
+### Changed
+
+- **Checks before "Try it in a chat".** The Add step is done only when four checks pass, each shown
+  under it: the address answers through the tunnel (checked from outside), Gemini has the app once
+  with this address, Gemini connected to the app, and Gemini listed its tools, both since this
+  address went live. Before, one request from Gemini was enough.
+
 ## [2.2.15] — Gemini edition: the Gemini app reconnects by itself
 
 ### Fixed

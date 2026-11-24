@@ -18,7 +18,7 @@ interface App { name: string; url: string }
  * Gemini's custom apps page as observed on 2026-11-22: a card per app, a details page with the
  * MCP URL and More options → Delete, and Create custom app → Next → Google's notice → Connect.
  */
-async function addInGemini(apps: App[], { flakyMenus = 0 } = {}) {
+async function addInGemini(apps: App[], { flakyMenus = 0, lateMs = 0, duplicateOnAdd = false } = {}) {
   dom = new JSDOM(`<a aria-label="Google Account: Pat (pat@example.com)" href="#"></a>
     <button aria-label="Create custom app">Custom</button><section><h2>Custom apps</h2><div id="grid"></div></section>
     <div id="details"></div><div id="menus"></div><div id="dialogs"></div>`,
@@ -40,7 +40,9 @@ async function addInGemini(apps: App[], { flakyMenus = 0 } = {}) {
     for (const app of apps) {
       const card = doc.createElement('customize-card');
       grid.append(card);
-      button(card, `<button class="card-primary-action" aria-label="${app.name}"></button>`, () => open(app));
+      // As seen live on 2026-11-23: the label is "Name, description" and the name is in .title-text.
+      button(card, `<button class="card-primary-action" aria-label="${app.name}, An MCP server"></button>`, () => open(app));
+      card.insertAdjacentHTML('beforeend', `<div class="content"><div class="title"><span class="title-text">${app.name}</span></div><div class="subtitle">An MCP server</div></div>`);
     }
   };
   const open = (app: App) => {
@@ -78,6 +80,8 @@ async function addInGemini(apps: App[], { flakyMenus = 0 } = {}) {
       const connect = button(dialogs.firstElementChild!, '<button disabled>Connect</button>', () => {
         pressed.push(`add ${input.value}`);
         apps.push({ name: 'Chat On Steroids Core', url: input.value });
+        // A Gemini that kept a second copy: the list then shows two apps with the name.
+        if (duplicateOnAdd) apps.push({ name: 'Chat On Steroids Core (2)', url: input.value });
         dialogs.innerHTML = '';
         render();
       }) as HTMLButtonElement;
@@ -85,7 +89,8 @@ async function addInGemini(apps: App[], { flakyMenus = 0 } = {}) {
     }) as HTMLButtonElement;
     input.addEventListener('input', () => { next.disabled = !input.value.startsWith('https://'); });
   });
-  render();
+  // A list that loads after the Custom button (a cold page) when lateMs is set.
+  if (lateMs) setTimeout(render, lateMs); else render();
 
   const results: Array<Record<string, unknown>> = [];
   const sent: string[] = [];
@@ -143,6 +148,18 @@ it('deletes every old Core app before it adds and connects the new one', async (
   expect(apps).toEqual([{ name: 'Chat On Steroids Core', url: NEW }]);
 }, 30_000);
 
+it('finds an old Core app in a list that loads late, and deletes it before adding', async () => {
+  const { final, pressed, apps } = await addInGemini([{ name: 'Chat On Steroids Core', url: address('old-one') }], { lateMs: 600 });
+  expect(final).toMatchObject({ stage: 'completed', outcome: 'connected', verified: true });
+  expect(pressed).toEqual([`delete ${address('old-one')}`, `add ${NEW}`]);
+  expect(apps).toEqual([{ name: 'Chat On Steroids Core', url: NEW }]);
+}, 30_000);
+
+it('fails the add when the list afterwards does not show exactly one app with this name and address', async () => {
+  const { final } = await addInGemini([], { duplicateOnAdd: true });
+  expect(final).toMatchObject({ stage: 'failed', error: 'verify-failed' });
+}, 30_000);
+
 const DELETE_STEP = (n: number) => `Deleting the old app (try ${n} of 3)`;
 
 it('brings its tab to the front first, and the panel names each step, then done, never the address', async () => {
@@ -150,8 +167,8 @@ it('brings its tab to the front first, and the panel names each step, then done,
   expect(sent[0]).toBe('gemini_focus');
   expect(panel).toMatchObject({
     state: 'done', title: "Chat On Steroids is setting this up — please don't click or type in this tab until it says done",
-    steps: ['Opening custom apps', 'Checking existing apps', DELETE_STEP(1), 'Adding the app', 'Next', "Ticking Google's notice", 'Connect'],
-    ending: 'Done: Chat On Steroids Core is added and connected in Gemini.'
+    steps: ['Opening custom apps', 'Checking existing apps', DELETE_STEP(1), 'Adding the app', 'Next', "Ticking Google's notice", 'Connect', 'Checking the app in Gemini'],
+    ending: 'Done: Chat On Steroids Core is added and connected in Gemini, once, with this address.'
   });
   expect(style).toBe('none');
   // The panel never shows the Core address (it ends in a secret token).
@@ -167,6 +184,6 @@ it('counts the delete tries in the panel and ends red with the same words the ap
 it("says the panel's errors in exactly the app's words", () => {
   const table = /const FILL_ERRORS = \{([\s\S]*?)\n  \};/.exec(contentSource)![1]!;
   const entries = [...table.matchAll(/'([a-z-]+)': (['"])(.*?)\2,/g)].map(match => [match[1], match[3]!.replace(/\\'/g, "'")]);
-  expect(entries.length).toBe(6);
+  expect(entries.length).toBe(7);
   for (const [code, text] of entries) expect(text).toBe(GEMINI_ERRORS[code!]);
 });

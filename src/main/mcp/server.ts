@@ -25,6 +25,7 @@ import { createInboundTiming, formatInboundTiming, mcpClientFamily, requestIdFro
 const seenAgents = new Set<string>();
 const lastClientAt = new Map<McpClientFamily, number>();
 const lastToolCallAt = new Map<McpClientFamily, number>();
+const lastToolsListAt = new Map<McpClientFamily, number>();
 function noteClientAgent(surface: string, userAgent: string | string[] | undefined, client: McpClientFamily): void {
   lastClientAt.set(client, Date.now());
   const ua = (Array.isArray(userAgent) ? userAgent.join(' ') : String(userAgent ?? '')).replace(/[^ -~]/g, '').slice(0, 120);
@@ -37,6 +38,8 @@ function noteClientAgent(surface: string, userAgent: string | string[] | undefin
 export function lastMcpClientRequestAt(client: McpClientFamily): number | null { return lastClientAt.get(client) ?? null; }
 /** When this client family last called a tool (null: never this run): Gemini setup's proof the app works. */
 export function lastMcpClientToolCallAt(client: McpClientFamily): number | null { return lastToolCallAt.get(client) ?? null; }
+/** When this client family last listed the tools (null: never this run): Gemini setup's proof the app is set up. */
+export function lastMcpClientToolsListAt(client: McpClientFamily): number | null { return lastToolsListAt.get(client) ?? null; }
 import http from 'node:http';
 import type { Socket } from 'node:net';
 import { createMcpHandler } from '@modelcontextprotocol/server';
@@ -492,6 +495,7 @@ export async function startMcpServer(
       };
       res.once('finish', release);
       res.once('close', release);
+      if ((body as { method?: unknown } | undefined)?.method === 'tools/list' && !selfTest && !tunnelProbe) lastToolsListAt.set(client, Date.now());
       if ((body as { method?: unknown } | undefined)?.method === 'tools/call' && !selfTest && !tunnelProbe) {
         lastToolCallAt.set(client, Date.now());
         const providerKey = providerSessionKey(route.id, providerProfileId, req.headers, body);

@@ -370,11 +370,28 @@ var CLF_GEMINI_DOM = (() => {
   /** An app name compared loosely: any case, "-"/"_" as spaces, and no " (2)" a duplicate may get. */
   const appName = name => String(name || '').toLowerCase().replace(/[-_\s]+/g, ' ').replace(/\s*\(\d+\)$/, '').trim();
 
-  /** Every listed custom app with this name, first to last (an earlier add can leave duplicates). */
+  /**
+   * Every listed custom app with this name, first to last (an earlier add can leave duplicates).
+   * A card's label is "Name, description" (seen live 2026-11-23), so the name is read from its
+   * title, then the label, then the label's part before the first comma.
+   */
   function customAppCards(name) {
     const wanted = appName(name);
-    return safe(() => [...document.querySelectorAll('button.card-primary-action')]
-      .filter(b => appName(b.getAttribute('aria-label')) === wanted), []);
+    return safe(() => [...document.querySelectorAll('button.card-primary-action')].filter(b => {
+      const label = b.getAttribute('aria-label') || '';
+      const title = text(b.closest('customize-card')?.querySelector('.title-text'));
+      return [title, label, label.split(',')[0]].some(candidate => candidate && appName(candidate) === wanted);
+    }), []);
+  }
+
+  /** Waits until the app list stops changing (same card count for 1 s, 8 s at most): a list still loading must not read as "no app". */
+  async function settledList(ms = 8000) {
+    let last = -1, since = Date.now();
+    for (const end = Date.now() + ms; Date.now() < end; await sleep(250)) {
+      const count = safe(() => document.querySelectorAll('button.card-primary-action').length, 0);
+      if (count !== last) { last = count; since = Date.now(); } else if (Date.now() - since >= 1000) return true;
+    }
+    return false;
   }
 
   /** The first listed custom app with this name, or null. */
@@ -508,6 +525,6 @@ var CLF_GEMINI_DOM = (() => {
     selectThinkingLevel, insertPrompt, composerText, mentionOptions, mentionConnector, appendPrompt,
     send, stopGeneration, turns, errors,
     localized, snapshot, parseOption,
-    onCustomApps, customAppCard, customAppCards, readCustomAppUrl, backToList, detailsMoreOptions, fillCreateForm, highlight, waitFor, visibleCreate, deleteCustomApp, connectStep,
+    onCustomApps, customAppCard, customAppCards, settledList, readCustomAppUrl, backToList, detailsMoreOptions, fillCreateForm, highlight, waitFor, visibleCreate, deleteCustomApp, connectStep,
   };
 })();

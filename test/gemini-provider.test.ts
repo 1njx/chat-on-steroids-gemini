@@ -1,11 +1,11 @@
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultConfig, initConfigPath, saveConfig } from '../src/main/config.js';
 import { flushDurable, initDurableStore, readDurable, resetDurableForTests, writeDurableSoon } from '../src/main/durable.js';
 import {
-  AUTO_FILL_RETRY_MS, AUTO_FILL_TRIES, FILL_OPEN_FALLBACK_MS, cancelGeminiCommand, completeGeminiCommand, configureGemini, followGeminiAddress, geminiPagesToOpen, geminiStatus, observeGeminiPage,
+  AUTO_FILL_RETRY_MS, AUTO_FILL_TRIES, FILL_OPEN_FALLBACK_MS, REACH_OK_MS, REACH_RETRY_MS, cancelGeminiCommand, completeGeminiCommand, configureGemini, followGeminiAddress, geminiPagesToOpen, geminiStatus, observeGeminiPage,
   queueGeminiFill, queueGeminiSend, requestGeminiModes, resetGeminiForTests, restoreGemini, saveGeminiSettings, sweep,
 } from '../src/main/gemini.js';
 import { geminiUrlFingerprint } from '../src/shared/gemini.js';
@@ -383,6 +383,47 @@ describe('Gemini app added again when the tunnel address changes', () => {
     // A later address starts over.
     expect(followGeminiAddress(address('newer-name'))).toBe(true);
     expect(fills()).toHaveLength(AUTO_FILL_TRIES + 1);
+  });
+
+  it('checks from outside that the address answers, once the app was given to Gemini, and says since when it is live', async () => {
+    const probe = vi.fn(async (url: string) => url.includes('new-name'));
+    configureGemini({ changed: () => undefined, probeAddress: probe });
+    // Not given to Gemini yet: no probe, but the address is tracked.
+    followGeminiAddress(address('new-name'), 1_000);
+    expect(probe).not.toHaveBeenCalled();
+    expect(geminiStatus().address).toEqual({ urlHash: geminiUrlFingerprint(address('new-name')), since: 1_000 });
+    expect(saveGeminiSettings({ givenUrlHash: geminiUrlFingerprint(address('new-name')) })).toEqual({ ok: true });
+    followGeminiAddress(address('new-name'), 2_000);
+    await vi.waitFor(() => expect(geminiStatus().reach).toMatchObject({ urlHash: geminiUrlFingerprint(address('new-name')), ok: true }));
+    expect(geminiStatus().address?.since).toBe(1_000);
+    // Not asked again before REACH_OK_MS.
+    followGeminiAddress(address('new-name'), Date.now() + 1_000);
+    expect(probe).toHaveBeenCalledTimes(1);
+    // A new address starts over: no result until it is checked; a failure is asked again after REACH_RETRY_MS.
+    followGeminiAddress(address('dead-name'), 3_000);
+    expect(geminiStatus().reach).toBeNull();
+    await vi.waitFor(() => expect(geminiStatus().reach).toMatchObject({ ok: false }));
+    followGeminiAddress(address('dead-name'), Date.now() + 1_000);
+    expect(probe).toHaveBeenCalledTimes(2);
+    followGeminiAddress(address('dead-name'), Date.now() + REACH_RETRY_MS);
+    expect(probe).toHaveBeenCalledTimes(3);
+    expect(REACH_OK_MS).toBeGreaterThan(REACH_RETRY_MS);
+  });
+
+  it('remembers a verified add for its address only, and forgets it after an unverified one', async () => {
+    const fill = async (url: string, extra: Record<string, unknown>) => {
+      const { id } = queueGeminiFill(url) as { id: string };
+      observeGeminiPage({ tab: 7, snapshot: page({ url: 'https://gemini.google.com/customize/connectors', composerReady: false }) });
+      expect(await completeGeminiCommand({ id, tab: 7, stage: 'completed', ...extra })).toEqual({ ok: true });
+    };
+    await fill(address('new-name'), { outcome: 'connected', verified: true });
+    expect(geminiStatus().settings.verifiedUrlHash).toBe(geminiUrlFingerprint(address('new-name')));
+    await fill(address('new-name'), { outcome: 'current', existingUrl: address('new-name'), verified: true });
+    expect(geminiStatus().settings.verifiedUrlHash).toBe(geminiUrlFingerprint(address('new-name')));
+    await fill(address('newer-name'), { outcome: 'connected' });
+    expect(geminiStatus().settings.verifiedUrlHash).toBeNull();
+    // Not settable from the renderer.
+    expect(saveGeminiSettings({ verifiedUrlHash: geminiUrlFingerprint(address('x')) })).toMatchObject({ ok: false });
   });
 
   it('does not retry a re-add the person cancelled', () => {

@@ -102,6 +102,8 @@ const settingsSchema = z.object({
   // A Cloudflare quick tunnel for Gemini beside the OpenAI one (connection.ts), so ChatGPT keeps its tunnel.
   httpsTunnel: z.boolean().catch(false),
   givenUrlHash: FINGERPRINT.nullable().catch(null),
+  // The address Gemini's list showed exactly once under the connector's name after "Add it in Gemini for me".
+  verifiedUrlHash: FINGERPRINT.nullable().catch(null),
   namedTunnelHost: HOSTNAME.nullable().catch(null),
 });
 export type GeminiSettings = z.infer<typeof settingsSchema>;
@@ -111,16 +113,19 @@ let commands: Command[] = [];
 let catalog: { modes: GeminiMode[]; thinkingLevels: GeminiThinkingLevel[]; observedAt: number } | null = null;
 /** The last failed read of Gemini's model picker; cleared by a successful read. */
 let modesFailure: { error: string; at: number } | null = null;
-const NO_SETTINGS: GeminiSettings = { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, httpsTunnel: false, givenUrlHash: null, namedTunnelHost: null };
+const NO_SETTINGS: GeminiSettings = { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, httpsTunnel: false, givenUrlHash: null, verifiedUrlHash: null, namedTunnelHost: null };
 let settings: GeminiSettings = { ...NO_SETTINGS };
 let changed = (): void => {};
 /** Opens the custom apps page in the default browser (ipc.ts: Electron's shell.openExternal). */
 let openCustomApps = (): unknown => undefined;
+/** Asks the Core address from outside, through the tunnel (ipc.ts); true when this app's MCP server answered. */
+let probeAddress = (_url: string): unknown => false;
 let sweepTimer: ReturnType<typeof setInterval> | null = null;
 
-export function configureGemini(options: { changed: () => void; openCustomApps?: () => unknown }): void {
+export function configureGemini(options: { changed: () => void; openCustomApps?: () => unknown; probeAddress?: (url: string) => unknown }): void {
   changed = options.changed;
   if (options.openCustomApps) openCustomApps = options.openCustomApps;
+  if (options.probeAddress) probeAddress = options.probeAddress;
   if (!sweepTimer) { sweepTimer = setInterval(() => { if (sweep()) changed(); followGeminiAddress(followedUrl); }, 10_000); sweepTimer.unref?.(); }
 }
 
@@ -259,6 +264,7 @@ const resultSchema = z.object({
   thinkingLevels: z.array(z.unknown()).max(8).optional(),
   outcome: z.enum(['filled', 'connected', 'current', 'old']).optional(),
   existingUrl: z.string().max(600).optional(),
+  verified: z.boolean().optional(),
 });
 
 /** A page's progress on a command it was handed. Only the tab holding the command may report it. */
@@ -319,7 +325,10 @@ export async function completeGeminiCommand(body: unknown, now = Date.now()): Pr
     command.outcome = result.outcome;
     // Remember which address Gemini has (read on its page) or was given (filled in), never the address itself.
     const given = result.outcome === 'filled' || result.outcome === 'connected' ? command.url : HTTPS_URL.safeParse(result.existingUrl).data;
-    if (given) { settings.givenUrlHash = geminiUrlFingerprint(given); persist(); }
+    if (given) settings.givenUrlHash = geminiUrlFingerprint(given);
+    // Verified: the page saw exactly one app with the name afterwards, holding this command's address.
+    settings.verifiedUrlHash = result.verified && command.url && given === command.url ? geminiUrlFingerprint(command.url) : null;
+    persist();
     finish(command, 'completed');
     changed();
     return { ok: true };
@@ -457,6 +466,30 @@ export const AUTO_FILL_RETRY_MS = 2 * 60_000;
 let autoFill: { id: string; urlHash: string; at: number; tries: number } | null = null;
 /** Gemini's Core address as last reported (ipc.ts); the sweep follows it too, so a retry needs no status change. */
 let followedUrl: string | null = null;
+/** The current address (fingerprint) and since when; Gemini's requests count for it only after that. */
+let address: { urlHash: string; since: number } | null = null;
+/** The last check that the address answers from outside, through the tunnel. */
+let reach: { urlHash: string; ok: boolean; at: number } | null = null;
+let probing = false;
+export const REACH_OK_MS = 5 * 60_000;
+export const REACH_RETRY_MS = 30_000;
+
+/** Asks the address from outside once it was given to Gemini: again every REACH_OK_MS, or REACH_RETRY_MS after a failure. */
+function checkReach(url: string, urlHash: string, now: number): void {
+  if (probing || !settings.givenUrlHash) return;
+  if (reach?.urlHash === urlHash && now - reach.at < (reach.ok ? REACH_OK_MS : REACH_RETRY_MS)) return;
+  probing = true;
+  let answer: Promise<unknown>;
+  try { answer = Promise.resolve(probeAddress(url)); } catch { answer = Promise.resolve(false); }
+  void answer.then(ok => ok === true, () => false).then(ok => {
+    probing = false;
+    if (address?.urlHash !== urlHash) return;
+    const was = reach?.ok;
+    reach = { urlHash, ok, at: Date.now() };
+    if (!ok && was !== false) logWarn('gemini: the Core address did not answer through the tunnel');
+    if (was !== ok) changed();
+  });
+}
 
 /** When a failed or unobserved automatic re-add is tried again, or null when it is not. */
 function autoFillRetryAt(fill: NonNullable<typeof autoFill>): number | null {
@@ -475,8 +508,11 @@ function autoFillRetryAt(fill: NonNullable<typeof autoFill>): number | null {
  */
 export function followGeminiAddress(url: string | null, now = Date.now()): boolean {
   followedUrl = url;
-  if (!url || !HTTPS_URL.safeParse(url).success || !settings.givenUrlHash) return false;
+  if (!url || !HTTPS_URL.safeParse(url).success) return false;
   const urlHash = geminiUrlFingerprint(url);
+  if (address?.urlHash !== urlHash) { address = { urlHash, since: now }; reach = null; changed(); }
+  checkReach(url, urlHash, now);
+  if (!settings.givenUrlHash) return false;
   if (urlHash === settings.givenUrlHash) return false;
   let tries = 1;
   if (urlHash === autoFill?.urlHash) {
@@ -570,11 +606,14 @@ export function geminiStatus(now = Date.now()): GeminiStatus {
     settings: { ...settings },
     commands: commands.slice(-20).map(summary),
     autoFill: autoFill ? { id: autoFill.id, at: autoFill.at, retryAt: autoFillRetryAt(autoFill) } : null,
+    address: address ? { ...address } : null,
+    reach: reach ? { ...reach } : null,
   };
 }
 
 export function resetGeminiForTests(): void {
-  pages.clear(); commands = []; catalog = null; modesFailure = null; autoFill = null; followedUrl = null;
+  pages.clear(); commands = []; catalog = null; modesFailure = null; autoFill = null; followedUrl = null; address = null; reach = null; probing = false;
+  probeAddress = () => false;
   settings = { ...NO_SETTINGS };
   changed = () => {};
   openCustomApps = () => undefined;

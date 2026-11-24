@@ -118,14 +118,27 @@ describe('Settings → Gemini', () => {
     expect(api.openGemini).toHaveBeenCalledWith({ external: true });
 
     paintGeminiConnector(app({ present: true, roots: 1, kind: 'cloudflared', url: 'https://x.trycloudflare.com/mcp/core/t' }));
+    // A request from Gemini alone does not finish Add: all four checks must pass first.
     push(status({ connectorSeenAt: Date.now() }));
+    expect(progress()).toBe('4 of 6 steps done');
+    expect(open()).toBe('add');
+    expect(doc.querySelectorAll('#geminiAddChecks li')).toHaveLength(4);
+    expect(doc.querySelectorAll('#geminiAddChecks .is-passed')).toHaveLength(0);
+    const xHash = geminiUrlFingerprint('https://x.trycloudflare.com/mcp/core/t');
+    const working = (extra: Partial<GeminiStatus> = {}) => status({
+      settings: { connectorName: 'Chat On Steroids Core', defaultModeId: null, defaultThinkingLevel: null, verifiedUrlHash: xHash },
+      address: { urlHash: xHash, since: Date.now() - 60_000 }, reach: { urlHash: xHash, ok: true, at: Date.now() },
+      connectorSeenAt: Date.now(), toolsListedAt: Date.now(), ...extra,
+    });
+    push(working());
     expect(progress()).toBe('5 of 6 steps done');
+    expect(doc.querySelectorAll('#geminiAddChecks .is-passed')).toHaveLength(4);
     doc.querySelector<HTMLElement>('[data-gemini-rail="try"]')!.click();
     expect(open()).toBe('try');
     expect(doc.getElementById('geminiTryPrompt')!.textContent).toContain('@Chat On Steroids Core');
     expect(doc.getElementById('geminiSetupUrl')!.textContent).toBe('https://x.trycloudflare.com/mcp/core/t');
 
-    push(status({ connectorSeenAt: Date.now(), toolCallSeenAt: Date.now() }));
+    push(working({ toolCallSeenAt: Date.now() }));
     expect(open()).toBe('ready');
     expect(progress()).toBe('All 6 steps done');
     expect(doc.getElementById('geminiReadyTitle')!.textContent).toBe('Gemini is set up');
@@ -185,8 +198,32 @@ describe('Gemini custom app address', () => {
     expect(text).toContain(`Your Gemini custom app has an old address. Update it to ${url}`);
     expect(addPill(withGiven(url), url)).toEqual(['wait', expect.stringContaining('Gemini has this address')]);
     expect(addPill(withGiven(null), url)[1]).toContain('A quick tunnel gets a new address at each start');
-    // Only a call from Gemini proves it is added, whatever was given before.
-    expect(addPill(withGiven(old, { connectorSeenAt: Date.now() }), url)[0]).toBe('ok');
+    // A call from Gemini alone is not enough any more: the checks below the pill must pass.
+    expect(addPill(withGiven(old, { connectorSeenAt: Date.now() }), url)).toEqual(['wait', expect.stringContaining('4 check(s) below are not passed yet')]);
+  });
+
+  it('passes Add only when the address answers, Gemini has it once, and Gemini connected and listed tools since this address', async () => {
+    const { addChecks, addPill } = await import('../src/renderer/gemini.js');
+    const hash = geminiUrlFingerprint(url);
+    const now = Date.now();
+    const all = (extra: Partial<GeminiStatus> = {}) => status({
+      settings: { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, verifiedUrlHash: hash },
+      address: { urlHash: hash, since: now - 60_000 }, reach: { urlHash: hash, ok: true, at: now },
+      connectorSeenAt: now, toolsListedAt: now, ...extra,
+    });
+    const passed = (s: GeminiStatus) => addChecks(s, url).map(check => check.ok);
+    expect(passed(all())).toEqual([true, true, true, true]);
+    expect(addPill(all(), url)[0]).toBe('ok');
+    // Each check on its own.
+    expect(passed(all({ reach: { urlHash: hash, ok: false, at: now } }))).toEqual([false, true, true, true]);
+    expect(addChecks(all({ reach: { urlHash: hash, ok: false, at: now } }), url)[0]!.hint).toContain('did not answer from outside');
+    expect(passed(all({ reach: { urlHash: geminiUrlFingerprint(old), ok: true, at: now } }))[0]).toBe(false);
+    expect(passed(all({ settings: { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, verifiedUrlHash: geminiUrlFingerprint(old) } }))).toEqual([true, false, true, true]);
+    // Gemini's requests count only after this address went live (an old address's do not).
+    expect(passed(all({ connectorSeenAt: now - 120_000, toolsListedAt: now - 120_000 }))).toEqual([true, true, false, false]);
+    expect(passed(all({ toolsListedAt: null }))).toEqual([true, true, true, false]);
+    expect(passed(all({ address: null }))).toEqual([true, true, false, false]);
+    expect(addChecks(status(), null).every(check => !check.ok)).toBe(true);
   });
 
   it('says in Settings → Gemini that the app is adding itself again after the tunnel address changed, and how it went', async () => {

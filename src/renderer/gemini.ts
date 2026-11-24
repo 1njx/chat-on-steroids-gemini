@@ -136,7 +136,7 @@ export function geminiSetupDone(state: AppState, status: GeminiStatus | null): S
   if (status?.signIn === 'signed-in') done.add('signin');
   if (state.config.roots.length > 0) done.add('folder');
   if (state.status.state === 'connected' && coreHttpsUrl(state)) done.add('tunnel');
-  if (status?.connectorSeenAt) done.add('add');
+  if (addChecks(status, coreHttpsUrl(state)).every(check => check.ok)) done.add('add');
   if (status?.toolCallSeenAt) done.add('try');
   return done;
 }
@@ -219,6 +219,11 @@ export function paintGeminiSetup(now = Date.now()): void {
   byId<HTMLButtonElement>('geminiSetupCopy').disabled = !url;
   byId<HTMLButtonElement>('geminiFillApp').disabled = !url;
   pill('geminiAddPill', ...addPill(status, url, now));
+  byId('geminiAddChecks').replaceChildren(...addChecks(status, url).map(check => {
+    const row = el('li', `ready-check${check.ok ? ' is-passed' : ''}`);
+    row.append(icon(check.ok ? 'i-check-circle' : 'i-warning'), el('span', '', check.ok ? check.label : `${check.label}: ${check.hint}`));
+    return row;
+  }));
   const fill = [...(status?.commands ?? [])].reverse().find(c => c.kind === 'fill-app');
   byId('geminiFillPill').hidden = !fill;
   if (fill) pill('geminiFillPill', ...fillPill(fill, url));
@@ -247,7 +252,9 @@ export function paintGeminiSetup(now = Date.now()): void {
  * an old address from one never added.
  */
 export function addPill(status: GeminiStatus | null, url: string | null, now = Date.now()): ['ok' | 'wait' | 'off' | 'bad', string] {
-  if (status?.connectorSeenAt) return ['ok', `Gemini reached the app ${ago(status.connectorSeenAt, now)}`];
+  const checks = addChecks(status, url);
+  if (checks.every(check => check.ok)) return ['ok', `Gemini has the app once, with this address, and reached it ${ago(status!.connectorSeenAt!, now)}`];
+  if (status?.connectorSeenAt) return ['wait', `Gemini reached the app ${ago(status.connectorSeenAt, now)}; ${checks.filter(check => !check.ok).length} check(s) below are not passed yet.`];
   const given = status?.settings.givenUrlHash ?? null;
   if (url && given && given !== geminiUrlFingerprint(url)) {
     return ['bad', `Your Gemini custom app has an old address. Update it to ${url} — Gemini cannot edit an address, so "Add it in Gemini for me" deletes the old app and adds it again.`];
@@ -256,6 +263,29 @@ export function addPill(status: GeminiStatus | null, url: string | null, now = D
   return ['off', status?.settings.namedTunnelHost
     ? 'Waiting for Gemini to reach the app. Your own tunnel keeps this address across restarts.'
     : 'Waiting for Gemini to reach the app. A quick tunnel gets a new address at each start: add the app again with it.'];
+}
+
+/**
+ * What must hold before "Try it in a chat": the address answers from outside, Gemini's list has the
+ * app once with this address (checked by "Add it in Gemini for me"), and Gemini connected to it
+ * and read its tools since this address went live.
+ */
+export function addChecks(status: GeminiStatus | null, url: string | null): Array<{ label: string; ok: boolean; hint: string }> {
+  const hash = url ? geminiUrlFingerprint(url) : null;
+  const since = hash && status?.address?.urlHash === hash ? status.address.since : null;
+  const reach = hash && status?.reach?.urlHash === hash ? status.reach : null;
+  const name = status?.settings.connectorName || 'Chat On Steroids Core';
+  const after = (at: number | null | undefined) => since !== null && typeof at === 'number' && at >= since;
+  return [
+    { label: 'The address answers through the tunnel', ok: !!reach?.ok,
+      hint: !url ? 'finish the Tunnel step first' : reach ? 'it did not answer from outside; check the Tunnel step (checked again every 30 seconds)' : 'checking…' },
+    { label: `Gemini has ${name} once, with this address`, ok: !!hash && status?.settings.verifiedUrlHash === hash,
+      hint: 'press "Add it in Gemini for me": it deletes old copies, adds this address and checks the list' },
+    { label: 'Gemini connected to the app', ok: after(status?.connectorSeenAt),
+      hint: 'waiting for Gemini to reach the app at this address' },
+    { label: "Gemini read the app's tools", ok: after(status?.toolsListedAt),
+      hint: "waiting for Gemini to list the app's tools (it does when it connects)" },
+  ];
 }
 
 /** Said when no page with the extension took "Add it in Gemini for me" (the default browser may have none). */

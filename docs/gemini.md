@@ -89,6 +89,15 @@ each step turns green by itself when the app sees it done.
    start, so once the app was added, a new Core address queues this same step for that address
    (never while one is running). One that fails is tried again 2 minutes later, 3 tries in all per
    address; one you cancel is not. Settings → Gemini says so and how it went.
+   **Old copies always go first:** two apps cannot share a name, so the list is read only once it
+   stops changing, each app is matched by its title (a card's label is "Name, description"), and
+   nothing is added while an app with the name is left. After **Connect** the list must show
+   exactly one app with the name, holding the new address, or the step fails with
+   `verify-failed`.
+   **Checks before "Try it in a chat":** the step is done only when all four pass, each shown under
+   it: the address answers from outside (the app asks it through the tunnel every 5 minutes, every
+   30 seconds while it fails); Gemini has the app once with this address (checked by the button);
+   Gemini connected to the app; and Gemini listed its tools, both since this address went live.
    "Copy URL" copies the Core MCP address (treat it like a password), "Open
    custom apps" opens Gemini's connectors page. Pictures show: **+ Custom** → paste the
    address → **Next** → tick Google's notice → **Connect**; then **Connect** again under

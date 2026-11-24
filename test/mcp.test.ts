@@ -26,7 +26,7 @@ import { connectorName } from '../src/shared/connector-names.js';
 import { effectiveCapabilities, defaultConfig, getConfig } from '../src/main/config.js';
 import { EXEC_COMMAND_CMD_DESCRIPTION, LAUNCHES_WINDOWS_POWERSHELL_5, WINDOWS_SHELL_GUIDANCE } from '../src/main/codex/tool-specs.js';
 import { skillCatalogInstructions } from '../src/main/skills.js';
-import { lastRequestAt, selfTestHeaders, startMcpServer, tunnelProbeHeaders, type McpEndpoint } from '../src/main/mcp/server.js';
+import { lastMcpClientToolsListAt, lastRequestAt, selfTestHeaders, startMcpServer, tunnelProbeHeaders, type McpEndpoint } from '../src/main/mcp/server.js';
 import { lastToolCallAt, type ToolContext } from '../src/main/mcp/tools.js';
 import { publishPluginSurface, pluginRefreshStatuses, resetPluginRefreshForTests } from '../src/main/plugin-refresh.js';
 import { friendlyError } from '../src/main/mcp/kernel.js';
@@ -1205,6 +1205,17 @@ describe('surface boundaries', () => {
     // The same harness still marks chat-bound tools, so the call above really was unattributed.
     const read = JSON.stringify((await core('tools/call', { name: 'read', arguments: { paths: ['/workspace'] } })).body.result?.content);
     expect(read).toContain('Identity notice');
+  });
+
+  it("records when Gemini's MCP client listed the tools, but not for a tunnel probe", async () => {
+    const list = (headers: Record<string, string>) => rawPost(endpoint.urls.core,
+      JSON.stringify({ jsonrpc: '2.0', id: nextId++, method: 'tools/list', params: {} }), headers);
+    const before = lastMcpClientToolsListAt('gemini');
+    await list({ 'user-agent': 'Google', ...tunnelProbeHeaders() });
+    expect(lastMcpClientToolsListAt('gemini')).toBe(before);
+    await list({ 'user-agent': 'Google' });
+    expect(lastMcpClientToolsListAt('gemini')).toBeGreaterThanOrEqual(before ?? 0);
+    expect(lastMcpClientToolsListAt('gemini')).not.toBeNull();
   });
 
   // Live 2026-11-20: Gemini 4 Neon called `read` through a Gemini custom app and saw only the

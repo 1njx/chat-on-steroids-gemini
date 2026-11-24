@@ -122,6 +122,7 @@
     'custom-apps-layout-unknown': "Gemini's custom apps page did not look as expected, so nothing was filled in. Add the app by hand: click Custom, paste the address, then Next.",
     'delete-failed': 'Gemini did not delete the app with the old address after 3 tries. Delete it by hand (open it, More options, Delete, then Remove), then press the button again.',
     'connect-failed': "Gemini did not finish connecting the app. Check the open Gemini tab, or add the app by hand: click Custom, paste the address, then Next and Connect.",
+    'verify-failed': "After adding, Gemini's custom apps did not show exactly one app with this name and address. Check the list in Gemini (delete any extra copy), then press the button again.",
   };
 
   /**
@@ -145,33 +146,40 @@
     panel?.start('Opening custom apps');
     if (!(await dom.waitFor(dom.visibleCreate))) return failed('custom-apps-layout-unknown');
     const name = command.connector || 'Chat On Steroids Core';
+    const toList = async () => { dom.backToList(); return !!(await dom.waitFor(dom.visibleCreate)) && (await dom.settledList(), true); };
     panel?.step('Checking existing apps');
+    await dom.settledList();
     // Every app already there under this name is found first. One with this address is kept; each
-    // with an old address, and each duplicate, is deleted before anything is added (Gemini cannot
-    // edit an address), as the app's button said before the person pressed it.
+    // with an old address, and each duplicate, is deleted before anything is added: Gemini cannot
+    // edit an address, and two apps cannot share a name.
     let kept = null, failures = 0;
-    for (let index = 0, rounds = 0; rounds < 15; rounds += 1) {
-      const cards = dom.customAppCards(name);
-      if (index >= cards.length) break;
-      const existing = await dom.readCustomAppUrl(cards[index]);
-      if (!existing) { dom.backToList(); return failed('custom-apps-layout-unknown'); }
-      if (existing === command.url && !kept) {
-        kept = existing;
-        index += 1;
-        dom.backToList();
-        if (!(await dom.waitFor(dom.visibleCreate))) return failed('custom-apps-layout-unknown');
-        continue;
+    for (let pass = 0; ; pass += 1) {
+      kept = null;
+      for (let index = 0, rounds = 0; rounds < 15; rounds += 1) {
+        const cards = dom.customAppCards(name);
+        if (index >= cards.length) break;
+        const existing = await dom.readCustomAppUrl(cards[index]);
+        if (!existing) { dom.backToList(); return failed('custom-apps-layout-unknown'); }
+        if (existing === command.url && !kept) {
+          kept = existing;
+          index += 1;
+          if (!(await toList())) return failed('custom-apps-layout-unknown');
+          continue;
+        }
+        panel?.step(`Deleting the old app (try ${failures + 1} of 3)`);
+        if (await dom.deleteCustomApp(name, 8000, cards.length)) { failures = 0; await dom.settledList(); continue; }
+        // A delete that did not take is tried again from the list (3 tries), which also finds it done late.
+        if ((failures += 1) >= 3) return failed('delete-failed');
+        if (!(await toList())) return failed('custom-apps-layout-unknown');
       }
-      panel?.step(`Deleting the old app (try ${failures + 1} of 3)`);
-      if (await dom.deleteCustomApp(name, 8000, cards.length)) { failures = 0; continue; }
-      // A delete that did not take is tried again from the list (3 tries), which also finds it done late.
-      if ((failures += 1) >= 3) return failed('delete-failed');
-      dom.backToList();
-      if (!(await dom.waitFor(dom.visibleCreate))) return failed('custom-apps-layout-unknown');
+      // Checked once more on a settled list: nothing is added while an app with this name is left.
+      if (!(await toList())) return failed('custom-apps-layout-unknown');
+      if (dom.customAppCards(name).length === (kept ? 1 : 0)) break;
+      if (pass >= 2) return failed('delete-failed');
     }
     if (kept) {
-      panel?.done(`Done: Gemini already has ${name} with this address.`);
-      return result(command, { stage: 'completed', outcome: 'current', existingUrl: kept });
+      panel?.done(`Done: Gemini already has ${name} with this address, and only once.`);
+      return result(command, { stage: 'completed', outcome: 'current', existingUrl: kept, verified: true });
     }
     panel?.step('Adding the app');
     const next = await dom.fillCreateForm(command.url);
@@ -186,8 +194,16 @@
     panel?.step('Connect');
     step.connect.click();
     if (!(await dom.waitFor(() => !step.dialog.isConnected || step.dialog.getClientRects().length === 0 ? true : null, 20000))) return failed('connect-failed');
-    panel?.done(`Done: ${name} is added and connected in Gemini.`);
-    return result(command, { stage: 'completed', outcome: 'connected' });
+    // Verified on the list: exactly one app with this name, and it has the new address.
+    panel?.step('Checking the app in Gemini');
+    if (!(await toList())) return failed('verify-failed');
+    const added = dom.customAppCards(name);
+    if (added.length !== 1) return failed('verify-failed');
+    const shown = await dom.readCustomAppUrl(added[0]);
+    dom.backToList();
+    if (shown !== command.url) return failed('verify-failed');
+    panel?.done(`Done: ${name} is added and connected in Gemini, once, with this address.`);
+    return result(command, { stage: 'completed', outcome: 'connected', verified: true });
   }
 
   async function run(command) {

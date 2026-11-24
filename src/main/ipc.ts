@@ -97,7 +97,7 @@ import { CHATGPT_PROJECT_ID, PROJECT_COLORS } from '../shared/projects.js';
 import { chatgptProjectChoices } from './chatgpt-project-catalog.js';
 import { bridgePortSelection } from './bridge-ports.js';
 import { clearAllGoalSwitches, draftTaskPlan, listGoalModels, MODEL_PAGE_SIZE, retireGoalDrafts, goalBackendFor, goalSwitchFor, setGoalSwitchNow, setGoalReplyActiveNow, setGoalObjectiveNow } from './goal.js';
-import { forgetExposedSurface, lastMcpClientRequestAt, lastMcpClientToolCallAt } from './mcp/server.js';
+import { forgetExposedSurface, lastMcpClientRequestAt, lastMcpClientToolCallAt, lastMcpClientToolsListAt, tunnelProbeHeaders } from './mcp/server.js';
 import { runningToolActivity } from './mcp/call-context.js';
 import { onBackgroundExecChange, runningExecProcesses, stopExecProcess } from './codex/ownership.js';
 import { keychainNoticeReady } from './keychain-notice.js';
@@ -2183,7 +2183,7 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
   });
   handle('chatModels:get', async () => getChatModels());
   // Gemini web provider (src/main/gemini.ts). Inputs are validated there; results report what the page proved.
-  handle('gemini:status', async () => ({ ...geminiStatus(), connectorSeenAt: lastMcpClientRequestAt('gemini'), toolCallSeenAt: lastMcpClientToolCallAt('gemini') }));
+  handle('gemini:status', async () => ({ ...geminiStatus(), connectorSeenAt: lastMcpClientRequestAt('gemini'), toolCallSeenAt: lastMcpClientToolCallAt('gemini'), toolsListedAt: lastMcpClientToolsListAt('gemini') }));
   handle('gemini:send', async (payload) => {
     const queued = queueGeminiSend((payload ?? {}) as Parameters<typeof queueGeminiSend>[0]);
     if (queued.ok) void startBridge().catch(() => undefined);
@@ -2933,11 +2933,24 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
   let geminiPush: ReturnType<typeof setTimeout> | null = null;
   const pushGeminiSoon = (): void => {
     if (geminiPush) return;
-    geminiPush = setTimeout(() => { geminiPush = null; push('gemini:changed', { ...geminiStatus(), connectorSeenAt: lastMcpClientRequestAt('gemini'), toolCallSeenAt: lastMcpClientToolCallAt('gemini') }); }, 250);
+    geminiPush = setTimeout(() => { geminiPush = null; push('gemini:changed', { ...geminiStatus(), connectorSeenAt: lastMcpClientRequestAt('gemini'), toolCallSeenAt: lastMcpClientToolCallAt('gemini'), toolsListedAt: lastMcpClientToolsListAt('gemini') }); }, 250);
     geminiPush.unref?.();
   };
   // "Add it in Gemini for me" opens Gemini's custom apps in the default browser, in front: that one page only.
-  configureGemini({ changed: pushGeminiSoon, openCustomApps: () => shell.openExternal(GEMINI_CUSTOM_APPS_URL) });
+  configureGemini({
+    changed: pushGeminiSoon,
+    openCustomApps: () => shell.openExternal(GEMINI_CUSTOM_APPS_URL),
+    // Through the tunnel and back, as Gemini would; the probe header keeps it out of Gemini's own counts.
+    probeAddress: async (url: string) => {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { ...tunnelProbeHeaders(), 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'chat-on-steroids-reach-check', version: '1' } } }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      return res.ok && (await res.text()).includes('serverInfo');
+    },
+  });
   configureGeminiTunnel(geminiWantsHttpsTunnel, geminiNamedTunnelHost);
   // A quick tunnel's new address leaves Gemini's custom app stale: it is added again once (gemini.ts).
   onStatusChange(() => {
