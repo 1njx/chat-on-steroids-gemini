@@ -103,7 +103,8 @@ var CLF_GEMINI_DOM = (() => {
       if (!button) return null;
       const aria = button.getAttribute('aria-label') || '';
       const match = aria.match(/currently\s+(.+)$/i);
-      return (match ? match[1] : text(button)).trim() || null;
+      // Gemini appends a level other than Low: "currently Hydrogen Medium" (seen live 2026-11-24).
+      return (match ? match[1] : text(button)).trim().replace(/\s+(?:Low|Medium|High|Extra high)$/i, '') || null;
     }, null);
   }
 
@@ -158,25 +159,52 @@ var CLF_GEMINI_DOM = (() => {
     let button = null;
     for (let i = 0; i < 30 && current() && !(button = document.querySelector(MODE_BUTTON)); i += 1) await sleep(100);
     if (!button) return false;
-    if (button.getAttribute('aria-expanded') !== 'true') button.click();
-    for (let i = 0; i < 20 && current(); i += 1) {
-      if (readOpenModes().length) return true;
-      await sleep(100);
+    // Right after a model switch the first click often opens nothing (seen live 2026-11-24): click again, 3 times in all.
+    for (let tries = 0; tries < 3 && current(); tries += 1) {
+      button = document.querySelector(MODE_BUTTON) || button;
+      if (!readOpenModes().length && button.getAttribute('aria-expanded') !== 'true') button.click();
+      for (let i = 0; i < 12 && current(); i += 1) {
+        if (readOpenModes().length) return true;
+        await sleep(100);
+      }
+      if (button.getAttribute('aria-expanded') === 'true') { button.click(); await sleep(150); }
     }
     return readOpenModes().length > 0;
   }
 
+  /** The open picker's thinking levels, waiting a moment for them (Auto has none: [] then). */
+  async function openLevels(ms = 800) {
+    const item = [...document.querySelectorAll(MENU_ITEM)].find(n => /Thinking level/i.test(text(n)));
+    if (item && !readOpenThinkingLevels().length) item.click();
+    for (const end = Date.now() + (item ? ms : 300); Date.now() < end && !readOpenThinkingLevels().length; ) await sleep(100);
+    return readOpenThinkingLevels();
+  }
+
   /**
-   * Read the account's modes by opening and closing the picker. Never selects anything.
-   * Returns null when the picker could not be read (no list is better than a guessed list).
+   * Read the account's modes and each one's thinking levels (live 2026-11-24: Auto offers none,
+   * Hydrogen and Neon Low/Medium/High). Gemini shows only the selected model's levels, so each
+   * other available model is selected in turn to read them, and the model selected before is
+   * selected again at the end; no level is ever clicked. Returns null when the picker could not be
+   * read (no list is better than a guessed list).
    */
   async function inspectModes(current = () => true) {
     if (!(await openPicker(current))) return null;
-    const modes = readOpenModes();
-    const levelsItem = [...document.querySelectorAll(MENU_ITEM)].find(n => /Thinking level/i.test(text(n)));
-    if (levelsItem && !readOpenThinkingLevels().length) { levelsItem.click(); await sleep(150); }
-    const thinkingLevels = readOpenThinkingLevels();
+    const modes = readOpenModes().map(mode => ({ ...mode, levels: null }));
+    const original = modes.find(mode => mode.selected) || null;
+    const levelsOf = async () => (await openLevels()).map(level => level.label);
+    const thinkingLevels = await openLevels();
+    if (original) original.levels = thinkingLevels.map(level => level.label);
     await closeMenus();
+    for (const mode of modes) {
+      if (mode === original || !mode.available || !current()) continue;
+      if (!(await selectMode(mode.id, current)) || !(await openPicker(current))) continue;
+      mode.levels = await levelsOf();
+      await closeMenus();
+    }
+    if (original && modes.some(mode => mode !== original && mode.levels)) await selectMode(original.id, current);
+    // Every level any model offers, as the default list (the selected model's selection marked).
+    const seen = new Set(thinkingLevels.map(level => level.label));
+    for (const mode of modes) for (const label of mode.levels || []) if (!seen.has(label)) { seen.add(label); thinkingLevels.push({ label, detail: '', selected: false, available: true }); }
     return { modes, thinkingLevels };
   }
 
@@ -193,12 +221,15 @@ var CLF_GEMINI_DOM = (() => {
     return true;
   }
 
-  /** Select a thinking level by label (Low/Medium/High/Extra high). */
+  /**
+   * Select a thinking level by label (Low/Medium/High/Extra high). A model that offers no levels
+   * (Auto) needs none: true, and nothing is clicked. False only when levels are shown without this one.
+   */
   async function selectThinkingLevel(level, current = () => true) {
     if (!level) return true;
     if (!(await openPicker(current))) return false;
-    const levelsItem = [...document.querySelectorAll(MENU_ITEM)].find(n => /Thinking level/i.test(text(n)));
-    if (levelsItem) { levelsItem.click(); await sleep(150); }
+    const shown = await openLevels(1500);
+    if (!shown.length) { await closeMenus(); return true; }
     const node = [...document.querySelectorAll(RADIO)]
       .find(n => !n.hasAttribute('data-mode-id') && text(n).toLowerCase().startsWith(String(level).toLowerCase()));
     const ok = !!node && node.getAttribute('aria-disabled') !== 'true';

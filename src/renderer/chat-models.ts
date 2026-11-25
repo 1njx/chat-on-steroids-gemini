@@ -23,7 +23,11 @@ let composerContext: { scope: string | null; observation: ObservedSelection | nu
 let gemini: Pick<GeminiStatus, 'catalog' | 'settings' | 'pages'> | null = null;
 /** Opening an empty model menu presses Reload itself; that press shows no notice. */
 let autoReload = false;
-const geminiLevels = (): string[] => gemini?.catalog?.thinkingLevels.filter(level => level.available).map(level => level.label) ?? [];
+/** The thinking levels Gemini offers with this model (none for Auto); every level read when its own are not known. */
+const geminiLevels = (modeId?: string): string[] => {
+  const own = gemini?.catalog?.modes.find(mode => mode.id === modeId)?.levels;
+  return Array.isArray(own) ? own : gemini?.catalog?.thinkingLevels.filter(level => level.available).map(level => level.label) ?? [];
+};
 const geminiModeLabel = (modeId: string): string => {
   const mode = gemini?.catalog?.modes.find(item => item.id === modeId);
   return mode ? mode.model ?? mode.title : 'Gemini';
@@ -33,9 +37,9 @@ function geminiDefault(): GeminiChoice | null {
   const modes = gemini?.catalog?.modes.filter(mode => mode.available) ?? [];
   const mode = modes.find(item => item.id === gemini?.settings.defaultModeId) ?? modes.find(item => item.selected) ?? modes[0];
   if (!mode) return null;
-  const levels = geminiLevels(), saved = gemini?.settings.defaultThinkingLevel;
+  const levels = geminiLevels(mode.id), saved = gemini?.settings.defaultThinkingLevel;
   const level = saved && levels.includes(saved) ? saved
-    : gemini?.catalog?.thinkingLevels.find(item => item.selected && item.available)?.label ?? levels.at(-1) ?? null;
+    : gemini?.catalog?.thinkingLevels.find(item => item.selected && item.available && levels.includes(item.label))?.label ?? levels.at(-1) ?? null;
   return { modeId: mode.id, thinkingLevel: level };
 }
 /** The Gemini choice Send uses: the picked one, or in a Gemini chat the default. */
@@ -261,7 +265,9 @@ function choicesSignature(choices: ReturnType<typeof composerModels>): string {
 /** Pick a Gemini model (keeping a chosen thinking level it still offers); Send then goes to Gemini. */
 function chooseGemini(modeId: string): void {
   const level = composerGeminiChoice()?.thinkingLevel ?? null;
-  const choice = { modeId, thinkingLevel: level && geminiLevels().includes(level) ? level : geminiDefault()?.thinkingLevel ?? null };
+  const levels = geminiLevels(modeId);
+  const fallback = geminiDefault()?.thinkingLevel ?? null;
+  const choice = { modeId, thinkingLevel: level && levels.includes(level) ? level : fallback && levels.includes(fallback) ? fallback : levels.at(-1) ?? null };
   if (composerContext) Object.assign(composerContext, { edited: true, automatic: false, gemini: choice });
   else composerContext = { scope: null, observation: null, edited: true, gemini: choice };
   paintStatus();
@@ -376,7 +382,7 @@ function paintComposerChoices(): void {
     }
   }
   if (picked) {
-    const levels = geminiLevels();
+    const levels = geminiLevels(picked.modeId);
     if (title) ui(title, 'textContent', () => picked.thinkingLevel ?? 'Gemini');
     if (subtitle) ui(subtitle, 'textContent', () => geminiModeLabel(picked.modeId));
     if (levels.length < 2) return;

@@ -90,6 +90,7 @@ const modeSchema = z.object({
   available: z.boolean(),
   selected: z.boolean(),
   reason: z.string().max(40).nullable(),
+  levels: z.array(z.string().min(1).max(20)).max(8).nullable().catch(null).default(null),
 });
 const FINGERPRINT = z.string().regex(/^[0-9a-f]{14}$/);
 const HOSTNAME = z.string().trim().toLowerCase().max(253).regex(/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/);
@@ -225,7 +226,10 @@ function wire(command: Command): Record<string, unknown> {
 /** An idle signed-in page reads the models by itself when none are saved or they are stale: one read at a time, none during backoff. */
 function modesWanted(page: Snapshot, now: number): boolean {
   if (page.signIn !== 'signed-in' || !page.composerReady || page.generating) return false;
-  if (catalog && now - catalog.observedAt < MODES_STALE_MS) return false;
+  // A list saved before levels were read per model (2.2.17 and older) is read again; a newer one that
+  // missed one model's levels waits for the usual 24 h, so a model that will not switch is not retried on every report.
+  const levelsKnown = catalog?.modes.some(mode => Array.isArray(mode.levels));
+  if (catalog && levelsKnown && now - catalog.observedAt < MODES_STALE_MS) return false;
   if (modesFailure && now - modesFailure.at < MODES_BACKOFF_MS) return false;
   return !commands.some(c => c.kind === 'inspect-modes' && !settled(c));
 }
@@ -417,6 +421,15 @@ function defaultConnector(): string | null {
   return settings.connectorName ?? (settings.givenUrlHash ? GEMINI_CORE_NAME : null);
 }
 
+/**
+ * The thinking level a send asks for with this model: none when the model offers none (Auto) or
+ * not the asked one, so Gemini keeps its own; the asked one when the model's levels are not known.
+ */
+function levelFor(mode: GeminiMode | null, level: string | null): string | null {
+  if (!level || !mode || !Array.isArray(mode.levels)) return level;
+  return mode.levels.find(offered => offered.toLowerCase() === level.toLowerCase()) ?? null;
+}
+
 /** Queue one prompt. Refuses a mode the account showed as unavailable instead of trying it. */
 export function queueGeminiSend(input: GeminiSendRequest): { ok: true; id: string } | { ok: false; error: string } {
   const parsed = sendSchema.safeParse(input);
@@ -434,9 +447,10 @@ export function queueGeminiSend(input: GeminiSendRequest): { ok: true; id: strin
   if (conversationId && commands.some(c => c.kind === 'send' && c.conversationId === conversationId && !settled(c))) {
     return { ok: false, error: 'conversation-busy' };
   }
+  const wanted = request.thinkingLevel === undefined ? settings.defaultThinkingLevel : request.thinkingLevel;
   const command = newCommand('send', {
     prompt: request.prompt, modeId: modeId ?? null,
-    thinkingLevel: request.thinkingLevel === undefined ? settings.defaultThinkingLevel : request.thinkingLevel,
+    thinkingLevel: levelFor(mode ?? null, wanted ?? null),
     connector: request.connector === undefined ? defaultConnector() : request.connector || null,
     conversationId,
   });

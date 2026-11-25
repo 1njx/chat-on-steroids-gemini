@@ -117,8 +117,9 @@ Desktop and Plugins URLs the same way (Plugins page and Setup show them).
 
 **From the chat composer.** The composer's model menu lists every model Gemini's own picker
 showed, under a **Gemini** heading below ChatGPT's. A model that needs a higher plan is listed greyed out
-with that reason. Pick one and the thinking slider offers Gemini's thinking levels (for example
-Low, Medium, High). Send then goes to Gemini instead of ChatGPT: a new Gemini chat opens in the
+with that reason. Pick one and the thinking slider offers the thinking levels Gemini offers with
+that model (for example Low, Medium, High; none for Auto). A level the model does not offer is not
+asked for, so Gemini keeps its own. Send then goes to Gemini instead of ChatGPT: a new Gemini chat opens in the
 app once Gemini has answered, and its messages keep going to that Gemini chat. In a Gemini chat
 the menu lists only Gemini's models; in a ChatGPT chat only ChatGPT's. Gemini gets text only:
 files, plans and edits are refused with a message.
@@ -159,10 +160,14 @@ until the browser is idle, and a tab in a covered or background window may never
 keeps Gemini tabs awake, as the Focusly extension does for any tab: in Gemini's own page it gives that
 idle work a 1-second timeout and tells the page it is visible and focused (`extension/gemini-awake.js`).
 With it, the same covered tab drew the picker within 4.5 seconds of loading, 3 times out of 3. If a
-read still finds no picker, Settings says to bring the tab to the front. The read opens the picker,
-reads it and shuts it again; it never clicks an option and never long-presses the button (a long
-press opens Gemini's "periodic table" instead). On the tested Google AI Pro account the picker
-offered (2026-11-20, unchanged on 2026-11-22):
+read still finds no picker, Settings says to bring the tab to the front. The read opens the picker
+and reads the models. Gemini shows thinking levels only for the selected model, so the read then
+selects each other available model in turn, reads its levels, and selects the model that was
+selected before again at the end (about 3.5 seconds); it never clicks a thinking level and never
+long-presses the button (a long press opens Gemini's "periodic table" instead). A list saved before
+levels were read per model is read again by itself. Right after a model switch Gemini's first click
+on the picker often opens nothing, so the picker is clicked again, 3 times at most. On the tested
+Google AI Pro account the picker offered (2026-11-20, unchanged on 2026-11-24):
 
 | Option in Gemini | Model | Available on the tested Pro account |
 | --- | --- | --- |
@@ -171,7 +176,8 @@ offered (2026-11-20, unchanged on 2026-11-22):
 | Deeper analysis | **Gemini 4 Neon** | **yes** |
 | Code & complex work | Gemini 4 Carbon | no (upgrade to Ultra) |
 
-Thinking levels offered: Low, Medium, High. Your account may differ; the app shows what Gemini shows.
+Thinking levels (read per model, 2026-11-24): none for Auto; Low, Medium, High for Hydrogen and
+Neon, one setting both share. Your account may differ; the app shows what Gemini shows.
 
 ## Roblox Studio
 

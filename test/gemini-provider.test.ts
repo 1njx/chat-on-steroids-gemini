@@ -19,11 +19,13 @@ const page = (fields: Record<string, unknown> = {}) => ({
   url: 'https://gemini.google.com/app', conversationId: null, signIn: 'signed-in', account: { name: 'Pat', plan: 'Pro' },
   selectedMode: 'Hydrogen', composerReady: true, generating: false, turnCount: 0, errors: [], localized: false, ...fields,
 });
+// Levels as read live on 2026-11-24: none for Auto, Low/Medium/High for Hydrogen and Neon, Carbon not readable.
+const LEVELS = ['Low', 'Medium', 'High'];
 const MODES = [
-  { id: '8c46e95b1a07cecc', title: 'Auto', model: null, available: true, selected: false, reason: null },
-  { id: '56fdd199312815e2', title: 'Everyday help', model: 'Gemini 4 Hydrogen', available: true, selected: true, reason: null },
-  { id: 'e6fa609c3fa255c0', title: 'Deeper analysis', model: 'Gemini 4 Neon', available: true, selected: false, reason: null },
-  { id: 'upsell_MODE_CATEGORY_ULTRA', title: 'Code & complex work', model: 'Gemini 4 Carbon', available: false, selected: false, reason: 'requires-upgrade' },
+  { id: '8c46e95b1a07cecc', title: 'Auto', model: null, available: true, selected: false, reason: null, levels: [] },
+  { id: '56fdd199312815e2', title: 'Everyday help', model: 'Gemini 4 Hydrogen', available: true, selected: true, reason: null, levels: LEVELS },
+  { id: 'e6fa609c3fa255c0', title: 'Deeper analysis', model: 'Gemini 4 Neon', available: true, selected: false, reason: null, levels: LEVELS },
+  { id: 'upsell_MODE_CATEGORY_ULTRA', title: 'Code & complex work', model: 'Gemini 4 Carbon', available: false, selected: false, reason: 'requires-upgrade', levels: null },
 ];
 
 async function loadModes(tab = 1) {
@@ -252,6 +254,27 @@ describe('Gemini provider', () => {
     for (let t = now; t <= now + 3 * 60_000 + 1; t += 30_000) observeGeminiPage({ tab: 1, snapshot: page({ signIn: 'signed-out' }) }, t);
     sweep(now + 3 * 60_000 + 1);
     expect(geminiStatus(now).commands.find(c => c.id === id)).toMatchObject({ stage: 'failed', error: 'signed-out' });
+  });
+
+  it("sends a thinking level only with a model that offers it, so Gemini's own level stays otherwise", async () => {
+    await loadModes();
+    const levelOf = (modeId: string, thinkingLevel: string) => {
+      const { id } = queueGeminiSend({ prompt: 'x', modeId, thinkingLevel }) as { id: string };
+      const handed = observeGeminiPage({ tab: 1, snapshot: page() }).commands.find(c => c.id === id)!;
+      cancelGeminiCommand(id);
+      return handed.thinkingLevel;
+    };
+    expect(levelOf('e6fa609c3fa255c0', 'high')).toBe('High');
+    expect(levelOf('8c46e95b1a07cecc', 'High')).toBeNull();
+    expect(levelOf('e6fa609c3fa255c0', 'Ludicrous')).toBeNull();
+  });
+
+  it('reads the models again when the saved list has no levels per model (saved by 2.2.17 or older)', async () => {
+    const { id } = requestGeminiModes();
+    observeGeminiPage({ tab: 1, snapshot: page() });
+    const old = MODES.map(({ levels: _levels, ...mode }) => mode);
+    expect(await completeGeminiCommand({ id, tab: 1, stage: 'completed', modes: old, thinkingLevels: [{ label: 'Low', selected: true, available: true }] })).toEqual({ ok: true });
+    expect(observeGeminiPage({ tab: 1, snapshot: page() }).commands.map(c => c.kind)).toEqual(['inspect-modes']);
   });
 
   it('bounds retained command history', () => {

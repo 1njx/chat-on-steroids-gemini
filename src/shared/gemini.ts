@@ -10,6 +10,8 @@ export interface GeminiMode {
   selected: boolean;
   /** Why it is unavailable as the page showed it, e.g. "requires-upgrade". */
   reason: string | null;
+  /** The thinking levels Gemini offers with this model ([] for none, e.g. Auto); null when not read. */
+  levels?: string[] | null;
 }
 
 export interface GeminiThinkingLevel { label: string; selected: boolean; available: boolean }

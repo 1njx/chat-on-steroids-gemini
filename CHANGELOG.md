@@ -9,6 +9,23 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.18] — Gemini edition: thinking levels read per model
+
+### Fixed
+
+- **"That thinking level is not offered for the selected model" no longer fires for a level the
+  app offered.** Gemini shows thinking levels only for the selected model, and Auto offers none
+  (seen live 2026-11-24), but the app kept one list for every model and asked Auto for a level.
+  Reading Gemini's models now selects each available model in turn, reads its levels and selects
+  the model that was selected before again (about 3.5 seconds; no level is clicked). The composer
+  offers only the picked model's levels (none for Auto), and a send asks for no level the model
+  does not offer, so Gemini keeps its own. A model list saved by 2.2.17 or older is read again by
+  itself.
+- **Choosing a model or level no longer fails when Gemini's picker ignores a click.** Right after a
+  model switch the first click on the picker often opens nothing; it is now clicked again, 3 times
+  at most.
+- The selected model is read without the level Gemini appends to its name ("Hydrogen Medium").
+
 ## [2.2.17] — Gemini edition: chats from the app reach Gemini, with the Core app
 
 ### Fixed

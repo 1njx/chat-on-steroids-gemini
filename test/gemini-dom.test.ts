@@ -46,15 +46,21 @@ const PAGE = `
 </input-area-v2></chat-window>
 <div id="overlay"></div>`;
 
-const MENU = `
-<gem-menu-item role="menuitemradio" data-mode-id="8c46e95b1a07cecc" aria-checked="false" aria-disabled="false">Auto Adapts to your needs</gem-menu-item>
-<gem-menu-item role="menuitemradio" data-mode-id="56fdd199312815e2" aria-checked="true" aria-disabled="false">Everyday help 4 Hydrogen</gem-menu-item>
-<gem-menu-item role="menuitemradio" data-mode-id="e6fa609c3fa255c0" aria-checked="false" aria-disabled="false">Deeper analysis 4 Neon New</gem-menu-item>
-<gem-menu-item role="menuitemradio" data-mode-id="upsell_MODE_CATEGORY_ULTRA" aria-checked="false" aria-disabled="false">Code &amp; complex work 4 Carbon</gem-menu-item>
-<gem-menu-item role="menuitem" aria-haspopup="true">Thinking level</gem-menu-item>
-<gem-menu-item role="menuitemradio" aria-checked="true">Low Fast and efficient</gem-menu-item>
-<gem-menu-item role="menuitemradio" aria-checked="false">Medium Balanced depth</gem-menu-item>
-<gem-menu-item role="menuitemradio" aria-checked="false">High Extra thorough</gem-menu-item>`;
+const MODES_MENU = [
+  ['8c46e95b1a07cecc', 'Auto Adapts to your needs'],
+  ['56fdd199312815e2', 'Everyday help 4 Hydrogen'],
+  ['e6fa609c3fa255c0', 'Deeper analysis 4 Neon New'],
+  ['upsell_MODE_CATEGORY_ULTRA', 'Code &amp; complex work 4 Carbon'],
+];
+const LEVELS_MENU = [['Low', 'Fast and efficient'], ['Medium', 'Balanced depth'], ['High', 'Extra thorough']];
+/**
+ * The picker as seen live on 2026-11-24: the selected model checked; Thinking level and its radios
+ * only for a model that has levels (Auto has none); one level setting shared by the models.
+ */
+const menu = (selected: string, level: string) => MODES_MENU.map(([id, label]) =>
+  `<gem-menu-item role="menuitemradio" data-mode-id="${id}" aria-checked="${id === selected}" aria-disabled="false">${label}</gem-menu-item>`).join('') +
+  (selected === '8c46e95b1a07cecc' ? '' : '<gem-menu-item role="menuitem" aria-haspopup="true">Thinking level</gem-menu-item>' +
+    LEVELS_MENU.map(([name, detail]) => `<gem-menu-item role="menuitemradio" aria-checked="${name === level}">${name} ${detail}</gem-menu-item>`).join(''));
 
 let dom: JSDOM;
 let api: GeminiDom;
@@ -67,19 +73,26 @@ beforeEach(() => {
   Object.defineProperty(dom.window.HTMLElement.prototype, 'getClientRects', { value() { return this.hidden ? [] : [{ width: 10, height: 10 }]; } });
   // The real picker renders its options into a CDK overlay when the button is clicked.
   const button = document.querySelector('[data-test-id="bard-mode-menu-button"]')!;
+  const overlay = document.getElementById('overlay')!;
+  let selected = '56fdd199312815e2', level = 'Low';
+  const close = () => { overlay.innerHTML = ''; button.setAttribute('aria-expanded', 'false'); };
   button.addEventListener('click', () => {
-    document.getElementById('overlay')!.innerHTML = MENU;
+    if (button.getAttribute('aria-expanded') === 'true') { close(); return; }
+    overlay.innerHTML = menu(selected, level);
     button.setAttribute('aria-expanded', 'true');
-    for (const item of document.querySelectorAll('[data-mode-id]')) {
+    for (const item of overlay.querySelectorAll('[data-mode-id]')) {
       item.addEventListener('click', () => {
-        for (const other of document.querySelectorAll('[data-mode-id]')) other.setAttribute('aria-checked', String(other === item));
+        selected = item.getAttribute('data-mode-id')!;
         button.setAttribute('aria-label', `Open mode picker, currently ${item.textContent!.match(/4 (\w+)/)?.[1] ?? 'Auto'}`);
+        close(); // Picking a model shuts the picker, as live.
       });
     }
+    const radios = () => overlay.querySelectorAll('[role="menuitemradio"]:not([data-mode-id])');
+    for (const item of radios()) {
+      item.addEventListener('click', () => { level = item.textContent!.split(' ')[0]!; for (const other of radios()) other.setAttribute('aria-checked', String(other === item)); });
+    }
   });
-  document.addEventListener('keydown', event => {
-    if ((event as KeyboardEvent).key === 'Escape') { document.getElementById('overlay')!.innerHTML = ''; button.setAttribute('aria-expanded', 'false'); }
-  });
+  document.addEventListener('keydown', event => { if ((event as KeyboardEvent).key === 'Escape') close(); });
   dom.window.eval(source);
   api = (dom.window as unknown as { CLF_GEMINI_DOM: GeminiDom }).CLF_GEMINI_DOM;
 });
@@ -136,7 +149,39 @@ describe('Gemini page adapter', () => {
     expect(api.readOpenModes()).toEqual([]);
   });
 
-  it('reads the 2026-11-22 popover picker: waits for it, titles from .label, shuts it, selects nothing', async () => {
+  it("reads each model's thinking levels (none for Auto), then selects the model that was selected before", async () => {
+    const result = await api.inspectModes();
+    expect(result!.modes.map(m => [m.title, (m as Mode & { levels: string[] | null }).levels])).toEqual([
+      ['Auto Adapts to your needs', []],
+      ['Everyday help', ['Low', 'Medium', 'High']],
+      ['Deeper analysis', ['Low', 'Medium', 'High']],
+      ['Code & complex work', null],
+    ]);
+    expect(api.selectedModeLabel()).toBe('Hydrogen');
+    expect(api.readOpenModes()).toEqual([]);
+  });
+
+  it('asks for no thinking level with a model that offers none, and still refuses one the model does not offer', async () => {
+    expect(await api.selectMode('8c46e95b1a07cecc')).toBe(true);
+    expect(await api.selectThinkingLevel('High')).toBe(true);
+    expect(await api.selectMode('e6fa609c3fa255c0')).toBe(true);
+    expect(await api.selectThinkingLevel('Ludicrous')).toBe(false);
+  });
+
+  it('opens the picker again when the first click right after a model switch opens nothing', async () => {
+    const button = document.querySelector('[data-test-id="bard-mode-menu-button"]')!;
+    let swallow = 1;
+    button.addEventListener('click', event => { if (swallow > 0) { swallow -= 1; event.stopImmediatePropagation(); } }, true);
+    expect(await api.selectMode('e6fa609c3fa255c0')).toBe(true);
+    expect(api.selectedModeLabel()).toBe('Neon');
+  });
+
+  it('reads the selected model without the level Gemini appends to its label', () => {
+    document.querySelector('[data-test-id="bard-mode-menu-button"]')!.setAttribute('aria-label', 'Open mode picker, currently Hydrogen Medium');
+    expect(api.selectedModeLabel()).toBe('Hydrogen');
+  });
+
+  it('reads the 2026-11-22 popover picker: waits for it, titles from .label, shuts it, leaves Neon selected', async () => {
     // Live 2026-11-22: the switcher renders after the composer, options split into .label/.sublabel,
     // and the menu is a popover that ignores Escape; only its button closes it.
     const old = document.querySelector('bard-mode-switcher')!;

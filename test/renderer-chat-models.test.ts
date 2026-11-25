@@ -840,3 +840,34 @@ it('offers every model Gemini web showed beside ChatGPT\'s in a new chat, only G
   expect(requestGeminiModes).toHaveBeenCalledTimes(2);
   expect(doc.querySelector('.toast')!.textContent).toBe('Open Gemini in Chrome to read its models');
 });
+
+it("offers each Gemini model's own thinking levels, and none for a model without them (Auto)", async () => {
+  dom = new JSDOM(await readFile('src/renderer/index.html', 'utf8'));
+  vi.stubGlobal('window', dom.window); vi.stubGlobal('document', dom.window.document);
+  // As read live on 2026-11-24: Auto offers no levels; Hydrogen and Neon Low/Medium/High.
+  const status = {
+    pages: 1, settings: { connectorName: null, defaultModeId: null, defaultThinkingLevel: null },
+    catalog: { observedAt: 1, thinkingLevels: ['Low', 'Medium', 'High'].map(label => ({ label, selected: label === 'Medium', available: true })), modes: [
+      { id: 'auto', title: 'Auto', model: null, available: true, selected: false, reason: null, levels: [] },
+      { id: 'neon', title: 'Deeper analysis', model: 'Gemini 4 Neon', available: true, selected: true, reason: null, levels: ['Low', 'Medium', 'High'] },
+    ] },
+  };
+  Object.assign(dom.window, { api: {
+    getChatModels: async () => ({ ok: true, data: { state: 'ready', observedAt: 2, models: [{ id: 'sol', label: 'GPT-6', efforts: ['none', 'high'] }] } }),
+    getGeminiStatus: async () => ({ ok: true, data: status }), onGeminiChanged: () => undefined,
+    requestChatModels: vi.fn(), requestGeminiModes: vi.fn(),
+  } });
+  const { initChatModels, applyChatModels, applyComposerSessionModel, composerGeminiChoice } = await import('../src/renderer/chat-models.js');
+  initChatModels(); applyChatModels({ multiAgent: {}, goal: {} } as Config); await Promise.resolve(); await Promise.resolve();
+  const doc = dom.window.document;
+  const gemini = (id: string) => doc.querySelector<HTMLButtonElement>(`[data-gemini-mode="${id}"]`)!;
+  applyComposerSessionModel(null, null);
+  gemini('neon').click();
+  expect(composerGeminiChoice()).toEqual({ modeId: 'neon', thinkingLevel: 'Medium' });
+  expect(doc.querySelectorAll('#composerPowerChoices input')).toHaveLength(1);
+  gemini('auto').click();
+  expect(composerGeminiChoice()).toEqual({ modeId: 'auto', thinkingLevel: null });
+  expect(doc.querySelectorAll('#composerPowerChoices input')).toHaveLength(0);
+  gemini('neon').click();
+  expect(composerGeminiChoice()).toEqual({ modeId: 'neon', thinkingLevel: 'Medium' });
+});
