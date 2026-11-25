@@ -9,7 +9,7 @@
  *   · stop: press Stop on the running answer
  *   · fill-app: on the custom apps page, find every app already there under the connector's name,
  *     delete each with an old address and each duplicate, then add the app with the new address
- *     (Next, Google's notice, Connect), as the app's "Add it in Gemini for me" button says.
+ *     (Next, Google's notice, Connect, and Connect under "Save your custom app"), as the app's "Add it in Gemini for me" button says.
  *
  * The page never executes a local tool; Gemini calls CoS's MCP connector itself. Every result is
  * reported as observed: a send is "sent" only once Gemini accepted it, and "completed" only once
@@ -196,7 +196,18 @@
     if (!(await dom.waitFor(() => step.checkbox.checked && !step.connect.disabled ? true : null, 3000))) return failed('custom-apps-layout-unknown');
     panel?.step('Connect');
     step.connect.click();
-    if (!(await dom.waitFor(() => !step.dialog.isConnected || step.dialog.getClientRects().length === 0 ? true : null, 20000))) return failed('connect-failed');
+    const gone = dialog => !dialog.isConnected || dialog.getClientRects().length === 0;
+    if (!(await dom.waitFor(() => gone(step.dialog) || !step.checkbox.isConnected ? true : null, 20000))) return failed('connect-failed');
+    // Gemini then often asks to save the app, with a second Connect (seen live 2026-11-24); without
+    // that click nothing is added. It is enabled once the app's actions loaded.
+    const save = await dom.waitFor(dom.saveStep, 3000);
+    if (save) {
+      panel?.step('Saving the app');
+      const ready = () => !save.connect.disabled && save.connect.getAttribute('aria-disabled') !== 'true';
+      if (!(await dom.waitFor(() => ready() ? true : null, 15000))) return failed('connect-failed');
+      save.connect.click();
+      if (!(await dom.waitFor(() => gone(save.dialog) || !save.connect.isConnected ? true : null, 20000))) return failed('connect-failed');
+    }
     // Verified on the list: exactly one app with this name, and it has the new address.
     panel?.step('Checking the app in Gemini');
     if (!(await toList())) return failed('verify-failed');

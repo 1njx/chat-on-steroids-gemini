@@ -9,6 +9,16 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.19] — Gemini edition: "Add it in Gemini for me" finishes the add
+
+### Fixed
+
+- **"Add it in Gemini for me" no longer stops at "Save your custom app" and fails
+  `verify-failed`.** After Connect on Google's notice, Gemini often asks to save the app in a
+  second dialog with its own Connect (seen live 2026-11-24); that Connect was never clicked, so
+  nothing was added. It is now clicked once it is enabled (after the app's actions loaded), and
+  the panel shows "Saving the app".
+
 ## [2.2.18] — Gemini edition: thinking levels read per model
 
 ### Fixed

@@ -75,7 +75,8 @@ each step turns green by itself when the app sees it done.
    **More options → Delete**, then **Remove** in Gemini's "Remove Chat On Steroids Core?"
    confirmation. A delete that does not take is tried again, 3 times in all. With none kept it then opens
    **Create custom app**, fills in the address, clicks **Next**, ticks Google's notice and clicks
-   **Connect**. It stores no Google password or cookie. A page it does not recognize gets nothing filled in, and
+   **Connect**, then, when Gemini asks under "Save your custom app", **Connect** again once it is
+   enabled. It stores no Google password or cookie. A page it does not recognize gets nothing filled in, and
    the step says to add the app by hand. The step remembers a fingerprint of the address Gemini
    last got (copied, filled in or read there), never the address, so after a restart it says
    "Your Gemini custom app has an old address. Update it to …" instead of "not added".

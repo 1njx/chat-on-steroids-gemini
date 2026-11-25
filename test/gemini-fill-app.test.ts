@@ -16,9 +16,10 @@ interface App { name: string; url: string }
 
 /**
  * Gemini's custom apps page as observed on 2026-11-22: a card per app, a details page with the
- * MCP URL and More options → Delete, and Create custom app → Next → Google's notice → Connect.
+ * MCP URL and More options → Delete, and Create custom app → Next → Google's notice → Connect,
+ * then (`saveStep`, seen live 2026-11-24) "Save your custom app" → Connect, enabled once its actions loaded.
  */
-async function addInGemini(apps: App[], { flakyMenus = 0, lateMs = 0, duplicateOnAdd = false, staleDetails = false } = {}) {
+async function addInGemini(apps: App[], { flakyMenus = 0, lateMs = 0, duplicateOnAdd = false, staleDetails = false, saveStep = false } = {}) {
   dom = new JSDOM(`<a aria-label="Google Account: Pat (pat@example.com)" href="#"></a>
     <button aria-label="Create custom app">Custom</button><section><h2>Custom apps</h2><div id="grid"></div></section>
     <div id="details"></div><div id="menus"></div><div id="dialogs"></div>`,
@@ -84,13 +85,21 @@ async function addInGemini(apps: App[], { flakyMenus = 0, lateMs = 0, duplicateO
     const next = button(dialogs.firstElementChild!, '<button disabled>Next</button>', () => {
       dialogs.innerHTML = '<mat-dialog-container role="dialog"><mat-checkbox><input type="checkbox"></mat-checkbox></mat-dialog-container>';
       const box = dialogs.querySelector('input')!;
-      const connect = button(dialogs.firstElementChild!, '<button disabled>Connect</button>', () => {
+      const add = () => {
         pressed.push(`add ${input.value}`);
         apps.push({ name: 'Chat On Steroids Core', url: input.value });
         // A Gemini that kept a second copy: the list then shows two apps with the name.
         if (duplicateOnAdd) apps.push({ name: 'Chat On Steroids Core (2)', url: input.value });
         dialogs.innerHTML = '';
         render();
+      };
+      const connect = button(dialogs.firstElementChild!, '<button disabled>Connect</button>', () => {
+        if (!saveStep) { add(); return; }
+        pressed.push('notice connect');
+        dialogs.innerHTML = '<mat-dialog-container role="dialog"><h2>Save your custom app</h2><input type="text" value="Chat On Steroids Core"></mat-dialog-container>';
+        button(dialogs.firstElementChild!, '<button>Cancel</button>', () => { dialogs.innerHTML = ''; });
+        const save = button(dialogs.firstElementChild!, '<button disabled>Connect</button>', add) as HTMLButtonElement;
+        setTimeout(() => { save.disabled = false; }, 500);
       }) as HTMLButtonElement;
       box.addEventListener('click', () => { connect.disabled = !box.checked; });
     }) as HTMLButtonElement;
@@ -171,6 +180,14 @@ it("reads an app's address only once Gemini synced its details, so a cached old 
   expect(replaced.final).toMatchObject({ stage: 'completed', outcome: 'connected', verified: true });
   expect(replaced.pressed).toEqual([`delete ${address('old-one')}`, `add ${NEW}`]);
 }, 60_000);
+
+it('presses Connect on "Save your custom app" too, once it is enabled, when Gemini asks to save the app', async () => {
+  const { final, pressed, apps, panel } = await addInGemini([{ name: 'Chat On Steroids Core', url: address('old-one') }], { saveStep: true });
+  expect(final).toMatchObject({ stage: 'completed', outcome: 'connected', verified: true });
+  expect(pressed).toEqual([`delete ${address('old-one')}`, 'notice connect', `add ${NEW}`]);
+  expect(apps).toEqual([{ name: 'Chat On Steroids Core', url: NEW }]);
+  expect(panel!.steps.slice(-3)).toEqual(['Connect', 'Saving the app', 'Checking the app in Gemini']);
+}, 30_000);
 
 it('fails the add when the list afterwards does not show exactly one app with this name and address', async () => {
   const { final } = await addInGemini([], { duplicateOnAdd: true });

@@ -528,6 +528,21 @@ var CLF_GEMINI_DOM = (() => {
     }, null);
   }
 
+  /**
+   * The step Gemini can show after the notice's Connect (seen 2026-11-24, not every time): "Save your
+   * custom app" with the app's name, its actions and a second Connect. Null while it is not shown.
+   */
+  function saveStep() {
+    return safe(() => {
+      const dialog = [...document.querySelectorAll('mat-dialog-container, [role="dialog"]')]
+        .find(node => visible(node) && !node.querySelector('mat-checkbox input[type="checkbox"]') &&
+          [...node.querySelectorAll('button')].some(b => text(b) === 'Connect'));
+      if (!dialog) return null;
+      const connect = [...dialog.querySelectorAll('button')].filter(b => text(b) === 'Connect');
+      return connect.length === 1 ? { dialog, connect: connect[0] } : null;
+    }, null);
+  }
+
   /** Points the person at the control they press themselves; never clicks it. */
   function highlight(node, note) {
     safe(() => {
@@ -572,6 +587,6 @@ var CLF_GEMINI_DOM = (() => {
     selectThinkingLevel, insertPrompt, composerText, mentionOptions, mentionConnector, appendPrompt,
     send, stopGeneration, turns, errors,
     localized, snapshot, parseOption,
-    onCustomApps, customAppCard, customAppCards, settledList, readCustomAppUrl, backToList, detailsMoreOptions, fillCreateForm, highlight, waitFor, visibleCreate, deleteCustomApp, connectStep,
+    onCustomApps, customAppCard, customAppCards, settledList, readCustomAppUrl, backToList, detailsMoreOptions, fillCreateForm, highlight, waitFor, visibleCreate, deleteCustomApp, connectStep, saveStep,
   };
 })();
