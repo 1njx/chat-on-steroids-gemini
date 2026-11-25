@@ -1050,7 +1050,8 @@ describe('sending to Gemini from the composer', () => {
     expect(doc.getElementById('composerModelLabel')!.textContent).toBe('Gemini 4 Neon · High');
     const field = doc.getElementById('chatInput') as HTMLTextAreaElement;
     const submit = () => doc.getElementById('composer')!.dispatchEvent(new w.Event('submit', { bubbles: true, cancelable: true }));
-    field.value = 'Hello Gemini'; submit(); await settle();
+    // Typed, so the composer saved it as the draft: a sent message must not come back from there.
+    field.value = 'Hello Gemini'; field.dispatchEvent(new w.Event('input', { bubbles: true })); submit(); await settle();
     expect(sendToGemini).toHaveBeenLastCalledWith({ prompt: 'Hello Gemini', conversation: null, modeId: 'neon', thinkingLevel: 'High' });
     expect(live.sent).toEqual([]);
     expect(field.value).toBe('');

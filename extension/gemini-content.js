@@ -26,7 +26,7 @@
   let reportTimer = null;
   let lastSent = '';
 
-  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const sleep = dom.sleep;
   const message = payload => new Promise(resolve => {
     try { chrome.runtime.sendMessage(payload, reply => { void chrome.runtime.lastError; resolve(reply || null); }); }
     catch { resolve(null); }
@@ -43,29 +43,33 @@
 
   function schedule(delay = 1500) {
     if (reportTimer) return;
-    reportTimer = setTimeout(() => { reportTimer = null; void report(); }, delay);
+    reportTimer = true;
+    void sleep(delay).then(() => { reportTimer = null; void report(); });
   }
 
   const result = (command, fields) => message({ type: 'gemini_result', id: command.id, ...fields });
 
   async function waitForAnswer(command, before) {
     const deadline = Date.now() + ANSWER_LIMIT_MS;
-    let quietSince = 0;
+    let quietSince = 0, quietKey = '';
     while (Date.now() < deadline) {
       await sleep(700);
       const errors = dom.errors();
       const all = dom.turns();
       const last = all[all.length - 1];
-      const settled = !dom.generating() && last && all.length > before && last.final;
+      // In a covered tab Gemini can keep its busy marker on a finished answer (live 2026-11-25: Stop
+      // gone, the text drawn, still busy), so an answer with text counts too, once it held still longer.
+      const settled = !dom.generating() && last && all.length > before && (last.final || last.answer);
+      const key = settled ? `${last.id}|${last.answer.length}|${last.final}` : '';
       if (settled) {
         // Gemini can flip Stop off a moment before the last tokens render; require a short quiet period.
-        if (!quietSince) quietSince = Date.now();
-        if (Date.now() - quietSince >= 1200) {
+        if (key !== quietKey) { quietKey = key; quietSince = Date.now(); }
+        if (Date.now() - quietSince >= (last.final ? 1200 : 4000)) {
           // The bridge takes at most 2 MiB per request: keep the text, drop markup that would not fit whole.
           return { stage: 'completed', conversationId: dom.conversationId(), turnId: last.id,
             answer: last.answer.slice(0, 400_000), ...(last.answerHtml.length <= 400_000 ? { answerHtml: last.answerHtml } : {}) };
         }
-      } else quietSince = 0;
+      } else { quietSince = 0; quietKey = ''; }
       if (!dom.generating() && errors.length && (!last || all.length <= before || !last.answer)) {
         return { stage: 'failed', conversationId: dom.conversationId(), error: errors.map(e => e.text).join(' · '),
           quota: errors.some(e => e.quota), signedOut: errors.some(e => e.signedOut) };
@@ -247,7 +251,15 @@
   }
 
   new MutationObserver(() => schedule()).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['aria-label', 'aria-checked'] });
-  setInterval(() => void report(true), REPORT_MS);
+  // A loop on dom.sleep, not setInterval: a hidden tab's interval fires once a minute, and a page
+  // that reports that rarely takes no work and looks gone. It ends once the extension was reloaded.
+  void (async () => {
+    for (;;) {
+      await sleep(REPORT_MS);
+      try { if (!chrome.runtime?.id) return; } catch { return; }
+      await report(true);
+    }
+  })();
   window.addEventListener('pageshow', () => void report(true));
   void report(true);
 })();

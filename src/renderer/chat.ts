@@ -9984,8 +9984,9 @@ async function sendComposerToGemini(text: string, extras: boolean, choice: Gemin
   if (!reply) return false;
   if (!reply.ok) { toast(geminiErrorText(reply.error)); return false; }
   geminiSends.set(reply.id, { sessionId, generation });
-  if (draftKey() === key) { replaceComposerDraft(); $<HTMLTextAreaElement>('chatInput').value = ''; skillPicker?.restore(); }
+  // The saved draft goes first: restore() refills the composer from it, which put a sent message back (live 2026-11-25).
   inputDrafts.delete(key);
+  if (draftKey() === key) { replaceComposerDraft(); $<HTMLTextAreaElement>('chatInput').value = ''; skillPicker?.restore(); }
   paintGeminiSends();
   return true;
 }

@@ -160,8 +160,27 @@ until the browser is idle, and a tab in a covered or background window may never
 2026-11-22 such a tab had the composer but still no picker after 27 seconds. The extension therefore
 keeps Gemini tabs awake, as the Focusly extension does for any tab: in Gemini's own page it gives that
 idle work a 1-second timeout and tells the page it is visible and focused (`extension/gemini-awake.js`).
-With it, the same covered tab drew the picker within 4.5 seconds of loading, 3 times out of 3. If a
-read still finds no picker, Settings says to bring the tab to the front. The read opens the picker
+With it, the same covered tab drew the picker within 4.5 seconds of loading, 3 times out of 3.
+
+A covered Gemini tab needs three more things, all measured in Edge on 2026-11-25 while the app's
+window covered it:
+
+- **No freezing.** About 30 seconds after its window was covered, Edge froze the whole tab: no timer,
+  message or extension script ran until the tab was shown again, so sends stalled and answers reached
+  the app only when you looked at the tab. Each Gemini page now holds a Web Lock, which keeps it from
+  being frozen; the covered tab then kept reporting every 4 seconds.
+- **Answers drawn.** Gemini draws answers in animation frames, which a covered window never runs, so
+  a finished answer stayed at 0 characters on the page. Each frame request also gets a short timer.
+  Gemini can still leave its busy marker on a finished answer there, so the page also takes an answer
+  whose Stop button is gone and whose text held still for 4 seconds.
+- **Waits that tolerate a slow page.** Gemini redraws about once a second in a covered tab, and Chrome
+  runs a long-hidden tab's own timers once a minute. The extension's worker keeps time for a hidden
+  page, and each step (opening the picker, the @ menu, the mention chip) waits seconds for Gemini to
+  show the result of a click instead of a fixed few tries.
+
+The app hands a Gemini page one job at a time: a model read that ran during a send switched the
+model under it, and both failed. If a read still finds no picker, Settings says to bring the tab to
+the front. The read opens the picker
 and reads the models. Gemini shows thinking levels only for the selected model, so the read then
 selects each other available model in turn, reads its levels, and selects the model that was
 selected before again at the end (about 3.5 seconds); it never clicks a thinking level and never

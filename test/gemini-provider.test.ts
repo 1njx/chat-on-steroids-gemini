@@ -269,6 +269,20 @@ describe('Gemini provider', () => {
     expect(levelOf('e6fa609c3fa255c0', 'Ludicrous')).toBeNull();
   });
 
+  it('hands a page one command at a time, so a model read never switches the model under a send', async () => {
+    const { id: send } = queueGeminiSend({ prompt: 'x' }) as { id: string };
+    // No saved list yet, but the read by itself waits while a send is pending: the send goes first.
+    expect(observeGeminiPage({ tab: 1, snapshot: page() }).commands.map(c => c.id)).toEqual([send]);
+    expect(geminiStatus().commands.filter(c => c.kind === 'inspect-modes')).toEqual([]);
+    // A requested read is not handed to the page running the send, at any stage of it.
+    const { id: read } = requestGeminiModes({ openPage: false });
+    expect(observeGeminiPage({ tab: 1, snapshot: page() }).commands.map(c => c.id)).toEqual([send]);
+    expect(await completeGeminiCommand({ id: send, tab: 1, stage: 'sending' })).toEqual({ ok: true, authorized: true });
+    expect(observeGeminiPage({ tab: 1, snapshot: page() }).commands).toEqual([]);
+    // Another page takes it meanwhile.
+    expect(observeGeminiPage({ tab: 2, snapshot: page() }).commands.map(c => c.id)).toEqual([read]);
+  });
+
   it('reads the models again when the saved list has no levels per model (saved by 2.2.17 or older)', async () => {
     const { id } = requestGeminiModes();
     observeGeminiPage({ tab: 1, snapshot: page() });

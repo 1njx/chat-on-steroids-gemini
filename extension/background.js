@@ -4656,6 +4656,15 @@ const HANDLERS = {
     } catch { return { ok: false }; }
     finally { await chrome.debugger.detach(target).catch(() => undefined); }
   },
+  /**
+   * Keeps time for a hidden Gemini page (gemini-dom.js sleep): Chrome runs a hidden tab's timers at
+   * most once a minute, a reply to a message it delivers at once. 5 s at most per message.
+   */
+  async gemini_sleep(message, sender) {
+    if (geminiSender(sender) === null) return { ok: false };
+    await new Promise(resolve => setTimeout(resolve, Math.max(0, Math.min(Number(message.ms) || 0, 5000))));
+    return { ok: true };
+  },
   /** Brings the sender's own Gemini tab to the front before it does setup there (fill-app). */
   async gemini_focus(_message, sender) {
     const tabId = geminiSender(sender);
@@ -6536,6 +6545,7 @@ async function restoreOpenChatgptTabs() {
 async function restoreOpenGeminiTabs() {
   for (const tab of await chrome.tabs.query({ url: 'https://gemini.google.com/*' })) {
     if (!Number.isInteger(tab.id) || tab.discarded) continue;
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', files: ['gemini-awake.js'] }).catch(() => undefined);
     await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['gemini-dom.js', 'gemini-content.js'] }).catch(() => undefined);
   }
 }

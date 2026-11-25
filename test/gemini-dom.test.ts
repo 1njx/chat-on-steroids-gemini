@@ -30,6 +30,7 @@ interface GeminiDom {
   highlight(node: HTMLElement, note: string): void;
   deleteCustomApp(name: string, ms?: number): Promise<boolean>;
   connectStep(): { dialog: HTMLElement; checkbox: HTMLInputElement; connect: HTMLButtonElement } | null;
+  sleep(ms: number): Promise<void>;
 }
 
 // Shapes copied from the live gemini.google.com page (2026-11-20, Google AI Pro account).
@@ -268,16 +269,42 @@ describe('Gemini page adapter', () => {
     expect(api.snapshot().lastTurn).toEqual({ id: '5c4f', final: false, answerChars: 7 });
   });
 
+  it('keeps time through the extension worker in a hidden tab, whose own timers Chrome slows to once a minute', async () => {
+    const asked: number[] = [];
+    let early = false;
+    const visibility = (state: string) => Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state });
+    (dom.window as unknown as { chrome: unknown }).chrome = { runtime: { id: 'test', lastError: undefined, sendMessage(message: { type: string; ms: number }, reply: () => void) {
+      if (message.type === 'gemini_sleep') asked.push(message.ms);
+      dom.window.setTimeout(reply, early ? 0 : message.ms);
+    } } };
+    visibility('hidden');
+    let started = Date.now();
+    await api.sleep(120);
+    expect(asked).toEqual([120]);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(110);
+    // A worker that answers at once (one without gemini_sleep) must not turn every wait into a busy loop.
+    early = true; started = Date.now();
+    await api.sleep(120);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(110);
+    // A visible tab uses its own timer.
+    visibility('visible');
+    await api.sleep(10);
+    expect(asked).toEqual([120, 120]);
+  });
+
   describe('@-mentioning a connected app', () => {
-    // The live menu: `button[role=menuitem]` "Name, description" entries. It opens on the key events
-    // around an inserted "@" only after the page saw a real keystroke (`armed`).
+    // The live menu (2026-11-25): `button[role=menuitem]` "Name, description" entries, Avatar/Skills/Styles
+    // first. It opens on the key events around an inserted "@" only after the page saw a real keystroke (`armed`).
     let armed = false;
     const showMenu = () => {
-      document.getElementById('overlay')!.innerHTML = ['Gemini Notebook, Notebooks', 'Verify AI, provenance', 'Chat On Steroids Core']
+      document.getElementById('overlay')!.innerHTML = ['Avatar, Add a likeness', 'Skills, Reusable instructions', 'Styles, Saved aesthetics',
+        'Gemini Notebook, Notebooks', 'Verify AI, provenance', 'Chat On Steroids Core', 'View all connectors, Get smarter help']
         .map(label => `<button role="menuitem" aria-label="${label}">${label}</button>`).join('');
       for (const option of document.querySelectorAll('#overlay button')) option.addEventListener('click', () => {
         const box = document.querySelector('rich-textarea .ql-editor')!;
-        box.innerHTML = `<p><strong>@${option.getAttribute('aria-label')!.split(',')[0]}</strong> </p>`;
+        const name = option.getAttribute('aria-label')!.split(',')[0];
+        // The chip as seen live on 2026-11-25 (it was `<strong>@Name</strong>` before).
+        box.innerHTML = `<p><span class="inline-chip" data-chip-raw-text="@${name}">\ufeff<span contenteditable="false"><span class="inline-chip-pill" data-at-mention-chip="true" data-doc-chip-title="${name}"><span class="inline-chip-label">${name}</span></span></span>\ufeff</span> </p>`;
         document.getElementById('overlay')!.innerHTML = '';
       });
     };
@@ -289,7 +316,7 @@ describe('Gemini page adapter', () => {
     it('picks the exact connector from the opened menu after synthetic keys once the page is armed', async () => {
       armed = true;
       expect(await api.mentionConnector('Chat On Steroids Core')).toBe(true);
-      expect(document.querySelector('rich-textarea strong')!.textContent).toBe('@Chat On Steroids Core');
+      expect(document.querySelector('rich-textarea [data-chip-raw-text]')!.getAttribute('data-chip-raw-text')).toBe('@Chat On Steroids Core');
     });
 
     it('asks for one trusted "@" when synthetic keys do not open the menu, and never guesses a name', async () => {

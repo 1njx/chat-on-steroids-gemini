@@ -231,7 +231,8 @@ function modesWanted(page: Snapshot, now: number): boolean {
   const levelsKnown = catalog?.modes.some(mode => Array.isArray(mode.levels));
   if (catalog && levelsKnown && now - catalog.observedAt < MODES_STALE_MS) return false;
   if (modesFailure && now - modesFailure.at < MODES_BACKOFF_MS) return false;
-  return !commands.some(c => c.kind === 'inspect-modes' && !settled(c));
+  // Not while other work waits or runs: the read switches models, and a send meanwhile failed (seen live 2026-11-25).
+  return !commands.some(c => !settled(c));
 }
 
 /** A Gemini page's report. Returns the commands this exact tab should run now. */
@@ -248,13 +249,17 @@ export function observeGeminiPage(body: unknown, now = Date.now()): { ok: boolea
   }
   const live = livePages(now);
   const handed: Array<Record<string, unknown>> = [];
+  // One command per page at a time, Stop aside: a model read handed to a page that was sending
+  // switched the model under the send, and both failed (seen live 2026-11-25).
+  let busy = commands.some(c => c.tab === tab && c.kind !== 'stop' && ['claimed', 'sending', 'sent'].includes(c.stage));
   for (const command of commands) {
     // A claimed command goes back only to its own tab (after that tab navigated for it).
     if (command.stage === 'claimed' && command.tab === tab) { handed.push(wire(command)); continue; }
     if (command.stage !== 'queued' || !eligible(command, tab, snapshot, live)) continue;
-    if (handed.some(c => c.kind !== 'inspect-modes') && command.kind !== 'inspect-modes') continue; // one send per page at a time
+    if (busy && command.kind !== 'stop') continue;
     command.stage = 'claimed'; command.tab = tab; command.updatedAt = now;
     handed.push(wire(command));
+    if (command.kind !== 'stop') busy = true;
   }
   if (handed.length || before !== JSON.stringify(snapshot)) changed();
   return { ok: true, commands: handed };

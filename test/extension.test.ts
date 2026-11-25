@@ -6626,6 +6626,24 @@ it('replaces the usage observer of an open tab only once it is not streaming', a
   expect(executed.every(options => options.world === 'MAIN')).toBe(true);
 });
 
+it('gives open Gemini tabs the page script that keeps them awake again after an update, before the companion', async () => {
+  const source = backgroundSource.slice(backgroundSource.indexOf('async function restoreOpenGeminiTabs('),
+    backgroundSource.indexOf('chrome.runtime.onInstalled.addListener'));
+  const executed: Array<Record<string, unknown>> = [];
+  const restore = vm.runInNewContext(`${source}\nrestoreOpenGeminiTabs`, {
+    Number,
+    chrome: {
+      tabs: { query: async () => [{ id: 4 }, { id: 5, discarded: true }] },
+      scripting: { executeScript: async (options: Record<string, unknown>) => { executed.push(options); return []; } },
+    },
+  });
+  await restore();
+  expect(executed).toEqual([
+    { target: { tabId: 4 }, world: 'MAIN', files: ['gemini-awake.js'] },
+    { target: { tabId: 4 }, files: ['gemini-dom.js', 'gemini-content.js'] },
+  ]);
+});
+
 describe('this install\'s connector names', () => {
   const windows = {
     core: 'Chat On Steroids Core (Windows)', desktop: 'Chat On Steroids Desktop (Windows)', plugins: 'Chat On Steroids Plugins (Windows)'

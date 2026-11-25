@@ -9,6 +9,32 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.20] — Gemini edition: the app's chat works with Gemini in the background
+
+### Fixed
+
+All measured live on 2026-11-25 in Edge, with the app's window covering the browser.
+
+- **Edge froze a covered Gemini tab after about 30 seconds**, so nothing ran there until you looked
+  at it: sends sat waiting, "the page was told to send but never confirmed", and answers arrived only
+  once the tab was shown. Each Gemini page now holds a Web Lock, which keeps it from being frozen.
+- **Every send with the Core app failed "Gemini did not offer a connected app with that name".**
+  Gemini changed how an @-mention looks in its message box (`span.inline-chip`, no longer
+  `<strong>`), so the app never saw its mention land. Both are recognized now, and a failed mention
+  leaves no stray "@" behind.
+- **Answers stayed blank in a covered tab.** Gemini draws them in animation frames, which a covered
+  window never runs; each frame request now also gets a short timer. An answer whose Stop button is
+  gone and whose text held still for 4 seconds now counts as finished, since Gemini can leave its busy
+  marker on it there.
+- **Steps gave up before a covered tab caught up.** Gemini redraws about once a second there and a
+  long-hidden tab runs its own timers once a minute: the extension's worker now keeps time for a hidden
+  page, and opening the model picker, the @ menu and the mention chip each wait seconds for Gemini to
+  show the result of a click. Closing the picker no longer clicks it open again.
+- **A model read during a send switched the model under it, and both failed.** The app now hands a
+  Gemini page one job at a time and reads models by itself only when nothing else waits.
+- **A message sent to Gemini came back into the app's message box.** The saved draft is now dropped
+  before the box is cleared.
+
 ## [2.2.19] — Gemini edition: "Add it in Gemini for me" finishes the add
 
 ### Fixed

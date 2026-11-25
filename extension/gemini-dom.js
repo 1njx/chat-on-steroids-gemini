@@ -48,7 +48,35 @@ var CLF_GEMINI_DOM = (() => {
   const text = node => (node && (node.innerText ?? node.textContent) || '').replace(/\s+/g, ' ').trim();
   const visible = node => !!node && !node.hidden && (typeof node.getClientRects !== 'function' || node.getClientRects().length > 0);
   const safe = (fn, fallback) => { try { return fn(); } catch { return fallback; } };
-  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+  /**
+   * Waits ms. Chrome runs a hidden tab's timers at most once a minute after 5 minutes, which stalled
+   * every Gemini step for minutes and failed sends (seen live 2026-11-25), so a hidden page has the
+   * extension's worker keep time: a message reply is not throttled like a timer. A reply that comes
+   * early (an old worker without gemini_sleep) leaves the rest to an ordinary timer.
+   */
+  function sleep(ms) {
+    return new Promise(resolve => {
+      const started = Date.now();
+      const rest = () => { const left = ms - (Date.now() - started); if (left > 20) setTimeout(resolve, left); else resolve(); };
+      let runtime = null;
+      try { runtime = document.visibilityState === 'hidden' && globalThis.chrome?.runtime?.id ? chrome.runtime : null; } catch { runtime = null; }
+      if (!runtime) return void setTimeout(resolve, ms);
+      try { runtime.sendMessage({ type: 'gemini_sleep', ms }, () => { void runtime.lastError; rest(); }); }
+      catch { rest(); }
+    });
+  }
+
+  /**
+   * test() polled every 100 ms for up to ms; its last value. Gemini's page redraws on a timer, which a
+   * hidden tab runs about once a second (live 2026-11-25), so a step waits seconds for Gemini to show
+   * the result of a click, never a fixed few polls.
+   */
+  async function until(test, ms, current = () => true) {
+    for (const end = Date.now() + ms; ; await sleep(100)) {
+      const value = safe(test, null);
+      if (value || Date.now() >= end || !current()) return value;
+    }
+  }
 
   /** Gemini's own conversation id, or null on a new/unsaved chat. */
   function conversationId(href = location.href) {
@@ -144,14 +172,15 @@ var CLF_GEMINI_DOM = (() => {
   }
 
   async function closeMenus() {
-    safe(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })), null);
-    safe(() => document.querySelector('.cdk-overlay-backdrop')?.click(), null);
+    const button = document.querySelector(MODE_BUTTON);
     // The 2026-11-22 picker is a popover that ignores Escape and has no backdrop; its button shuts it.
-    await sleep(50);
-    safe(() => {
-      const button = document.querySelector(MODE_BUTTON);
-      if (button?.getAttribute('aria-expanded') === 'true') button.click();
-    }, null);
+    // Only a picker that shows itself open is clicked: a second click would open it again.
+    if (button?.getAttribute('aria-expanded') === 'true') safe(() => button.click(), null);
+    else {
+      safe(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })), null);
+      safe(() => document.querySelector('.cdk-overlay-backdrop')?.click(), null);
+    }
+    await until(() => !readOpenModes().length && !readOpenThinkingLevels().length, 2000);
   }
 
   async function openPicker(current = () => true) {
@@ -163,17 +192,18 @@ var CLF_GEMINI_DOM = (() => {
     for (let tries = 0; tries < 3 && current(); tries += 1) {
       button = document.querySelector(MODE_BUTTON) || button;
       if (!readOpenModes().length && button.getAttribute('aria-expanded') !== 'true') button.click();
-      for (let i = 0; i < 12 && current(); i += 1) {
-        if (readOpenModes().length) return true;
-        await sleep(100);
+      if (await until(() => readOpenModes().length, 3000, current)) return true;
+      // Open without options: shut it, and wait until Gemini shows it shut, before the next try.
+      if (button.getAttribute('aria-expanded') === 'true') {
+        button.click();
+        await until(() => button.getAttribute('aria-expanded') !== 'true', 2000, current);
       }
-      if (button.getAttribute('aria-expanded') === 'true') { button.click(); await sleep(150); }
     }
     return readOpenModes().length > 0;
   }
 
   /** The open picker's thinking levels, waiting a moment for them (Auto has none: [] then). */
-  async function openLevels(ms = 800) {
+  async function openLevels(ms = 3000) {
     const item = [...document.querySelectorAll(MENU_ITEM)].find(n => /Thinking level/i.test(text(n)));
     if (item && !readOpenThinkingLevels().length) item.click();
     for (const end = Date.now() + (item ? ms : 300); Date.now() < end && !readOpenThinkingLevels().length; ) await sleep(100);
@@ -215,8 +245,11 @@ var CLF_GEMINI_DOM = (() => {
     const node = [...document.querySelectorAll(MODE_OPTION)].find(n => n.getAttribute('data-mode-id') === modeId);
     const option = node && parseOption(node);
     if (!option || !option.available) { await closeMenus(); return false; }
-    if (!option.selected) node.click();
-    await sleep(150);
+    if (!option.selected) {
+      node.click();
+      // Picking a model shuts the picker. Wait for that: closing it before Gemini redrew opened it again.
+      await until(() => !readOpenModes().length, 3000);
+    }
     await closeMenus();
     return true;
   }
@@ -228,13 +261,15 @@ var CLF_GEMINI_DOM = (() => {
   async function selectThinkingLevel(level, current = () => true) {
     if (!level) return true;
     if (!(await openPicker(current))) return false;
-    const shown = await openLevels(1500);
+    const shown = await openLevels();
     if (!shown.length) { await closeMenus(); return true; }
     const node = [...document.querySelectorAll(RADIO)]
       .find(n => !n.hasAttribute('data-mode-id') && text(n).toLowerCase().startsWith(String(level).toLowerCase()));
     const ok = !!node && node.getAttribute('aria-disabled') !== 'true';
-    if (ok && node.getAttribute('aria-checked') !== 'true') node.click();
-    await sleep(100);
+    if (ok && node.getAttribute('aria-checked') !== 'true') {
+      node.click();
+      await until(() => !node.isConnected || node.getAttribute('aria-checked') === 'true', 3000);
+    }
     await closeMenus();
     return ok;
   }
@@ -281,32 +316,26 @@ var CLF_GEMINI_DOM = (() => {
       if (text(box)) { box.textContent = ''; box.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContent' })); }
     };
     const wanted = name.trim().toLowerCase();
-    const find = async (tries) => {
-      for (let i = 0; i < tries && current(); i += 1) {
-        const found = mentionOptions().find(o => o.name.toLowerCase() === wanted);
-        if (found) return found;
-        await sleep(100);
-      }
-      return null;
-    };
+    const find = ms => until(() => mentionOptions().find(o => o.name.toLowerCase() === wanted), ms, current);
     // Gemini opens the menu from the key events around an inserted "@". Synthetic events work once
     // the page has seen a real keystroke; otherwise the extension types one trusted "@" (openMenu).
     // The unfiltered list is read whole: typing a multi-word name closes the menu at its first space.
     const key = (type, k) => box.dispatchEvent(new KeyboardEvent(type, { key: k, bubbles: true }));
     clear();
     key('keydown', '@'); safe(() => doc.execCommand('insertText', false, '@'), false); key('keyup', '@');
-    let option = await find(10);
+    let option = await find(3000);
     if (!option && openMenu) {
       clear();
-      if (await openMenu()) option = await find(25);
+      if (await openMenu()) option = await find(5000);
     }
-    if (!option) { key('keydown', 'Escape'); await closeMenus(); clear(); return false; }
+    const fail = async () => { key('keydown', 'Escape'); await closeMenus(); clear(); return false; };
+    if (!option) return fail();
     option.node.click();
-    for (let i = 0; i < 20; i += 1) {
-      if ([...box.querySelectorAll('strong')].some(n => text(n).toLowerCase() === `@${wanted}`)) return true;
-      await sleep(50);
-    }
-    return false;
+    // The chip: `span.inline-chip[data-chip-raw-text="@Name"]` since 2026-11-25, `<strong>@Name</strong>` before.
+    const chipped = () => [...box.querySelectorAll('[data-chip-raw-text], strong')]
+      .some(n => (n.getAttribute('data-chip-raw-text') || text(n)).trim().toLowerCase() === `@${wanted}`);
+    // A failed mention leaves nothing behind: a stray "@" stayed in the composer (live 2026-11-25).
+    return (await until(chipped, 3000)) ? true : fail();
   }
 
   /**
@@ -585,7 +614,7 @@ var CLF_GEMINI_DOM = (() => {
     conversationId, composer, onChatPage, sendButton, stopButton, generating, signInState, account,
     selectedModeLabel, readOpenModes, readOpenThinkingLevels, inspectModes, selectMode,
     selectThinkingLevel, insertPrompt, composerText, mentionOptions, mentionConnector, appendPrompt,
-    send, stopGeneration, turns, errors,
+    send, stopGeneration, turns, errors, sleep,
     localized, snapshot, parseOption,
     onCustomApps, customAppCard, customAppCards, settledList, readCustomAppUrl, backToList, detailsMoreOptions, fillCreateForm, highlight, waitFor, visibleCreate, deleteCustomApp, connectStep, saveStep,
   };
