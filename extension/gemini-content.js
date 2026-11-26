@@ -49,14 +49,36 @@
 
   const result = (command, fields) => message({ type: 'gemini_result', id: command.id, ...fields });
 
+  /** Gemini's apps compared loosely, as on the custom apps page. */
+  const sameApp = (a, b) => String(a || '').toLowerCase().replace(/[-_\s]+/g, ' ').trim() === String(b || '').toLowerCase().replace(/[-_\s]+/g, ' ').trim();
+
   async function waitForAnswer(command, before) {
     const deadline = Date.now() + ANSWER_LIMIT_MS;
-    let quietSince = 0, quietKey = '';
+    let quietSince = 0, quietKey = '', askedKey = '';
+    const clicks = new WeakMap();
     while (Date.now() < deadline) {
       await sleep(700);
       const errors = dom.errors();
       const all = dom.turns();
       const last = all[all.length - 1];
+      const approval = all.length > before ? last?.approval : null;
+      if (approval) {
+        // Full access: Always allow, only on this app's own card, at most 3 clicks 3 s apart; a card
+        // still waiting after that is left to the person, as without Full access.
+        const clicked = clicks.get(approval.card) || { n: 0, at: 0 };
+        const recent = Date.now() - clicked.at < 3000;
+        if (command.alwaysAllow && approval.always && sameApp(approval.app, command.alwaysAllow) && (clicked.n < 3 || recent)) {
+          if (!recent) { approval.always.click(); clicks.set(approval.card, { n: clicked.n + 1, at: Date.now() }); }
+        } else if (askedKey !== `${approval.app}|${approval.ask}`) {
+          // Otherwise the person answers it in Gemini: say so in the app once, and show them the tab.
+          askedKey = `${approval.app}|${approval.ask}`;
+          await result(command, { stage: 'approval', approval: `${approval.app}: ${approval.ask}`.slice(0, 300) });
+          await message({ type: 'gemini_focus' });
+        }
+        quietSince = 0; quietKey = '';
+        continue;
+      }
+      if (askedKey) { askedKey = ''; await result(command, { stage: 'approval', approval: '' }); }
       // In a covered tab Gemini can keep its busy marker on a finished answer (live 2026-11-25: Stop
       // gone, the text drawn, still busy), so an answer with text counts too, once it held still longer.
       const settled = !dom.generating() && last && all.length > before && (last.final || last.answer);

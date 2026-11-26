@@ -3977,5 +3977,6 @@
   "Setting Allow all tools in ChatGPT…": "正在 ChatGPT 中設定「允許所有工具」…",
   "Created in ChatGPT, with Allow all tools.": "已在 ChatGPT 中建立，並設為「允許所有工具」。",
   "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "已在 ChatGPT 中建立。這裡沒有權限設定，因此第一次呼叫工具時會詢問；擴充功能會允許這個應用程式自己的外掛。",
-  "Open Gemini in Chrome to read its models": "在 Chrome 中開啟 Gemini 以讀取其模型"
+  "Open Gemini in Chrome to read its models": "在 Chrome 中開啟 Gemini 以讀取其模型",
+  "Gemini is waiting for your OK in its tab ({0}). Answer it there, or turn on Full access in Settings → Gemini.": "Gemini 正在其分頁中等待你的同意（{0}）。請在那裡回應，或在 設定 → Gemini 中開啟「完整存取」。"
 }

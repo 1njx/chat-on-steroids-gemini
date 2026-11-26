@@ -376,6 +376,33 @@ var CLF_GEMINI_DOM = (() => {
 
   function stopGeneration() { const button = stopButton(); if (!button) return false; button.click(); return true; }
 
+  /**
+   * Gemini's tool approval card ("Let Gemini use exec command?" with Don't allow, Allow once and
+   * Always allow; seen live 2026-11-25) is drawn inside the answer. It is not answer text.
+   */
+  const CARD = 'action-card, remy-confirmation-card-v2';
+  const enabled = b => !b.disabled && b.getAttribute('aria-disabled') !== 'true';
+  /** The answer's prose without approval cards (a copy only when it holds one). */
+  function prose(node) {
+    if (!node?.querySelector(CARD)) return node;
+    const copy = node.cloneNode(true);
+    copy.querySelectorAll(CARD).forEach(card => (card.closest('.attachment-container') || card).remove());
+    return copy;
+  }
+  /** A card in this answer still waiting for a choice: its app, its question and its Always allow button. */
+  function pendingApproval(answer) {
+    return safe(() => {
+      for (const card of answer?.querySelectorAll('remy-confirmation-card-v2') ?? []) {
+        const buttons = [...card.querySelectorAll('button')].filter(enabled);
+        const always = buttons.find(b => text(b) === 'Always allow');
+        if (!always && !buttons.some(b => text(b) === 'Allow once')) continue;
+        const ask = text(card.querySelector('.v2-body-content .body-text') || card.querySelector('.body-text'));
+        return { card, app: text(card.querySelector('.header-text')), ask, always: always || null };
+      }
+      return null;
+    }, null);
+  }
+
   /** Conversation turns in page order, each with Gemini's own turn id. */
   function turns() {
     return safe(() => {
@@ -383,13 +410,15 @@ var CLF_GEMINI_DOM = (() => {
       return [...root.querySelectorAll(TURN)].map(node => {
         const user = node.querySelector('user-query');
         const answer = node.querySelector('model-response');
-        const prose = answer ? answer.querySelector('message-content .markdown') || answer.querySelector('message-content') : null;
+        const shown = answer ? answer.querySelector('message-content .markdown') || answer.querySelector('message-content') : null;
+        const clean = prose(shown);
         const userText = user ? text(user.querySelector('.query-text') || user).replace(/^You said\s*/, '') : '';
         return {
           id: node.id || null,
           user: userText,
-          answer: prose ? text(prose) : '',
-          answerHtml: prose ? prose.innerHTML : '',
+          answer: clean ? text(clean) : '',
+          answerHtml: clean ? clean.innerHTML : '',
+          approval: pendingApproval(answer),
           // Gemini keeps `processing-state-visible` on finished answers too (live, 2026-11-20), so it
           // proves nothing; only a busy marker does. The page-level Stop button is the real signal,
           // which snapshot() and the content script combine with this.

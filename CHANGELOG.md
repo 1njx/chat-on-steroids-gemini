@@ -9,6 +9,24 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.22] — Gemini edition: tool approvals are not answers, and Full access
+
+### Fixed
+
+- **Gemini's tool approval card was recorded as its answer.** Gemini draws "Let Gemini use exec
+  command?" with Don't allow, Allow once and Always allow inside the answer (seen live 2026-11-25),
+  and the app's chat showed that card's text as Gemini's reply. Approval cards are left out of the
+  recorded answer now, and a send waits while one is open: the chat says Gemini is waiting for your
+  OK, the Gemini tab comes to the front, and the answer is recorded once you chose there.
+
+### Added
+
+- **Settings → Gemini → Full access** (off by default). When Gemini asks to use one of this app's
+  tools during a message sent from the app, the page presses Gemini's own **Always allow** for you.
+  Only this app's card is pressed (the app a send @-mentions, by default Chat On Steroids Core);
+  another app's card is left to you. Always allow is Gemini's setting: Gemini then runs this app's
+  tools, commands included, without asking.
+
 ## [2.2.21] — Gemini edition: new chats no longer wait on custom apps tabs
 
 ### Fixed

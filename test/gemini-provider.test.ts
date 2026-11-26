@@ -134,6 +134,25 @@ describe('Gemini provider', () => {
     expect(await completeGeminiCommand({ id, tab: 1, stage: 'completed', answer: 'again' })).toEqual({ ok: false });
   });
 
+  it("hands Full access with this app's name only, and shows Gemini's pending approval until it is answered", async () => {
+    await loadModes();
+    const first = (queueGeminiSend({ prompt: 'a', connector: 'My Core' }) as { id: string }).id;
+    expect(observeGeminiPage({ tab: 1, snapshot: page() }).commands[0]).not.toHaveProperty('alwaysAllow');
+    expect(await completeGeminiCommand({ id: first, tab: 1, stage: 'failed', error: 'x' })).toEqual({ ok: true });
+    expect(saveGeminiSettings({ fullAccess: true })).toEqual({ ok: true });
+    expect(saveGeminiSettings({ fullAccess: 'yes' })).toEqual({ ok: false, error: 'invalid-settings' });
+    const id = (queueGeminiSend({ prompt: 'b', connector: 'My Core' }) as { id: string }).id;
+    expect(observeGeminiPage({ tab: 1, snapshot: page() }).commands).toEqual([expect.objectContaining({ id, alwaysAllow: 'My Core' })]);
+    // An approval is taken only once the prompt was sent, and cleared when the person answered it.
+    expect(await completeGeminiCommand({ id, tab: 1, stage: 'approval', approval: 'My Core: Let Gemini use exec command?' })).toEqual({ ok: false });
+    await completeGeminiCommand({ id, tab: 1, stage: 'sending' });
+    await completeGeminiCommand({ id, tab: 1, stage: 'sent', conversationId: '0819834086544111' });
+    expect(await completeGeminiCommand({ id, tab: 1, stage: 'approval', approval: 'My Core: Let Gemini use exec command?' })).toEqual({ ok: true });
+    expect(geminiStatus().commands.find(c => c.id === id)).toMatchObject({ stage: 'sent', approval: 'My Core: Let Gemini use exec command?' });
+    expect(await completeGeminiCommand({ id, tab: 1, stage: 'approval', approval: '' })).toEqual({ ok: true });
+    expect(geminiStatus().commands.find(c => c.id === id)).not.toHaveProperty('approval');
+  });
+
   it('re-hands a claimed send only to its own tab after that tab navigated for it', async () => {
     const id = (queueGeminiSend({ prompt: 'continue', conversation: 'gemini:abcdef0123456789', connector: null }) as { id: string }).id;
     expect(observeGeminiPage({ tab: 5, snapshot: page({ conversationId: '1111111111111111' }) }).commands.map(c => c.id)).toEqual([id]);

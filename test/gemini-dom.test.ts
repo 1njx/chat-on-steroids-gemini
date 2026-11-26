@@ -263,8 +263,8 @@ describe('Gemini page adapter', () => {
     addTurn('5c4f', 'next', 'partial', true);
     const all = api.turns();
     expect(all).toEqual([
-      { id: '4b3e398afa4ee324', user: 'Reply with exactly PONG', answer: 'PONG', answerHtml: '<p>PONG</p>', final: true },
-      { id: '5c4f', user: 'next', answer: 'partial', answerHtml: '<p>partial</p>', final: false },
+      { id: '4b3e398afa4ee324', user: 'Reply with exactly PONG', answer: 'PONG', answerHtml: '<p>PONG</p>', final: true, approval: null },
+      { id: '5c4f', user: 'next', answer: 'partial', answerHtml: '<p>partial</p>', final: false, approval: null },
     ]);
     expect(api.snapshot().lastTurn).toEqual({ id: '5c4f', final: false, answerChars: 7 });
   });

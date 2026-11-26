@@ -74,3 +74,70 @@ it("takes a finished answer whose busy marker a covered tab never cleared, once 
   expect(results.map(r => r.stage)).toEqual(['sending', 'sent', 'completed']);
   expect(results[2]).toMatchObject({ answer: 'I can see one folder.' });
 }, 30_000);
+
+/** Gemini's tool approval card as drawn inside an answer (live markup 2026-11-25, trimmed). */
+const CARD = '<div class="attachment-container action-card"><response-element class="no-md"><action-card><div class="container"><remy-confirmation-card-v2>' +
+  '<h3 class="header-text"> Chat On Steroids Core </h3><div class="body-text"><div class="v2-body-content"><div class="body-row"><div class="body-text body-text--collapsed">' +
+  '<p>Let Gemini use <strong>exec command</strong>?</p></div></div><div class="disclaimer-text"><p>Choose to let Gemini take action on this app without asking again.</p></div>' +
+  '<div class="button-row"><button>Don\'t allow</button><button>Allow once</button><button aria-disabled="false"><span>Always allow</span></button></div></div></div>' +
+  '</remy-confirmation-card-v2></div></action-card></response-element></div>';
+
+/** One authorized send on a page whose answer first asks for approval; `answer()` draws the real answer. */
+async function sendWithApproval(alwaysAllow: string | null, until: (results: Array<Record<string, unknown>>) => boolean) {
+  dom = new JSDOM(`<a aria-label="Google Account: Pat (pat@example.com)" href="#"></a>
+    <infinite-scroller data-test-id="chat-history-container"></infinite-scroller>
+    <rich-textarea><div class="ql-editor" contenteditable="true"></div></rich-textarea><button aria-label="Send message">send</button>`,
+  { url: 'https://gemini.google.com/app', runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole: new VirtualConsole() });
+  const { window } = dom;
+  const doc = window.document;
+  doc.documentElement.lang = 'en';
+  Object.defineProperty(window.HTMLElement.prototype, 'getClientRects', { value() { return [{ width: 10, height: 10 }]; } });
+  const answer = () => { doc.querySelector('.markdown')!.innerHTML = '<p>Your folder has 3 files.</p>'; };
+  doc.querySelector('button[aria-label="Send message"]')!.addEventListener('click', () => {
+    doc.querySelector('.ql-editor')!.textContent = '';
+    doc.querySelector('infinite-scroller')!.innerHTML = '<div class="conversation-container" id="turn1"><user-query><div class="query-text">list my files</div></user-query>' +
+      `<model-response><message-content><div class="markdown">${CARD}</div></message-content></model-response></div>`;
+    [...doc.querySelectorAll('remy-confirmation-card-v2 button')].find(b => b.textContent === 'Always allow')!.addEventListener('click', answer);
+  });
+  const results: Array<Record<string, unknown>> = [];
+  const focused: unknown[] = [];
+  let handed = false;
+  (window as unknown as { chrome: unknown }).chrome = { runtime: { id: 'test', lastError: undefined, sendMessage(payload: Record<string, unknown>, reply: (value: unknown) => void) {
+    if (payload.type === 'gemini_result') results.push(payload);
+    if (payload.type === 'gemini_focus') focused.push(payload);
+    const commands = payload.type === 'gemini_state' && !handed ? [{ id: 'send-1', kind: 'send', prompt: 'list my files', conversationId: null, connector: null, alwaysAllow }] : [];
+    if (commands.length) handed = true;
+    setTimeout(() => reply(payload.type === 'gemini_result' && payload.stage === 'sending' ? { ok: true, authorized: true } : { ok: true, commands }), 0);
+  } } };
+  window.eval(domSource);
+  window.eval(contentSource);
+  for (const end = Date.now() + 20_000; Date.now() < end && !until(results); ) await new Promise(r => setTimeout(r, 100));
+  return { results, focused, answer };
+}
+
+it("never reports Gemini's tool approval card as the answer; Full access presses Always allow on this app's card", async () => {
+  const { results, focused } = await sendWithApproval('Chat On Steroids Core', r => r.some(x => ['completed', 'failed'].includes(String(x.stage))));
+  expect(results.map(r => r.stage)).toEqual(['sending', 'sent', 'completed']);
+  expect(results[2]).toMatchObject({ answer: 'Your folder has 3 files.' });
+  expect(focused).toEqual([]);
+}, 30_000);
+
+it("without Full access it waits on the card, tells the app once and shows the tab, then takes the real answer", async () => {
+  let answered = false;
+  const run = await sendWithApproval(null, r => {
+    if (!answered && r.some(x => x.stage === 'approval')) { answered = true; setTimeout(() => drawAnswer(), 1500); }
+    return r.some(x => ['completed', 'failed'].includes(String(x.stage)));
+  });
+  function drawAnswer() { (dom!.window.document.querySelector('.markdown') as HTMLElement).innerHTML = '<p>Your folder has 3 files.</p>'; }
+  expect(run.results.map(r => r.stage)).toEqual(['sending', 'sent', 'approval', 'approval', 'completed']);
+  expect(run.results[2]).toMatchObject({ approval: 'Chat On Steroids Core: Let Gemini use exec command?' });
+  expect(run.results[3]).toMatchObject({ approval: '' });
+  expect(run.results[4]).toMatchObject({ answer: 'Your folder has 3 files.' });
+  expect(run.focused).toHaveLength(1);
+}, 30_000);
+
+it("Full access leaves another app's approval card to the person", async () => {
+  const { results } = await sendWithApproval('Some Other App', r => r.some(x => x.stage === 'approval'));
+  expect(results.map(r => r.stage)).toEqual(['sending', 'sent', 'approval']);
+  expect(dom!.window.document.querySelector('remy-confirmation-card-v2')).not.toBeNull();
+}, 30_000);

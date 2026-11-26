@@ -61,6 +61,7 @@ export function paintGemini(status: GeminiStatus, now = Date.now()): void {
     (status.catalog?.thinkingLevels ?? []).filter(l => l.available).map(l => [l.label, l.label]), status.settings.defaultThinkingLevel ?? '');
   const name = byId<HTMLInputElement>('geminiConnectorName');
   if (document.activeElement !== name) name.value = status.settings.connectorName ?? '';
+  byId<HTMLInputElement>('geminiFullAccess').checked = status.settings.fullAccess === true;
 
   const chats = [...new Map(status.commands.filter(c => c.conversation && c.kind === 'send')
     .map(c => [c.conversation!, c.promptPreview ?? c.conversation!])).entries()].reverse();
@@ -389,6 +390,9 @@ export function initGemini(api: AppApi, toast: (message: string) => void, hooks?
   });
   byId<HTMLSelectElement>('geminiThinking').addEventListener('change', event => {
     void save({ defaultThinkingLevel: (event.target as HTMLSelectElement).value || null });
+  });
+  byId<HTMLInputElement>('geminiFullAccess').addEventListener('change', event => {
+    void save({ fullAccess: (event.target as HTMLInputElement).checked });
   });
   byId('geminiSend').addEventListener('click', async () => {
     const prompt = byId<HTMLTextAreaElement>('geminiPrompt');

@@ -30,6 +30,8 @@ export interface GeminiCommandSummary {
   answerChars: number | null;
   /** fill-app only: 'filled' (form filled, the person clicks Next), 'current' or 'old' (Gemini already has the app). */
   outcome?: string | null;
+  /** send: the tool approval Gemini waits on in its tab, while it waits. */
+  approval?: string;
 }
 
 export interface GeminiStatus {
@@ -53,6 +55,8 @@ export interface GeminiStatus {
     verifiedUrlHash?: string | null;
     /** The hostname of the person's own Cloudflare tunnel for Gemini; its token is in the secret store. */
     namedTunnelHost?: string | null;
+    /** Full access: the page presses Gemini's "Always allow" on this app's tool approvals. */
+    fullAccess?: boolean;
   };
   commands: GeminiCommandSummary[];
   /** When an MCP request from Gemini's connector client (User-Agent "Google") last arrived this run. */

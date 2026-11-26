@@ -9971,8 +9971,9 @@ async function sendComposer(delivery?: 'finish' | 'auto' | 'after-turn', plan?: 
 }
 
 /** Gemini sends from the composer, until main reports how they ended. */
-const geminiSends = new Map<string, { sessionId: string | null; generation: number }>();
+const geminiSends = new Map<string, { sessionId: string | null; generation: number; approval?: string }>();
 const GEMINI_ANSWERING = () => t('Gemini is answering…');
+const geminiAsks = (approval: string) => t('Gemini is waiting for your OK in its tab ({0}). Answer it there, or turn on Full access in Settings → Gemini.', [approval]);
 /**
  * Queues one text message for Gemini web (src/main/gemini.ts sends it at most once through the
  * extension and records the turn). Files, plans and edits are ChatGPT-only, so they are refused.
@@ -9992,14 +9993,18 @@ async function sendComposerToGemini(text: string, extras: boolean, choice: Gemin
 }
 function paintGeminiSends(): void {
   const status = $('composerStatus');
-  const answering = [...geminiSends.values()].some(send => send.sessionId === selectedId && (selectedId !== null || send.generation === selectionGeneration));
-  if (answering) status.textContent = GEMINI_ANSWERING();
-  else if (status.textContent === GEMINI_ANSWERING()) status.textContent = '';
+  const here = [...geminiSends.values()].filter(send => send.sessionId === selectedId && (selectedId !== null || send.generation === selectionGeneration));
+  const asked = here.find(send => send.approval)?.approval;
+  const ours = status.textContent === GEMINI_ANSWERING() || status.dataset.gemini === 'ask';
+  if (here.length) status.textContent = asked ? geminiAsks(asked) : GEMINI_ANSWERING();
+  else if (ours) status.textContent = '';
+  if (asked && here.length) status.dataset.gemini = 'ask'; else delete status.dataset.gemini;
 }
 /** A Gemini send ended: say why if it failed, and open a new chat's recorded session. */
 async function geminiSendsChanged(commands: GeminiCommandSummary[]): Promise<void> {
   for (const command of commands) {
     const send = geminiSends.get(command.id);
+    if (send) send.approval = command.approval;
     if (!send || !['completed', 'failed', 'cancelled', 'unknown'].includes(command.stage)) continue;
     geminiSends.delete(command.id);
     if (command.stage !== 'completed') toast(geminiErrorText(command.error));

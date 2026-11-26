@@ -67,6 +67,8 @@ interface Command {
   outcome: string | null;
   /** Whether the extension may open a Gemini page for this command when none reports. */
   openPage: boolean;
+  /** send: the tool approval Gemini waits on in its tab ("App: Let Gemini use …?"), until the answer. */
+  approval?: string | null;
 }
 
 const snapshotSchema = z.object({
@@ -106,6 +108,8 @@ const settingsSchema = z.object({
   // The address Gemini's list showed exactly once under the connector's name after "Add it in Gemini for me".
   verifiedUrlHash: FINGERPRINT.nullable().catch(null),
   namedTunnelHost: HOSTNAME.nullable().catch(null),
+  // Full access: the page presses Gemini's "Always allow" on this app's tool approvals by itself.
+  fullAccess: z.boolean().catch(false),
 });
 export type GeminiSettings = z.infer<typeof settingsSchema>;
 
@@ -114,7 +118,7 @@ let commands: Command[] = [];
 let catalog: { modes: GeminiMode[]; thinkingLevels: GeminiThinkingLevel[]; observedAt: number } | null = null;
 /** The last failed read of Gemini's model picker; cleared by a successful read. */
 let modesFailure: { error: string; at: number } | null = null;
-const NO_SETTINGS: GeminiSettings = { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, httpsTunnel: false, givenUrlHash: null, verifiedUrlHash: null, namedTunnelHost: null };
+const NO_SETTINGS: GeminiSettings = { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, httpsTunnel: false, givenUrlHash: null, verifiedUrlHash: null, namedTunnelHost: null, fullAccess: false };
 let settings: GeminiSettings = { ...NO_SETTINGS };
 let changed = (): void => {};
 /** Opens the custom apps page in the default browser (ipc.ts: Electron's shell.openExternal). */
@@ -222,6 +226,8 @@ function wire(command: Command): Record<string, unknown> {
     id: command.id, kind: command.kind, prompt: command.prompt, modeId: command.modeId,
     thinkingLevel: command.thinkingLevel, connector: command.connector, conversationId: command.conversationId,
     ...(command.kind === 'fill-app' ? { url: command.url } : {}),
+    // Only this app's own approvals, never another app's Gemini asks about.
+    ...(command.kind === 'send' && settings.fullAccess ? { alwaysAllow: command.connector ?? defaultConnector() ?? GEMINI_CORE_NAME } : {}),
   };
 }
 
@@ -270,7 +276,8 @@ export function observeGeminiPage(body: unknown, now = Date.now()): { ok: boolea
 const resultSchema = z.object({
   id: z.string().uuid(),
   tab: z.number().int().nonnegative(),
-  stage: z.enum(['navigating', 'sending', 'sent', 'completed', 'failed']),
+  stage: z.enum(['navigating', 'sending', 'sent', 'approval', 'completed', 'failed']),
+  approval: z.string().max(300).optional(),
   conversationId: z.string().regex(GEMINI_NATIVE_ID).nullable().optional(),
   turnId: z.string().max(80).nullable().optional(),
   answer: z.string().max(512_000).optional(),
@@ -311,6 +318,13 @@ export async function completeGeminiCommand(body: unknown, now = Date.now()): Pr
     if (command.stage !== 'sending') return { ok: false };
     command.stage = 'sent'; command.sentAt = now;
     command.conversationId = result.conversationId ?? command.conversationId;
+    changed();
+    return { ok: true };
+  }
+  if (result.stage === 'approval') {
+    // An empty one: the person answered it in Gemini.
+    if (command.stage !== 'sent' || result.approval === undefined) return { ok: false };
+    command.approval = result.approval || null;
     changed();
     return { ok: true };
   }
@@ -600,6 +614,7 @@ export function saveGeminiSettings(patch: unknown): { ok: boolean; error?: strin
     httpsTunnel: z.boolean(),
     givenUrlHash: FINGERPRINT.nullable(),
     namedTunnelHost: HOSTNAME.nullable(),
+    fullAccess: z.boolean(),
   }).partial().strict().safeParse(patch);
   if (!parsed.success) return { ok: false, error: 'invalid-settings' };
   settings = { ...settings, ...Object.fromEntries(Object.entries(parsed.data).filter(([, v]) => v !== undefined)) };
@@ -632,6 +647,7 @@ export function geminiStatus(now = Date.now()): GeminiStatus {
     id: c.id, kind: c.kind, stage: c.stage, error: c.error, createdAt: c.createdAt, updatedAt: c.updatedAt,
     conversation: c.conversationId ? `gemini:${c.conversationId}` : null, sessionId: c.sessionId,
     modeId: c.modeId, promptPreview: c.prompt ? c.prompt.slice(0, 120) : null, answerChars: c.answerChars, outcome: c.outcome,
+    ...(c.approval && !settled(c) ? { approval: c.approval } : {}),
   });
   return {
     pages: live.length,

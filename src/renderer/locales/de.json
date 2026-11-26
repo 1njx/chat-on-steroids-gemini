@@ -4061,5 +4061,6 @@
   "Setting Allow all tools in ChatGPT…": "„Alle Tools erlauben“ wird in ChatGPT gesetzt …",
   "Created in ChatGPT, with Allow all tools.": "In ChatGPT erstellt, mit „Alle Tools erlauben“.",
   "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "In ChatGPT erstellt. Hier gibt es keine Berechtigungseinstellung, also fragt der erste Tool-Aufruf; die Erweiterung erlaubt dann die eigenen Plugins dieser App.",
-  "Open Gemini in Chrome to read its models": "Öffne Gemini in Chrome, um seine Modelle zu lesen"
+  "Open Gemini in Chrome to read its models": "Öffne Gemini in Chrome, um seine Modelle zu lesen",
+  "Gemini is waiting for your OK in its tab ({0}). Answer it there, or turn on Full access in Settings → Gemini.": "Gemini wartet in seinem Tab auf dein OK ({0}). Antworte dort oder schalte Voller Zugriff unter Einstellungen → Gemini ein."
 }

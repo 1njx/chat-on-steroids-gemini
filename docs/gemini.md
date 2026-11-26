@@ -146,6 +146,15 @@ history as a `gemini:<id>` chat. It:
 The app refuses a model Gemini marks as needing a higher plan (for example Gemini 4 Carbon on
 Google AI Pro) instead of trying it.
 
+**Tool approvals.** Before a tool runs, Gemini can draw an approval card in the answer ("Let Gemini
+use exec command?" with Don't allow, Allow once and Always allow). The card is never recorded as the
+answer. Without Full access the send waits: the chat says Gemini is waiting for your OK, the Gemini
+tab comes to the front, and the answer is recorded once you chose there. With **Settings → Gemini →
+Full access** on, the page presses **Always allow** by itself, but only on the card of this app (the
+name a send @-mentions, by default Chat On Steroids Core); another app's card is left to you. Always
+allow is Gemini's own setting: Gemini then runs this app's tools, commands included, without asking,
+also in chats you start yourself. Revoke it in Gemini's settings for the app.
+
 ## Models
 
 The app reads the account's models from Gemini's own picker and never guesses or changes your
@@ -226,6 +235,8 @@ the plugin at the new folder (Roblox's own `mcp.bat` resolves it, but the app do
   content script can ask, only for that tab, and only that one character.
 - MCP URLs are secret paths behind your tunnel. Anyone with a URL can call what you enabled.
   Use read-only mode and narrow approved folders when trying things out.
+- Full access (off by default) presses Gemini's **Always allow** on this app's tool approvals, so
+  Gemini stops asking before it runs commands or edits files through this app.
 - Google states it does not control or secure third-party MCP servers; you are the operator of
   this one.
 - Respect Google's terms, limits and safety decisions. Do not use workers, Goal/Loop or several
