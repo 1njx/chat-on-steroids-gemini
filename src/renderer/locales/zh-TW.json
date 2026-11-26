@@ -1836,7 +1836,7 @@
   "Search models": "搜尋模型",
   "Fine-tune background and accent colors for the selected theme.": "微調所選主題的背景色和強調色。",
   "How strongly text stands out from its background.": "文字在背景上的醒目程度。",
-  "Used when you start a new chat. A chat you continue keeps its own model.": "在開始新聊天時使用。繼續的聊天會保留自己的模型。",
+  "New chats start with the model and thinking you last sent with; this one until then, and again after you change it here. A chat you continue keeps its own model.": "新聊天會使用你上次傳送時的模型和思考程度；在此之前以及你在這裡變更後，使用此模型。繼續的聊天會保留自己的模型。",
   "Lets tools run, including computer use, file editing and JavaScript, even when the app can’t tell which chat called them. Sub-agents and other chat actions still need a known chat. These calls are listed under Unattributed activity.": "即使應用程式無法判斷是哪個聊天呼叫的，也允許執行工具，包括電腦操作、檔案編輯和 JavaScript。子代理和其他聊天操作仍需要已知的聊天。這些呼叫會列在「未歸屬活動」下。",
   "Trust only selected chats": "僅信任選取的聊天",
   "Untrust this chat: strict mode refuses its tool calls": "取消信任此聊天：嚴格模式會拒絕其工具呼叫",

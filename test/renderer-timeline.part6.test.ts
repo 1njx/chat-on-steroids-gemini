@@ -1061,11 +1061,11 @@ describe('sending to Gemini from the composer', () => {
     await app.gemini(status([command('cmd-1', 'completed', { sessionId: 'gemini-session', conversation: 'gemini:abcdef0123456789' })]));
     await waitFor(() => expect(doc.querySelector('#sessionList [data-id="gemini-session"]')!.outerHTML).toMatch(/is-sel|aria-current|aria-selected="true"/));
     expect(doc.getElementById('composerStatus')!.textContent).toBe('');
-    // In a Gemini chat the picker lists only Gemini's models, and Send continues that chat.
+    // In a Gemini chat the picker lists only Gemini's models, and Send continues that chat with the model last sent with.
     expect(doc.querySelector('#composerModelOptions [data-model]')).toBeNull();
-    expect(doc.getElementById('composerModelLabel')!.textContent).toBe('Gemini 4 Hydrogen · High');
+    expect(doc.getElementById('composerModelLabel')!.textContent).toBe('Gemini 4 Neon · High');
     field.value = 'And now?'; submit(); await settle();
-    expect(sendToGemini).toHaveBeenLastCalledWith({ prompt: 'And now?', conversation: 'gemini:abcdef0123456789', modeId: 'hydrogen', thinkingLevel: 'High' });
+    expect(sendToGemini).toHaveBeenLastCalledWith({ prompt: 'And now?', conversation: 'gemini:abcdef0123456789', modeId: 'neon', thinkingLevel: 'High' });
     // A failure says why in Gemini's words.
     await app.gemini(status([command('cmd-2', 'failed', { error: 'send-not-accepted' })]));
     expect(doc.querySelector('.toast')!.textContent).toContain('Gemini did not accept the message.');

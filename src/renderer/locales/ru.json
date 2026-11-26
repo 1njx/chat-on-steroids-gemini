@@ -1934,7 +1934,7 @@
   "Search models": "Поиск моделей",
   "Fine-tune background and accent colors for the selected theme.": "Настройте цвета фона и акцентов для выбранной темы.",
   "How strongly text stands out from its background.": "Насколько сильно текст выделяется на фоне.",
-  "Used when you start a new chat. A chat you continue keeps its own model.": "Используется, когда вы начинаете новый чат. Продолжаемый чат сохраняет свою модель.",
+  "New chats start with the model and thinking you last sent with; this one until then, and again after you change it here. A chat you continue keeps its own model.": "Новые чаты начинаются с модели и уровня размышления, с которыми вы отправляли в последний раз; до этого и после изменения здесь — с этой. Продолжаемый чат сохраняет свою модель.",
   "Lets tools run, including computer use, file editing and JavaScript, even when the app can’t tell which chat called them. Sub-agents and other chat actions still need a known chat. These calls are listed under Unattributed activity.": "Разрешает запуск инструментов, включая управление компьютером, редактирование файлов и JavaScript, даже если приложение не знает, какой чат их вызвал. Субагентам и другим действиям чата по-прежнему нужен известный чат. Такие вызовы показываются в разделе «Активность без привязки».",
   "Trust only selected chats": "Доверять только выбранным чатам",
   "Untrust this chat: strict mode refuses its tool calls": "Отозвать доверие к этому чату: строгий режим отклоняет его вызовы инструментов",

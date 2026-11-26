@@ -1836,7 +1836,7 @@
   "Search models": "モデルを検索",
   "Fine-tune background and accent colors for the selected theme.": "選択中のテーマの背景色とアクセントカラーを調整します。",
   "How strongly text stands out from its background.": "文字が背景からどれだけはっきり見えるか。",
-  "Used when you start a new chat. A chat you continue keeps its own model.": "新しいチャットを始めるときに使います。続きのチャットは自分のモデルを保ちます。",
+  "New chats start with the model and thinking you last sent with; this one until then, and again after you change it here. A chat you continue keeps its own model.": "新しいチャットは、最後に送信したときのモデルと思考レベルで始まります。それまでと、ここで変更した後はこのモデルです。続きのチャットは自分のモデルを保ちます。",
   "Lets tools run, including computer use, file editing and JavaScript, even when the app can’t tell which chat called them. Sub-agents and other chat actions still need a known chat. These calls are listed under Unattributed activity.": "どのチャットから呼ばれたか分からない場合でも、コンピューター操作、ファイル編集、JavaScript を含むツールの実行を許可します。サブエージェントやその他のチャット操作には、引き続き特定済みのチャットが必要です。これらの呼び出しは「帰属未確定のアクティビティ」に表示されます。",
   "Trust only selected chats": "選択したチャットのみ信頼",
   "Untrust this chat: strict mode refuses its tool calls": "このチャットの信頼を解除: 厳格モードではツール呼び出しを拒否します",

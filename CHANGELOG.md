@@ -9,6 +9,22 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.24] — New chats start on the model you last used
+
+### Changed
+
+- **A new chat starts on the model and thinking level you last sent with**, ChatGPT or Gemini
+  (Automatic included), and keeps it across restarts. Settings → "Default new-chat model" applies
+  until you have sent something, again right after you change it, and when the remembered model is
+  no longer offered.
+
+### Fixed
+
+- **A Gemini chat's follow-ups went back to Gemini's own default model.** A chat started on Gemini
+  Neon continued on the model Gemini had selected when its list was read (for example Hydrogen).
+  Gemini chats now continue on the Gemini model and thinking level you last sent with; changing the
+  Gemini default in Settings → Gemini makes that one apply again.
+
 ## [2.2.23] — Gemini edition: new chats while another one waits
 
 ### Fixed

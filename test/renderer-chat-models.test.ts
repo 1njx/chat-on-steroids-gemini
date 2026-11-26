@@ -871,3 +871,84 @@ it("offers each Gemini model's own thinking levels, and none for a model without
   gemini('neon').click();
   expect(composerGeminiChoice()).toEqual({ modeId: 'neon', thinkingLevel: 'Medium' });
 });
+
+it('starts a new chat on the model and thinking last sent with, Gemini or ChatGPT, until the Settings default changes', async () => {
+  dom = new JSDOM(await readFile('src/renderer/index.html', 'utf8'), { url: 'http://localhost/' });
+  vi.stubGlobal('window', dom.window); vi.stubGlobal('document', dom.window.document);
+  let pushGemini: (status: unknown) => void = () => undefined;
+  const geminiStatus = (modes: Array<[string, string, boolean]>, defaultModeId: string | null = null) => ({
+    pages: 1, settings: { connectorName: null, defaultModeId, defaultThinkingLevel: null },
+    catalog: { observedAt: 1, thinkingLevels: [{ label: 'Low', selected: false, available: true }, { label: 'High', selected: true, available: true }],
+      modes: modes.map(([id, model, available], index) => ({ id, title: id, model, available, selected: index === 0, reason: null, levels: ['Low', 'High'] })) },
+  });
+  const both: Array<[string, string, boolean]> = [['hydrogen', 'Gemini 4 Hydrogen', true], ['neon', 'Gemini 4 Neon', true]];
+  Object.assign(dom.window, { api: {
+    getChatModels: async () => ({ ok: true, data: { state: 'ready', observedAt: 2, models: [{ id: 'sol', label: 'GPT-6', efforts: ['none', 'high'] }, { id: 'luna', label: 'GPT-6 Luna', efforts: ['low', 'high'] }] } }),
+    getGeminiStatus: async () => ({ ok: true, data: geminiStatus(both) }), onGeminiChanged: (fn: typeof pushGemini) => { pushGemini = fn; },
+    requestChatModels: vi.fn(), requestGeminiModes: vi.fn(),
+  } });
+  const load = async () => {
+    vi.resetModules();
+    const module = await import('../src/renderer/chat-models.js');
+    module.initChatModels(); module.applyChatModels(config); await Promise.resolve(); await Promise.resolve();
+    return module;
+  };
+  const config = { ui: { defaultChatModel: 'luna', defaultChatReasoning: 'low' }, multiAgent: {}, goal: {} } as unknown as Config;
+  let m = await load();
+  const doc = dom.window.document;
+  const label = () => doc.getElementById('composerModelLabel')!.textContent;
+
+  // Nothing sent yet: the Settings default.
+  m.applyComposerSessionModel(null, null);
+  expect(m.composerGeminiChoice()).toBeNull();
+  expect(m.composerSendModel()).toEqual({ model: 'luna', reasoningEffort: 'low' });
+
+  // Sent with Gemini Neon · Low: the next new chat starts there, and so does a Gemini chat.
+  doc.querySelector<HTMLButtonElement>('[data-gemini-mode="neon"]')!.click();
+  const slider = doc.querySelector('#composerPowerChoices input') as HTMLInputElement;
+  slider.value = '0'; slider.dispatchEvent(new dom.window.Event('change'));
+  m.rememberComposerChoice({ gemini: m.composerGeminiChoice()! });
+  m.applyComposerSessionModel('chatgpt-chat:1', null, 'chatgpt');
+  m.applyComposerSessionModel(null, null);
+  expect(m.composerGeminiChoice()).toEqual({ modeId: 'neon', thinkingLevel: 'Low' });
+  expect(label()).toBe('Gemini 4 Neon · Low');
+  m.applyComposerSessionModel('gemini-chat:2', null, 'gemini');
+  expect(m.composerGeminiChoice()).toEqual({ modeId: 'neon', thinkingLevel: 'Low' });
+
+  // It is kept across a restart.
+  m = await load();
+  m.applyComposerSessionModel(null, null);
+  expect(m.composerGeminiChoice()).toEqual({ modeId: 'neon', thinkingLevel: 'Low' });
+
+  // A Gemini model no longer offered falls back to the Settings default.
+  pushGemini(geminiStatus([['hydrogen', 'Gemini 4 Hydrogen', true], ['neon', 'Gemini 4 Neon', false]]));
+  m.applyComposerSessionModel('other:3', null); m.applyComposerSessionModel(null, null);
+  expect(m.composerGeminiChoice()).toBeNull();
+  expect(m.composerSendModel()).toEqual({ model: 'luna', reasoningEffort: 'low' });
+  pushGemini(geminiStatus(both));
+
+  // Sent with ChatGPT GPT-6 · High: new chats start there.
+  m.rememberComposerChoice({ model: 'sol', reasoningEffort: 'high' });
+  m.applyComposerSessionModel('other:4', null); m.applyComposerSessionModel(null, null);
+  expect(m.composerGeminiChoice()).toBeNull();
+  expect(m.composerSendModel()).toEqual({ model: 'sol', reasoningEffort: 'high' });
+
+  // Sent with Automatic: new chats start on Automatic.
+  m.rememberComposerChoice({ model: null, reasoningEffort: null });
+  m.applyComposerSessionModel('other:5', null); m.applyComposerSessionModel(null, null);
+  expect(m.composerSendModel()).toEqual({ model: null, reasoningEffort: null });
+
+  // Changing the Settings default makes it the new-chat model again.
+  m.rememberComposerChoice({ model: 'sol', reasoningEffort: 'high' });
+  const changed = { ...config, ui: { defaultChatModel: 'luna', defaultChatReasoning: 'high' } } as unknown as Config;
+  m.applyChatModels(changed, config);
+  m.applyComposerSessionModel('other:6', null); m.applyComposerSessionModel(null, null);
+  expect(m.composerSendModel()).toEqual({ model: 'luna', reasoningEffort: 'high' });
+  expect(dom.window.localStorage.getItem('cos.lastComposerChoice')).toBeNull();
+
+  // So does changing the Gemini default, for a Gemini choice.
+  m.rememberComposerChoice({ gemini: { modeId: 'neon', thinkingLevel: 'Low' } });
+  pushGemini(geminiStatus(both, 'hydrogen'));
+  m.applyComposerSessionModel('gemini-chat:7', null, 'gemini');
+  expect(m.composerGeminiChoice()).toEqual({ modeId: 'hydrogen', thinkingLevel: 'High' });
+});

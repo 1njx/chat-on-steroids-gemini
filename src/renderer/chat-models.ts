@@ -32,8 +32,10 @@ const geminiModeLabel = (modeId: string): string => {
   const mode = gemini?.catalog?.modes.find(item => item.id === modeId);
   return mode ? mode.model ?? mode.title : 'Gemini';
 };
-/** The saved Gemini default, else what Gemini has selected, else its first available model. */
+/** The Gemini model last sent with, else the saved Gemini default, else what Gemini has selected, else its first available model. */
 function geminiDefault(): GeminiChoice | null {
+  const last = lastGeminiChoice();
+  if (last) return last;
   const modes = gemini?.catalog?.modes.filter(mode => mode.available) ?? [];
   const mode = modes.find(item => item.id === gemini?.settings.defaultModeId) ?? modes.find(item => item.selected) ?? modes[0];
   if (!mode) return null;
@@ -47,6 +49,59 @@ export function composerGeminiChoice(): GeminiChoice | null {
   return composerContext?.gemini ?? (composerContext?.provider === 'gemini' ? geminiDefault() : null);
 }
 let ordinaryDefaults: { model: string; reasoningEffort: string } = { model: '', reasoningEffort: '' };
+
+/**
+ * The model and thinking last sent with, which a new chat starts on: a ChatGPT model and effort
+ * (model '' for Automatic) or a Gemini model and thinking level. The Settings default applies
+ * until something was sent, and again after it is changed.
+ */
+type LastChoice = { provider: 'chatgpt'; model: string; reasoningEffort: string } | { provider: 'gemini'; modeId: string; thinkingLevel: string | null };
+const LAST_CHOICE_KEY = 'cos.lastComposerChoice';
+let lastChoice: LastChoice | null | undefined;
+function readLastChoice(): LastChoice | null {
+  if (lastChoice !== undefined) return lastChoice;
+  lastChoice = null;
+  try {
+    const saved: unknown = JSON.parse(window.localStorage.getItem(LAST_CHOICE_KEY) ?? 'null');
+    const s = saved as Record<string, unknown> | null;
+    if (s?.provider === 'chatgpt' && typeof s.model === 'string' && typeof s.reasoningEffort === 'string') {
+      lastChoice = { provider: 'chatgpt', model: s.model, reasoningEffort: s.reasoningEffort };
+    } else if (s?.provider === 'gemini' && typeof s.modeId === 'string' && s.modeId && (s.thinkingLevel === null || typeof s.thinkingLevel === 'string')) {
+      lastChoice = { provider: 'gemini', modeId: s.modeId, thinkingLevel: s.thinkingLevel as string | null };
+    }
+  } catch { /* unreadable storage: the Settings default applies */ }
+  return lastChoice;
+}
+function storeLastChoice(choice: LastChoice | null): void {
+  lastChoice = choice;
+  try {
+    if (choice) window.localStorage.setItem(LAST_CHOICE_KEY, JSON.stringify(choice));
+    else window.localStorage.removeItem(LAST_CHOICE_KEY);
+  } catch { /* storage is a convenience here */ }
+}
+/** Send calls this with what it sends with, so the next new chat starts on it. */
+export function rememberComposerChoice(choice: { gemini: GeminiChoice } | { model: string | null; reasoningEffort: string | null }): void {
+  storeLastChoice('gemini' in choice
+    ? { provider: 'gemini', modeId: choice.gemini.modeId, thinkingLevel: choice.gemini.thinkingLevel }
+    : { provider: 'chatgpt', model: choice.model ?? '', reasoningEffort: choice.model ? choice.reasoningEffort ?? '' : '' });
+}
+/** The Gemini choice a new chat starts on, while Gemini still offers that model (levels checked when known). */
+function lastGeminiChoice(): GeminiChoice | null {
+  const last = readLastChoice();
+  if (last?.provider !== 'gemini') return null;
+  const mode = gemini?.catalog?.modes.find(item => item.id === last.modeId);
+  if (gemini?.catalog && !mode?.available) return null;
+  const levels = geminiLevels(last.modeId);
+  const level = last.thinkingLevel && (!gemini?.catalog || levels.includes(last.thinkingLevel)) ? last.thinkingLevel : levels.at(-1) ?? null;
+  return { modeId: last.modeId, thinkingLevel: level };
+}
+/** The ChatGPT model and effort a new chat starts on: the last one sent with while ChatGPT still lists it, else the Settings default. */
+function newChatDefaults(): { model: string; reasoningEffort: string } {
+  const last = readLastChoice();
+  if (last?.provider !== 'chatgpt') return ordinaryDefaults;
+  if (!last.model) return { model: '', reasoningEffort: '' };
+  return !catalog.models.length || observedModel(last.model) ? { model: last.model, reasoningEffort: last.reasoningEffort } : ordinaryDefaults;
+}
 /**
  * Automatic: send with whatever model ChatGPT already has selected, switching nothing.
  *
@@ -63,8 +118,8 @@ const AUTOMATIC: SendModel = { model: null, reasoningEffort: null };
 function exactModelRequested(): boolean {
   if (composerContext?.automatic) return false;
   if (composerContext?.edited) return !!$<HTMLSelectElement>('composerModel').value;
-  // A new chat asks for the configured default; an existing chat already has its own model.
-  return !composerContext || composerContext.scope === null ? !!ordinaryDefaults.model : false;
+  // A new chat asks for its default (the last one sent with); an existing chat already has its own model.
+  return !composerContext || composerContext.scope === null ? !!newChatDefaults().model : false;
 }
 function automaticApplies(): boolean {
   return composerContext?.automatic === true || (!catalog.models.length && !exactModelRequested());
@@ -101,7 +156,12 @@ export function chatModelName(model: string, reasoningEffort: string | undefined
 function paintComposerContext(): void {
   if (!composerContext || composerContext.edited) return;
   if (composerContext.scope === null) {
-    paintPair('composerModel', 'composerReasoning', ordinaryDefaults.model, ordinaryDefaults.reasoningEffort);
+    // A new chat starts on what was last sent with: a Gemini model, Automatic, or a ChatGPT model.
+    const last = readLastChoice();
+    composerContext.gemini = lastGeminiChoice();
+    composerContext.automatic = !composerContext.gemini && last?.provider === 'chatgpt' && !last.model;
+    const defaults = newChatDefaults();
+    paintPair('composerModel', 'composerReasoning', defaults.model, defaults.reasoningEffort);
     return;
   }
   const observed = composerContext.observation;
@@ -624,6 +684,8 @@ export function applyChatModels(config: Config, previous?: Config): void {
     return select && document.activeElement === select && previous && select.value !== (prior ?? '') ? select.value : value;
   };
   ordinaryDefaults = { model: config.ui?.defaultChatModel ?? '', reasoningEffort: config.ui?.defaultChatReasoning ?? '' };
+  // A Settings default the person just changed is what new chats use, until they send with another.
+  if (previous && ((previous.ui?.defaultChatModel ?? '') !== ordinaryDefaults.model || (previous.ui?.defaultChatReasoning ?? '') !== ordinaryDefaults.reasoningEffort)) storeLastChoice(null);
   paintPair('defaultChatModel', 'defaultChatReasoning', chosen('defaultChatModel', ordinaryDefaults.model, previous?.ui?.defaultChatModel), chosen('defaultChatReasoning', ordinaryDefaults.reasoningEffort, previous?.ui?.defaultChatReasoning), true);
   paintPair('workerModel', 'workerReasoning', chosen('workerModel', config.multiAgent.defaultModel ?? '', previous?.multiAgent.defaultModel), chosen('workerReasoning', config.multiAgent.defaultReasoning ?? '', previous?.multiAgent.defaultReasoning));
   paintPair('helperModel', 'helperReasoning', chosen('helperModel', config.goal.helperModel ?? DEFAULT_HELPER_CHAT_MODEL, previous?.goal.helperModel ?? DEFAULT_HELPER_CHAT_MODEL), chosen('helperReasoning', config.goal.helperReasoning ?? 'high', previous?.goal.helperReasoning ?? 'high'));
@@ -730,8 +792,11 @@ export function initChatModels(onPaint?: () => void): void {
     if (!status) return;
     const next = { catalog: status.catalog, settings: status.settings, pages: status.pages };
     const repaint = JSON.stringify([gemini?.catalog, gemini?.settings]) !== JSON.stringify([next.catalog, next.settings]);
+    // A Gemini default the person just changed in Settings is what Gemini sends use, until they send with another.
+    if (gemini && readLastChoice()?.provider === 'gemini' && (gemini.settings.defaultModeId !== next.settings.defaultModeId ||
+      gemini.settings.defaultThinkingLevel !== next.settings.defaultThinkingLevel)) storeLastChoice(null);
     gemini = next;
-    if (repaint) paintStatus();
+    if (repaint) { paintComposerContext(); paintStatus(); }
   };
   window.api.onGeminiChanged?.(takeGemini);
   void window.api.getGeminiStatus?.().then(reply => takeGemini(reply?.ok ? reply.data : null), () => undefined);

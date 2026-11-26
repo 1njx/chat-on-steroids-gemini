@@ -17,7 +17,7 @@ import { createWorkspaceDocks } from './workspace-docks.js';
 import { currentLanguage, ui, t, tn } from './i18n.js';
 import { APP_COMMANDS, initSkills } from './skills.js';
 import { imageStorageButton } from './image-storage.js';
-import { applyChatModels, applyComposerSessionModel, initChatModels, confirmedComposerModel, composerSendModel, ensureComposerModel, chatModelName, composerGeminiChoice, type GeminiChoice } from './chat-models.js';
+import { applyChatModels, applyComposerSessionModel, initChatModels, confirmedComposerModel, composerSendModel, ensureComposerModel, chatModelName, composerGeminiChoice, rememberComposerChoice, type GeminiChoice } from './chat-models.js';
 import { geminiErrorText } from './gemini.js';
 import type { GeminiCommandSummary } from '../shared/gemini.js';
 import { providerOfConversation } from '../shared/providers.js';
@@ -9907,6 +9907,7 @@ async function sendComposer(delivery?: 'finish' | 'auto' | 'after-turn', plan?: 
     ? { sessionId: newChatBranch.sessionId, conversationId: newChatBranch.conversationId, messageId: newChatBranch.messageId }
     : reserved?.origin?.branchOf && reserved.origin.fromSessionId && !reserved.conversationId
       ? { sessionId: reserved.origin.fromSessionId, ...reserved.origin.branchOf } : undefined;
+  rememberComposerChoice(modelSettings);
   setStartingInput(id, { id, sessionId, projectId, text, ...attachmentPayload, ...(branch ? { branch } : {}), ...(edit ? { edit } : {}), stages: plan?.slice(1), objective, authoredSource, mode: mode === 'finish' ? 'finish' : mode === 'auto' ? 'auto' : 'after-turn',
     dueAt, ...modelSettings, state: 'queued', owner: null, createdAt: dueAt, conversationId: null });
   replaceComposerDraft();
@@ -9985,6 +9986,7 @@ async function sendComposerToGemini(text: string, extras: boolean, choice: Gemin
   if (!reply) return false;
   if (!reply.ok) { toast(geminiErrorText(reply.error)); return false; }
   geminiSends.set(reply.id, { sessionId, generation });
+  if (choice) rememberComposerChoice({ gemini: choice });
   // The saved draft goes first: restore() refills the composer from it, which put a sent message back (live 2026-11-25).
   inputDrafts.delete(key);
   if (draftKey() === key) { replaceComposerDraft(); $<HTMLTextAreaElement>('chatInput').value = ''; skillPicker?.restore(); }

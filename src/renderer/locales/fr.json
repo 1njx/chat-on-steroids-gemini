@@ -1900,7 +1900,7 @@
   "Search models": "Rechercher des modèles",
   "Fine-tune background and accent colors for the selected theme.": "Ajustez les couleurs de fond et d’accent du thème sélectionné.",
   "How strongly text stands out from its background.": "À quel point le texte ressort sur son fond.",
-  "Used when you start a new chat. A chat you continue keeps its own model.": "Utilisé quand vous commencez une nouvelle discussion. Une discussion que vous poursuivez garde son propre modèle.",
+  "New chats start with the model and thinking you last sent with; this one until then, and again after you change it here. A chat you continue keeps its own model.": "Les nouvelles discussions commencent avec le modèle et la réflexion de votre dernier envoi ; d'ici là, et de nouveau après un changement ici, avec celui-ci. Une discussion que vous poursuivez garde son propre modèle.",
   "Lets tools run, including computer use, file editing and JavaScript, even when the app can’t tell which chat called them. Sub-agents and other chat actions still need a known chat. These calls are listed under Unattributed activity.": "Permet d’exécuter des outils, y compris le contrôle de l’ordinateur, la modification de fichiers et JavaScript, même quand l’app ne sait pas quelle discussion les a appelés. Les sous-agents et les autres actions de discussion nécessitent toujours une discussion connue. Ces appels apparaissent sous Activité non attribuée.",
   "Trust only selected chats": "Faire confiance uniquement aux chats sélectionnés",
   "Untrust this chat: strict mode refuses its tool calls": "Retirer la confiance à ce chat : le mode strict refuse ses appels d’outils",
