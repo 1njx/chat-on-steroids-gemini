@@ -12,7 +12,8 @@ interface GeminiDom {
   selectedModeLabel(): string | null;
   readOpenModes(): Mode[];
   inspectModes(): Promise<{ modes: Mode[]; thinkingLevels: Array<{ label: string; selected: boolean }> } | null>;
-  selectMode(id: string): Promise<boolean>;
+  selectMode(id: string, current?: () => boolean, ms?: number): Promise<boolean>;
+  modeFailure(): string | null;
   selectThinkingLevel(level: string): Promise<boolean>;
   insertPrompt(text: string): boolean;
   composerText(): string;
@@ -232,8 +233,22 @@ describe('Gemini page adapter', () => {
     expect(api.selectedModeLabel()).toBe('Neon');
     expect(await api.selectMode('upsell_MODE_CATEGORY_ULTRA')).toBe(false);
     expect(api.selectedModeLabel()).toBe('Neon');
-    expect(await api.selectMode('no-such-mode')).toBe(false);
+    expect(api.modeFailure()).toBe('upsell');
+    expect(await api.selectMode('no-such-mode', () => true, 100)).toBe(false);
+    expect(api.modeFailure()).toBe('missing');
   });
+
+  it('tries the picker again while a model is still disabled after a reload, then selects it', async () => {
+    // Live 2026-11-25: right after a new chat reloaded a never-shown tab, picking the model failed 2 times in 3.
+    const button = document.querySelector('[data-test-id="bard-mode-menu-button"]')!;
+    const enableAt = Date.now() + 2000;
+    button.addEventListener('click', () => {
+      if (Date.now() < enableAt) document.querySelector('[data-mode-id="e6fa609c3fa255c0"]')?.setAttribute('aria-disabled', 'true');
+    });
+    expect(await api.selectMode('e6fa609c3fa255c0')).toBe(true);
+    expect(api.selectedModeLabel()).toBe('Neon');
+    expect(api.modeFailure()).toBeNull();
+  }, 30_000);
 
   it('selects a thinking level by label', async () => {
     expect(await api.selectThinkingLevel('High')).toBe(true);

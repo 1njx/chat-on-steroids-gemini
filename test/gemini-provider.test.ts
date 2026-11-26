@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultConfig, initConfigPath, saveConfig } from '../src/main/config.js';
 import { flushDurable, initDurableStore, readDurable, resetDurableForTests, writeDurableSoon } from '../src/main/durable.js';
 import {
-  AUTO_FILL_RETRY_MS, AUTO_FILL_TRIES, FILL_OPEN_FALLBACK_MS, REACH_OK_MS, REACH_RETRY_MS, cancelGeminiCommand, completeGeminiCommand, configureGemini, followGeminiAddress, geminiPagesToOpen, geminiStatus, observeGeminiPage,
+  AUTO_FILL_RETRY_MS, AUTO_FILL_TRIES, BUSY_OPEN_MS, FILL_OPEN_FALLBACK_MS, REACH_OK_MS, REACH_RETRY_MS, cancelGeminiCommand, completeGeminiCommand, configureGemini, followGeminiAddress, geminiPagesToOpen, geminiStatus, observeGeminiPage,
   queueGeminiFill, queueGeminiSend, requestGeminiModes, resetGeminiForTests, restoreGemini, saveGeminiSettings, sweep,
 } from '../src/main/gemini.js';
 import { geminiUrlFingerprint } from '../src/shared/gemini.js';
@@ -171,6 +171,39 @@ describe('Gemini provider', () => {
     expect(observeGeminiPage({ tab: 2, snapshot: apps }).commands).toEqual([]);
     expect(observeGeminiPage({ tab: 3, snapshot: apps }).commands).toEqual([]);
     expect(observeGeminiPage({ tab: 4, snapshot: chat }).commands.map(c => c.id)).toEqual([id]);
+  });
+
+  it('sends a new chat from a custom apps page while the chat page is busy waiting on a tool approval', async () => {
+    await loadModes(4);
+    // As live on 2026-11-25: the chat tab's send waits on Gemini's approval card; the person starts a new chat.
+    const chat = page({ url: 'https://gemini.google.com/app/4b6f067b00979549', conversationId: '4b6f067b00979549' });
+    const apps = page({ url: 'https://gemini.google.com/customize/connectors', composerReady: false });
+    const first = (queueGeminiSend({ prompt: 'make a website' }) as { id: string }).id;
+    expect(observeGeminiPage({ tab: 4, snapshot: chat }).commands.map(c => c.id)).toEqual([first]);
+    await completeGeminiCommand({ id: first, tab: 4, stage: 'sending' });
+    await completeGeminiCommand({ id: first, tab: 4, stage: 'sent', conversationId: '4b6f067b00979549' });
+    const id = (queueGeminiSend({ prompt: 'list some files' }) as { id: string }).id;
+    expect(observeGeminiPage({ tab: 4, snapshot: chat }).commands).toEqual([]);
+    expect(observeGeminiPage({ tab: 2, snapshot: apps }).commands.map(c => c.id)).toEqual([id]);
+  });
+
+  it('opens a fresh Gemini page for a send when every signed-in page is busy, after a short wait', async () => {
+    await loadModes(4);
+    const chat = page({ url: 'https://gemini.google.com/app/4b6f067b00979549', conversationId: '4b6f067b00979549' });
+    const first = (queueGeminiSend({ prompt: 'make a website' }) as { id: string }).id;
+    observeGeminiPage({ tab: 4, snapshot: chat });
+    await completeGeminiCommand({ id: first, tab: 4, stage: 'sending' });
+    await completeGeminiCommand({ id: first, tab: 4, stage: 'sent', conversationId: '4b6f067b00979549' });
+    queueGeminiSend({ prompt: 'list some files' });
+    observeGeminiPage({ tab: 4, snapshot: chat });
+    expect(geminiPagesToOpen()).toEqual([]);
+    const later = Date.now() + BUSY_OPEN_MS;
+    observeGeminiPage({ tab: 4, snapshot: chat }, later);
+    expect(geminiPagesToOpen(later)).toEqual(['https://gemini.google.com/app']);
+    // A free page reporting (the opened one) takes it, and nothing more is opened.
+    const id = geminiStatus().commands.at(-1)!.id;
+    expect(observeGeminiPage({ tab: 5, snapshot: page() }, later).commands.map(c => c.id)).toEqual([id]);
+    expect(geminiPagesToOpen(later)).toEqual([]);
   });
 
   it('prefers the tab already showing the conversation', () => {

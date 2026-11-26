@@ -9,6 +9,22 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.23] — Gemini edition: new chats while another one waits
+
+### Fixed
+
+All found and checked live on 2026-11-25/26 in Edge, with the app's window covering the browser.
+
+- **A new chat failed "no-ready-gemini-page" while another Gemini chat was still running**, for
+  example one waiting on a tool approval card. A page holds one message at a time, and the other
+  pages (such as custom apps) waited for that busy page instead of taking the new chat. Pages now
+  only wait for a page that is free; when every signed-in Gemini page is busy, the extension opens a
+  new Gemini tab for the message after 10 seconds.
+- **"That Gemini model is not available on this account" for a model that is.** Right after a new
+  chat reloaded a Gemini tab that had never been on screen, picking the model failed 2 times in 3.
+  The page now tries the model picker again for up to 20 seconds (never for a model that needs a
+  higher plan); 3 of 3 such sends then went through.
+
 ## [2.2.22] — Gemini edition: tool approvals are not answers, and Full access
 
 ### Fixed

@@ -116,7 +116,7 @@
     if (!(await dom.waitFor(dom.composer, 15000))) return result(command, { stage: 'failed', error: 'composer-unavailable' });
     if (dom.generating()) return result(command, { stage: 'failed', error: 'busy' });
     if (command.modeId && !(await dom.selectMode(command.modeId))) {
-      return result(command, { stage: 'failed', error: 'mode-unavailable' });
+      return result(command, { stage: 'failed', error: 'mode-unavailable', detail: `mode ${dom.modeFailure() || 'unknown'}` });
     }
     if (command.thinkingLevel && !(await dom.selectThinkingLevel(command.thinkingLevel))) {
       return result(command, { stage: 'failed', error: 'thinking-level-unavailable' });

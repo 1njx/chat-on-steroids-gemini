@@ -238,20 +238,39 @@ var CLF_GEMINI_DOM = (() => {
     return { modes, thinkingLevels };
   }
 
-  /** Select a mode by its stable data-mode-id. Refuses an upsell/disabled option. */
-  async function selectMode(modeId, current = () => true) {
+  /** Why the last selectMode failed: 'picker' (did not open), 'missing' (no such option), 'disabled' or 'upsell'. */
+  let modeFailure = null;
+
+  /**
+   * Select a mode by its stable data-mode-id. Refuses an upsell option at once. Right after a new
+   * chat reloaded a tab that was never on screen, the picker failed to give a model 2 times in 3
+   * (seen live 2026-11-25), so a picker that did not open, or a missing or disabled option, is tried
+   * again for up to 20 s before giving up.
+   */
+  async function selectMode(modeId, current = () => true, ms = 20_000) {
     if (!modeId) return true;
-    if (!(await openPicker(current))) return false;
-    const node = [...document.querySelectorAll(MODE_OPTION)].find(n => n.getAttribute('data-mode-id') === modeId);
-    const option = node && parseOption(node);
-    if (!option || !option.available) { await closeMenus(); return false; }
-    if (!option.selected) {
-      node.click();
-      // Picking a model shuts the picker. Wait for that: closing it before Gemini redrew opened it again.
-      await until(() => !readOpenModes().length, 3000);
+    modeFailure = null;
+    for (const end = Date.now() + ms; current(); await sleep(1500)) {
+      if (await openPicker(current)) {
+        const node = [...document.querySelectorAll(MODE_OPTION)].find(n => n.getAttribute('data-mode-id') === modeId);
+        const option = node && parseOption(node);
+        if (option?.available) {
+          if (!option.selected) {
+            node.click();
+            // Picking a model shuts the picker. Wait for that: closing it before Gemini redrew opened it again.
+            await until(() => !readOpenModes().length, 3000);
+          }
+          await closeMenus();
+          modeFailure = null;
+          return true;
+        }
+        modeFailure = !option ? 'missing' : option.reason === 'requires-upgrade' ? 'upsell' : 'disabled';
+        await closeMenus();
+        if (modeFailure === 'upsell') return false;
+      } else modeFailure = 'picker';
+      if (Date.now() >= end) return false;
     }
-    await closeMenus();
-    return true;
+    return false;
   }
 
   /**
@@ -641,7 +660,7 @@ var CLF_GEMINI_DOM = (() => {
 
   return {
     conversationId, composer, onChatPage, sendButton, stopButton, generating, signInState, account,
-    selectedModeLabel, readOpenModes, readOpenThinkingLevels, inspectModes, selectMode,
+    selectedModeLabel, readOpenModes, readOpenThinkingLevels, inspectModes, selectMode, modeFailure: () => modeFailure,
     selectThinkingLevel, insertPrompt, composerText, mentionOptions, mentionConnector, appendPrompt,
     send, stopGeneration, turns, errors, sleep,
     localized, snapshot, parseOption,

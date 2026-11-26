@@ -28,6 +28,8 @@ export const GEMINI_CUSTOM_APPS_URL = 'https://gemini.google.com/customize/conne
  * opens one itself (in its own browser, when that is not the default one).
  */
 export const FILL_OPEN_FALLBACK_MS = 15_000;
+/** How long a new chat waits for a busy page before the extension opens a fresh one. */
+export const BUSY_OPEN_MS = 10_000;
 const CLAIM_MS = 2 * 60_000;
 const SENDING_MS = 60_000;
 const ANSWER_MS = 35 * 60_000;
@@ -196,8 +198,19 @@ export function sweep(now = Date.now()): boolean {
 
 const settled = (c: Command): boolean => ['completed', 'failed', 'cancelled', 'unknown'].includes(c.stage);
 
-function eligible(command: Command, tab: number, page: Snapshot, live: Array<[number, Snapshot]>): boolean {
+/** Tabs running a command (Stop aside): one command per page, so they take no other work until it ends. */
+function busyTabs(): Set<number> {
+  return new Set(commands.filter(c => c.tab !== null && c.kind !== 'stop' && ['claimed', 'sending', 'sent'].includes(c.stage)).map(c => c.tab!));
+}
+
+/**
+ * Whether this page should take the command. A page only defers to another that could really take
+ * it: one busy with another command cannot, and a page deferring to it waited for nothing (a new chat
+ * failed "no-ready-gemini-page" while the chat tab waited on a tool approval, seen live 2026-11-25).
+ */
+function eligible(command: Command, tab: number, page: Snapshot, live: Array<[number, Snapshot]>, busy: Set<number>): boolean {
   if (page.signIn !== 'signed-in') return false;
+  const free = live.filter(([other]) => !busy.has(other));
   if (command.kind === 'stop') return page.conversationId === command.conversationId;
   // Filling the custom app form needs no composer: any idle page can open the custom apps page.
   if (command.kind === 'fill-app') return !page.generating;
@@ -206,7 +219,7 @@ function eligible(command: Command, tab: number, page: Snapshot, live: Array<[nu
     // one can take it: otherwise a send waited for a page that never came (seen live 2026-11-24 after
     // "Add it in Gemini for me" left only the custom apps page open).
     return command.kind === 'send' && !page.generating &&
-      !live.some(([other, p]) => other !== tab && p.signIn === 'signed-in' && p.composerReady && !p.generating);
+      !free.some(([other, p]) => other !== tab && p.signIn === 'signed-in' && p.composerReady && !p.generating);
   }
   if (command.kind === 'inspect-modes') return !page.generating;
   if (page.generating) return false;
@@ -218,7 +231,7 @@ function eligible(command: Command, tab: number, page: Snapshot, live: Array<[nu
   // A new chat prefers an empty chat page, but any idle page can navigate to /app. Only a page that
   // could take it counts: custom apps pages also have no conversation, and a chat page deferring to
   // them while they deferred to it failed every send (no-ready-gemini-page, seen live 2026-11-25).
-  return page.conversationId === null || !live.some(([other, p]) => other !== tab && p.conversationId === null && p.composerReady && p.signIn === 'signed-in' && !p.generating);
+  return page.conversationId === null || !free.some(([other, p]) => other !== tab && p.conversationId === null && p.composerReady && p.signIn === 'signed-in' && !p.generating);
 }
 
 function wire(command: Command): Record<string, unknown> {
@@ -259,15 +272,15 @@ export function observeGeminiPage(body: unknown, now = Date.now()): { ok: boolea
   const handed: Array<Record<string, unknown>> = [];
   // One command per page at a time, Stop aside: a model read handed to a page that was sending
   // switched the model under the send, and both failed (seen live 2026-11-25).
-  let busy = commands.some(c => c.tab === tab && c.kind !== 'stop' && ['claimed', 'sending', 'sent'].includes(c.stage));
+  const taken = busyTabs();
   for (const command of commands) {
     // A claimed command goes back only to its own tab (after that tab navigated for it).
     if (command.stage === 'claimed' && command.tab === tab) { handed.push(wire(command)); continue; }
-    if (command.stage !== 'queued' || !eligible(command, tab, snapshot, live)) continue;
-    if (busy && command.kind !== 'stop') continue;
+    if (command.stage !== 'queued' || !eligible(command, tab, snapshot, live, taken)) continue;
+    if (taken.has(tab) && command.kind !== 'stop') continue;
     command.stage = 'claimed'; command.tab = tab; command.updatedAt = now;
     handed.push(wire(command));
-    if (command.kind !== 'stop') busy = true;
+    if (command.kind !== 'stop') taken.add(tab);
   }
   if (handed.length || before !== JSON.stringify(snapshot)) changed();
   return { ok: true, commands: handed };
@@ -278,6 +291,8 @@ const resultSchema = z.object({
   tab: z.number().int().nonnegative(),
   stage: z.enum(['navigating', 'sending', 'sent', 'approval', 'completed', 'failed']),
   approval: z.string().max(300).optional(),
+  // Why a step failed, for the log only ("mode picker", "mode missing", …).
+  detail: z.string().max(200).optional(),
   conversationId: z.string().regex(GEMINI_NATIVE_ID).nullable().optional(),
   turnId: z.string().max(80).nullable().optional(),
   answer: z.string().max(512_000).optional(),
@@ -331,6 +346,7 @@ export async function completeGeminiCommand(body: unknown, now = Date.now()): Pr
   if (result.stage === 'failed') {
     // A failure after Gemini accepted the prompt keeps that fact: it was sent, the answer failed.
     const error = result.error ?? 'failed';
+    if (result.detail) logWarn(`gemini: ${command.kind} ${command.id.slice(0, 8)} ${error}: ${result.detail}`);
     const wasSent = command.stage === 'sent';
     finish(command, 'failed', wasSent ? `sent; ${error}` : error);
     const conversationId = result.conversationId ?? command.conversationId;
@@ -629,9 +645,20 @@ export function geminiWantsHttpsTunnel(): boolean { return settings.httpsTunnel;
 /** The hostname of the person's own Cloudflare tunnel for Gemini, or null for a quick tunnel. */
 export function geminiNamedTunnelHost(): string | null { return settings.namedTunnelHost; }
 
-/** Pages the extension should open: only when work waits and no Gemini page is reporting at all. */
+/**
+ * Pages the extension should open: when work waits and no Gemini page is reporting at all, or when a
+ * send waited BUSY_OPEN_MS while every signed-in page was busy with other work (a chat tab
+ * waiting on a tool approval holds its page until the person answers it).
+ */
 export function geminiPagesToOpen(now = Date.now()): string[] {
-  if (livePages(now).length) return [];
+  const live = livePages(now);
+  if (live.length) {
+    const taken = busyTabs();
+    const signedIn = live.filter(([, p]) => p.signIn === 'signed-in');
+    const allBusy = signedIn.length > 0 && signedIn.every(([tab, p]) => taken.has(tab) || p.generating);
+    const waiting = commands.find(c => c.stage === 'queued' && c.kind === 'send' && c.openPage && now - c.createdAt >= BUSY_OPEN_MS);
+    return allBusy && waiting ? [`${PROVIDERS.gemini.origin}/app${waiting.conversationId ? `/${waiting.conversationId}` : ''}`] : [];
+  }
   const waiting = commands.find(c => c.stage === 'queued' && c.kind !== 'stop' && c.openPage);
   if (!waiting) return [];
   // The default browser was asked first; the extension opens its own page only if none reported by then.
