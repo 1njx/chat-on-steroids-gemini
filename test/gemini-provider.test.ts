@@ -142,6 +142,18 @@ describe('Gemini provider', () => {
     expect(observeGeminiPage({ tab: 5, snapshot: page({ conversationId: 'abcdef0123456789' }) }).commands.map(c => c.id)).toEqual([id]);
   });
 
+  it('sends a new chat from a chat page while only custom apps pages are empty (no page waits for another)', async () => {
+    await loadModes(4);
+    // As live on 2026-11-25: custom apps tabs left by "Add it in Gemini for me", and one chat tab.
+    const apps = page({ url: 'https://gemini.google.com/customize/connectors', composerReady: false });
+    const chat = page({ url: 'https://gemini.google.com/app/abcdef0123456789', conversationId: 'abcdef0123456789' });
+    observeGeminiPage({ tab: 2, snapshot: apps }); observeGeminiPage({ tab: 3, snapshot: apps }); observeGeminiPage({ tab: 4, snapshot: chat });
+    const id = (queueGeminiSend({ prompt: 'x' }) as { id: string }).id;
+    expect(observeGeminiPage({ tab: 2, snapshot: apps }).commands).toEqual([]);
+    expect(observeGeminiPage({ tab: 3, snapshot: apps }).commands).toEqual([]);
+    expect(observeGeminiPage({ tab: 4, snapshot: chat }).commands.map(c => c.id)).toEqual([id]);
+  });
+
   it('prefers the tab already showing the conversation', () => {
     const id = (queueGeminiSend({ prompt: 'x', conversation: 'abcdef0123456789' }) as { id: string }).id;
     observeGeminiPage({ tab: 9, snapshot: page({ conversationId: 'abcdef0123456789', generating: true }) });

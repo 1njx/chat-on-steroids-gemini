@@ -9,6 +9,16 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.21] — Gemini edition: new chats no longer wait on custom apps tabs
+
+### Fixed
+
+- **New chats to Gemini from the app failed "no-ready-gemini-page" while a custom apps tab was
+  open.** A new chat prefers an empty Gemini page, and custom apps pages (left open by "Add it in
+  Gemini for me") counted as empty, so a chat page waited for them while they, having no message
+  box, waited for the chat page (seen live 2026-11-25 with four such tabs). Only a page with a message
+  box counts now; with the fix, sends from the app's chat were answered with Edge covered.
+
 ## [2.2.20] — Gemini edition: the app's chat works with Gemini in the background
 
 ### Fixed

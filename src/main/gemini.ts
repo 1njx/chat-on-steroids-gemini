@@ -211,8 +211,10 @@ function eligible(command: Command, tab: number, page: Snapshot, live: Array<[nu
     if (page.conversationId === command.conversationId) return true;
     return !live.some(([other, p]) => other !== tab && p.conversationId === command.conversationId);
   }
-  // A new chat prefers an empty page, but any idle page can navigate to /app.
-  return page.conversationId === null || !live.some(([other, p]) => other !== tab && p.conversationId === null && p.signIn === 'signed-in' && !p.generating);
+  // A new chat prefers an empty chat page, but any idle page can navigate to /app. Only a page that
+  // could take it counts: custom apps pages also have no conversation, and a chat page deferring to
+  // them while they deferred to it failed every send (no-ready-gemini-page, seen live 2026-11-25).
+  return page.conversationId === null || !live.some(([other, p]) => other !== tab && p.conversationId === null && p.composerReady && p.signIn === 'signed-in' && !p.generating);
 }
 
 function wire(command: Command): Record<string, unknown> {
