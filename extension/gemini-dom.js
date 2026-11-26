@@ -143,17 +143,22 @@ var CLF_GEMINI_DOM = (() => {
   function parseOption(node) {
     const id = node.getAttribute('data-mode-id') || '';
     const full = text(node);
-    const named = /\b(\d+(?:\.\d+)?\s+[A-Z][A-Za-z]+)\b/;
-    const model = (text(node.querySelector('.sublabel')).match(named) || full.match(named) || [])[1] || null;
+    // Not a clock time: a model at its limit says when it is back instead of its name ("… 10:22 PM", live 2026-11-26).
+    const named = /\b(\d+(?:\.\d+)?\s+(?!AM\b|PM\b)[A-Z][A-Za-z]+)\b/;
+    const sub = text(node.querySelector('.sublabel'));
+    const model = (sub.match(named) || full.match(named) || [])[1] || null;
     const title = text(node.querySelector('.label')) || (model ? full.slice(0, full.indexOf(model)).trim() : full);
     const upsell = /^upsell_/i.test(id);
+    const available = !upsell && node.getAttribute('aria-disabled') !== 'true';
     return {
       id,
       title: title || full,
       model: model ? `Gemini ${model}` : null,
-      available: !upsell && node.getAttribute('aria-disabled') !== 'true',
+      available,
       selected: node.getAttribute('aria-checked') === 'true',
       reason: upsell ? 'requires-upgrade' : null,
+      // What Gemini says about a model it greys out, e.g. when it is back; never the model's name.
+      note: available || upsell ? null : ((sub && !named.test(sub) ? sub : full.replace(title, '').trim()).slice(0, 120) || null),
     };
   }
 
@@ -400,13 +405,83 @@ var CLF_GEMINI_DOM = (() => {
    * Always allow; seen live 2026-11-25) is drawn inside the answer. It is not answer text.
    */
   const CARD = 'action-card, remy-confirmation-card-v2';
+  /**
+   * Web images and video carousels Gemini adds to an answer (an image with "Source: …" and YouTube
+   * cards, seen live 2026-11-26). Their captions and titles are not answer text either.
+   */
+  const MEDIA = 'single-image, base-carousel, base-video';
+  const MEDIA_ITEMS = 'single-image, base-video';
   const enabled = b => !b.disabled && b.getAttribute('aria-disabled') !== 'true';
-  /** The answer's prose without approval cards (a copy only when it holds one). */
+  const SKIP = `${CARD}, ${MEDIA}`;
+  /** The answer's markup without approval cards or web media (a copy only when it holds one). */
   function prose(node) {
-    if (!node?.querySelector(CARD)) return node;
+    if (!node?.querySelector(SKIP)) return node;
     const copy = node.cloneNode(true);
-    copy.querySelectorAll(CARD).forEach(card => (card.closest('.attachment-container') || card).remove());
+    copy.querySelectorAll(SKIP).forEach(card => (card.closest('.attachment-container') || card).remove());
     return copy;
+  }
+  /** Gemini's own controls inside an answer (copy, download, table export), never answer text. */
+  const CHROME = 'button, gem-icon-button, mat-icon, .code-block-decoration, .table-footer, .hide-from-message-actions';
+  const BLOCKS = 'p, pre, table, ul, ol, h1, h2, h3, h4, h5, h6, blockquote, hr, code-block, div';
+  /**
+   * The answer as Markdown, which the app draws: paragraphs, headings, code with its language,
+   * tables and lists as Gemini drew them (flattened text ran them all into one line, live
+   * 2026-11-26), without web media, approval cards or Gemini's buttons.
+   */
+  function markdown(root) {
+    if (!root) return '';
+    const inline = node => {
+      if (node.nodeType === 3) return node.nodeValue.replace(/\s+/g, ' ');
+      if (node.nodeType !== 1 || node.matches(CHROME)) return '';
+      const tag = node.localName;
+      if (tag === 'br') return '\n';
+      if (tag === 'code') return '`' + node.textContent + '`';
+      const inner = [...node.childNodes].map(inline).join('');
+      const word = inner.trim();
+      if (!word) return inner;
+      if (tag === 'strong' || tag === 'b') return `**${word}**`;
+      if (tag === 'em' || tag === 'i') return `*${word}*`;
+      if (tag === 'a' && /^https?:/i.test(node.getAttribute('href') || '')) return `[${word}](${node.getAttribute('href')})`;
+      return inner;
+    };
+    const line = node => inline(node).replace(/[ \t]+\n/g, '\n').trim();
+    const list = (node, indent) => [...node.children].filter(li => li.localName === 'li').map((li, i) => {
+      const marker = node.localName === 'ol' ? `${i + 1}. ` : '- ';
+      const nested = [...li.children].filter(child => child.localName === 'ul' || child.localName === 'ol');
+      const own = li.cloneNode(true);
+      own.querySelectorAll(':scope > ul, :scope > ol').forEach(child => child.remove());
+      return [indent + marker + (own.querySelector(BLOCKS) ? markdown(own) : line(own)).replace(/\n+/g, ' '),...nested.map(child => list(child, indent + '   '))].join('\n');
+    }).join('\n');
+    // The app cannot show Gemini's web media, so each one leaves a line naming it in its place.
+    const mediaNotes = node => [...(node.matches(MEDIA_ITEMS) ? [node] : node.querySelectorAll(MEDIA_ITEMS))].map(item => {
+      const video = item.localName === 'base-video';
+      const label = (video ? text(item.querySelector('.base-video-title')) : item.querySelector('img')?.getAttribute('alt')?.trim() || '')
+        .replace(/[*_[\]`]/g, '').slice(0, 200);
+      return `*${video ? 'Video' : 'Image'}, shown in Gemini${label ? `: ${label}` : ''}*`;
+    });
+    const blocks = [];
+    for (const node of root.children) {
+      if (node.matches(CARD) || node.matches(CHROME)) continue;
+      if (node.matches(MEDIA) || (node.matches('.attachment-container') && node.querySelector(SKIP))) { blocks.push(...mediaNotes(node)); continue; }
+      const tag = node.localName;
+      if (/^h[1-6]$/.test(tag)) blocks.push(`${'#'.repeat(Number(tag[1]))} ${line(node)}`);
+      else if (tag === 'p') blocks.push(line(node));
+      else if (tag === 'code-block' || tag === 'pre') {
+        const lang = text(node.querySelector('.code-block-decoration > span')).toLowerCase().replace(/[^a-z0-9+#-]/g, '');
+        const code = (node.querySelector('code') || node).textContent.replace(/\n$/, '');
+        blocks.push('```' + lang + '\n' + code + '\n```');
+      } else if (tag === 'table') {
+        const rows = [...node.rows].map(row => `| ${[...row.cells].map(cell => line(cell).replace(/\|/g, '\|').replace(/\n/g, ' ')).join(' | ')} |`);
+        if (rows.length) rows.splice(1, 0, `|${' --- |'.repeat(node.rows[0].cells.length)}`);
+        blocks.push(rows.join('\n'));
+      } else if (tag === 'ul' || tag === 'ol') blocks.push(list(node, ''));
+      else if (tag === 'blockquote') blocks.push(markdown(node).split('\n').map(text => `> ${text}`).join('\n'));
+      else if (tag === 'hr') blocks.push('---');
+      // A wrapper of blocks is read block by block; one with its own text as well is read as one line.
+      else if (node.querySelector(BLOCKS) && ![...node.childNodes].some(child => child.nodeType === 3 && child.nodeValue.trim())) blocks.push(markdown(node));
+      else blocks.push(line(node));
+    }
+    return blocks.filter(Boolean).join('\n\n');
   }
   /** A card in this answer still waiting for a choice: its app, its question and its Always allow button. */
   function pendingApproval(answer) {
@@ -435,7 +510,7 @@ var CLF_GEMINI_DOM = (() => {
         return {
           id: node.id || null,
           user: userText,
-          answer: clean ? text(clean) : '',
+          answer: markdown(shown),
           answerHtml: clean ? clean.innerHTML : '',
           approval: pendingApproval(answer),
           // Gemini keeps `processing-state-visible` on finished answers too (live, 2026-11-20), so it

@@ -50,7 +50,7 @@ export function paintGemini(status: GeminiStatus, now = Date.now()): void {
   const modes = status.catalog?.modes ?? [];
   const failure = status.modesFailure && (!status.catalog || status.modesFailure.at > status.catalog.observedAt) ? status.modesFailure : null;
   byId('geminiModelList').textContent = (modes.length
-    ? modes.map(m => `${m.model ?? m.title}${m.available ? '' : ` (unavailable${m.reason === 'requires-upgrade' ? ': needs a higher plan' : ''})`}`).join(' · ') +
+    ? modes.map(m => `${m.model ?? m.title}${m.available ? '' : ` (unavailable${m.reason === 'requires-upgrade' ? ': needs a higher plan' : m.note ? `: ${m.note}` : ''})`}`).join(' · ') +
       ` — read ${ago(status.catalog!.observedAt, now)}`
     : failure ? '' : 'Not read yet. It is read by itself when a signed-in Gemini page is open; Refresh reads it now. Reading never changes your model.') +
     (failure ? `${modes.length ? '. ' : ''}Reading Gemini's models failed ${ago(failure.at, now)}: ${geminiErrorText(failure.error)} ` +
@@ -62,10 +62,6 @@ export function paintGemini(status: GeminiStatus, now = Date.now()): void {
   const name = byId<HTMLInputElement>('geminiConnectorName');
   if (document.activeElement !== name) name.value = status.settings.connectorName ?? '';
   byId<HTMLInputElement>('geminiFullAccess').checked = status.settings.fullAccess === true;
-
-  const chats = [...new Map(status.commands.filter(c => c.conversation && c.kind === 'send')
-    .map(c => [c.conversation!, c.promptPreview ?? c.conversation!])).entries()].reverse();
-  fillSelect(byId<HTMLSelectElement>('geminiContinue'), 'New chat', chats.map(([key, label]) => [key, label.slice(0, 60)]), byId<HTMLSelectElement>('geminiContinue').value);
 
   const list = byId('geminiCommands');
   list.replaceChildren(...status.commands.filter(c => c.kind === 'send').slice(-8).reverse().map(c => {
@@ -80,6 +76,7 @@ export function paintGemini(status: GeminiStatus, now = Date.now()): void {
     row.append(head, body);
     return row;
   }));
+  if (!list.childElementCount) list.textContent = 'None yet.';
 }
 
 function fillSelect(select: HTMLSelectElement, empty: string, options: Array<[string, string]>, value: string): void {
@@ -393,17 +390,6 @@ export function initGemini(api: AppApi, toast: (message: string) => void, hooks?
   });
   byId<HTMLInputElement>('geminiFullAccess').addEventListener('change', event => {
     void save({ fullAccess: (event.target as HTMLInputElement).checked });
-  });
-  byId('geminiSend').addEventListener('click', async () => {
-    const prompt = byId<HTMLTextAreaElement>('geminiPrompt');
-    const text = prompt.value.trim();
-    if (!text) { toast('Write a message first.'); return; }
-    const conversation = byId<HTMLSelectElement>('geminiContinue').value || null;
-    const reply = await api.sendToGemini({ prompt: text, conversation });
-    if (!reply.ok) { toast('The app did not accept the message.'); return; }
-    if (!reply.data.ok) { toast(geminiErrorText(reply.data.error)); return; }
-    prompt.value = '';
-    toast('Queued for Gemini.');
   });
 }
 

@@ -9477,7 +9477,7 @@ function paintPendingInputs(): void {
   // A row whose status changed is rebuilt; a control of it that had keyboard focus keeps it (CodeRabbit on #2054).
   const active = document.activeElement instanceof HTMLElement && host.contains(document.activeElement) ? document.activeElement : null;
   const focused = active ? { id: active.closest<HTMLElement>('.pending-message')?.dataset.inputId, label: active.getAttribute('aria-label'), cls: active.className } : null;
-  const previous = new Map([...host.querySelectorAll<HTMLElement>(':scope > .pending-message')].map(row => [row.dataset.inputId, row]));
+  const previous = new Map([...host.querySelectorAll<HTMLElement>(':scope > .pending-message, :scope > .typing-bubble')].map(row => [row.dataset.inputId, row]));
   const next = rows.filter(entry => !historicalAutomaticInput(entry)).map(entry => {
     const sig = JSON.stringify([entry.text, entry.state, entry.error, entry.dueAt, entry.scheduled, notice(entry), routeHeld(entry), queuedWaitReason(entry), entry.sendCheck, entry.stagesApplied,
       entry.stages, entry.attachments?.map(file => file.id), entry.images?.map(image => [image.name, image.dataUrl.length]),
@@ -9487,7 +9487,7 @@ function paintPendingInputs(): void {
     const row = inputMessageRow(entry, notice(entry)); row.dataset.inputSignature = sig; return row;
   });
   // Helper controls have their own owner and are refreshed by the queue read below.
-  reconcileChildren(host, [...next, ...host.querySelectorAll<HTMLElement>(':scope > .queued-input')]);
+  reconcileChildren(host, [...next, ...geminiPendingRows(previous), ...host.querySelectorAll<HTMLElement>(':scope > .queued-input')]);
   if (focused?.id && active && !active.isConnected) {
     const row = [...host.querySelectorAll<HTMLElement>(':scope > .pending-message')].find(candidate => candidate.dataset.inputId === focused.id);
     if (row) {
@@ -9972,8 +9972,31 @@ async function sendComposer(delivery?: 'finish' | 'auto' | 'after-turn', plan?: 
 }
 
 /** Gemini sends from the composer, until main reports how they ended. */
-const geminiSends = new Map<string, { sessionId: string | null; generation: number; approval?: string }>();
+const geminiSends = new Map<string, { sessionId: string | null; generation: number; text: string; approval?: string }>();
 const GEMINI_ANSWERING = () => t('Gemini is answering…');
+/** The open chat's Gemini sends, in the order they were sent. */
+const geminiSendsHere = () => [...geminiSends].filter(([, send]) => send.sessionId === selectedId && (selectedId !== null || send.generation === selectionGeneration));
+/** Each unanswered Gemini message as the person's bubble, then dots while Gemini writes (main records the turn when it ends). */
+function geminiPendingRows(previous: Map<string | undefined, HTMLElement>): HTMLElement[] {
+  const here = geminiSendsHere();
+  const rows = here.map(([id, send]) => {
+    const old = previous.get(`gemini:${id}`);
+    if (old) return old;
+    const row = el('div', 'pending-message is-entering');
+    row.dataset.inputId = `gemini:${id}`;
+    const text = el('div', 'pending-message-text', send.text);
+    text.setAttribute('dir', 'auto');
+    row.append(text);
+    return row;
+  });
+  if (!here.length || here.some(([, send]) => send.approval)) return rows;
+  const dots = previous.get('gemini:typing') ?? el('div', 'typing-bubble');
+  dots.dataset.inputId = 'gemini:typing';
+  ui(dots, 'aria-label', GEMINI_ANSWERING);
+  dots.setAttribute('role', 'status');
+  if (!dots.firstChild) dots.append(el('span', ''), el('span', ''), el('span', ''));
+  return [...rows, dots];
+}
 const geminiAsks = (approval: string) => t('Gemini is waiting for your OK in its tab ({0}). Answer it there, or turn on Full access in Settings → Gemini.', [approval]);
 /**
  * Queues one text message for Gemini web (src/main/gemini.ts sends it at most once through the
@@ -9981,11 +10004,13 @@ const geminiAsks = (approval: string) => t('Gemini is waiting for your OK in its
  */
 async function sendComposerToGemini(text: string, extras: boolean, choice: GeminiChoice | null, conversation: string | null): Promise<boolean> {
   if (extras) { toast(t('Gemini gets text only: no files, plans or edits.')); return false; }
+  // A new chat exists only once Gemini answers its first message: a second one now would start another chat (live 2026-11-26).
+  if (selectedId === null && geminiSendsHere().length) { toast(t('Gemini is still starting this chat. Send your next message once its first answer arrives.')); return false; }
   const key = draftKey(), sessionId = selectedId, generation = selectionGeneration;
   const reply = await run(api.sendToGemini({ prompt: text, conversation, ...(choice ? { modeId: choice.modeId, thinkingLevel: choice.thinkingLevel } : {}) }));
   if (!reply) return false;
   if (!reply.ok) { toast(geminiErrorText(reply.error)); return false; }
-  geminiSends.set(reply.id, { sessionId, generation });
+  geminiSends.set(reply.id, { sessionId, generation, text });
   if (choice) rememberComposerChoice({ gemini: choice });
   // The saved draft goes first: restore() refills the composer from it, which put a sent message back (live 2026-11-25).
   inputDrafts.delete(key);
@@ -9995,12 +10020,12 @@ async function sendComposerToGemini(text: string, extras: boolean, choice: Gemin
 }
 function paintGeminiSends(): void {
   const status = $('composerStatus');
-  const here = [...geminiSends.values()].filter(send => send.sessionId === selectedId && (selectedId !== null || send.generation === selectionGeneration));
-  const asked = here.find(send => send.approval)?.approval;
-  const ours = status.textContent === GEMINI_ANSWERING() || status.dataset.gemini === 'ask';
-  if (here.length) status.textContent = asked ? geminiAsks(asked) : GEMINI_ANSWERING();
-  else if (ours) status.textContent = '';
-  if (asked && here.length) status.dataset.gemini = 'ask'; else delete status.dataset.gemini;
+  const asked = geminiSendsHere().find(([, send]) => send.approval)?.[1].approval;
+  if (asked) { status.textContent = geminiAsks(asked); status.dataset.gemini = 'ask'; }
+  else if (status.dataset.gemini === 'ask') { status.textContent = ''; delete status.dataset.gemini; }
+  paintPendingInputs();
+  // As paintTimeline does: a new chat's welcome gives way to the message (and comes back if it failed).
+  if (selectedId === null) $('timelineEmpty').hidden = $('timeline').childElementCount > 0 || $('inputQueue').childElementCount > 0;
 }
 /** A Gemini send ended: say why if it failed, and open a new chat's recorded session. */
 async function geminiSendsChanged(commands: GeminiCommandSummary[]): Promise<void> {
@@ -10010,6 +10035,13 @@ async function geminiSendsChanged(commands: GeminiCommandSummary[]): Promise<voi
     if (!send || !['completed', 'failed', 'cancelled', 'unknown'].includes(command.stage)) continue;
     geminiSends.delete(command.id);
     if (command.stage !== 'completed') toast(geminiErrorText(command.error));
+    // A message Gemini never got goes back into the composer, unless something new was typed there.
+    const input = $<HTMLTextAreaElement>('chatInput');
+    if (command.stage === 'failed' && !command.error?.startsWith('sent; ') && send.sessionId === selectedId &&
+        (selectedId !== null || send.generation === selectionGeneration) && !input.value.trim()) {
+      input.value = send.text;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
     if (!command.sessionId || send.sessionId !== null || selectedId !== null || !newChatSelected || send.generation !== selectionGeneration) continue;
     const summary = sessions.find(row => row.id === command.sessionId) ?? (await run(api.getSession(command.sessionId, { limit: 1 })))?.summary;
     if (!summary || selectedId !== null || send.generation !== selectionGeneration) continue;

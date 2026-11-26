@@ -38,6 +38,7 @@ const MAX_COMMANDS = 40;
 const MAX_NAVIGATIONS = 3;
 /** A saved model list older than this is read again when a signed-in page reports. */
 export const MODES_STALE_MS = 24 * 60 * 60_000;
+const MODES_LIMITED_STALE_MS = 15 * 60_000;
 /** After a failed read, no automatic read for this long (Refresh still reads at once). */
 export const MODES_BACKOFF_MS = 10 * 60_000;
 // Queue timeouts mean no page took the read, not that reading failed: no backoff for those.
@@ -94,6 +95,7 @@ const modeSchema = z.object({
   available: z.boolean(),
   selected: z.boolean(),
   reason: z.string().max(40).nullable(),
+  note: z.string().max(120).nullable().catch(null).default(null),
   levels: z.array(z.string().min(1).max(20)).max(8).nullable().catch(null).default(null),
 });
 const FINGERPRINT = z.string().regex(/^[0-9a-f]{14}$/);
@@ -250,7 +252,9 @@ function modesWanted(page: Snapshot, now: number): boolean {
   // A list saved before levels were read per model (2.2.17 and older) is read again; a newer one that
   // missed one model's levels waits for the usual 24 h, so a model that will not switch is not retried on every report.
   const levelsKnown = catalog?.modes.some(mode => Array.isArray(mode.levels));
-  if (catalog && levelsKnown && now - catalog.observedAt < MODES_STALE_MS) return false;
+  // A model greyed out for a while (its usage limit) is looked at again sooner, so it comes back when Gemini's does.
+  const staleAfter = catalog?.modes.some(mode => mode.note) ? MODES_LIMITED_STALE_MS : MODES_STALE_MS;
+  if (catalog && levelsKnown && now - catalog.observedAt < staleAfter) return false;
   if (modesFailure && now - modesFailure.at < MODES_BACKOFF_MS) return false;
   // Not while other work waits or runs: the read switches models, and a send meanwhile failed (seen live 2026-11-25).
   return !commands.some(c => !settled(c));
@@ -349,6 +353,8 @@ export async function completeGeminiCommand(body: unknown, now = Date.now()): Pr
     if (result.detail) logWarn(`gemini: ${command.kind} ${command.id.slice(0, 8)} ${error}: ${result.detail}`);
     const wasSent = command.stage === 'sent';
     finish(command, 'failed', wasSent ? `sent; ${error}` : error);
+    // The saved list said the model was there: read it again, so the picker shows what Gemini now says.
+    if (command.kind === 'send' && error === 'mode-unavailable') requestGeminiModes({ openPage: false });
     const conversationId = result.conversationId ?? command.conversationId;
     if (command.kind === 'send' && wasSent && conversationId) {
       command.conversationId = conversationId;
@@ -362,7 +368,9 @@ export async function completeGeminiCommand(body: unknown, now = Date.now()): Pr
     const modes = z.array(modeSchema).safeParse(result.modes ?? []);
     const levels = z.array(levelSchema).safeParse(result.thinkingLevels ?? []);
     if (!modes.success || !modes.data.length || !levels.success) { finish(command, 'failed', 'mode-list-invalid'); changed(); return { ok: true }; }
-    catalog = { modes: modes.data, thinkingLevels: levels.data, observedAt: now };
+    // A greyed-out model may show a note instead of its name: keep the name read while it was offered.
+    const named = (mode: GeminiMode) => mode.model ?? catalog?.modes.find(old => old.id === mode.id && old.available)?.model ?? null;
+    catalog = { modes: modes.data.map(mode => ({ ...mode, model: named(mode) })), thinkingLevels: levels.data, observedAt: now };
     modesFailure = null;
     persist();
     finish(command, 'completed');

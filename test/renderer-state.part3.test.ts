@@ -77,6 +77,11 @@ it('shows a missing-extension reminder while connected and clears it after the c
   connected.status.state = 'connected'; connected.bridge.running = true; connected.bridge.present = false;
   mounted.push(connected);
   const doc = mounted.window.document;
+  // Not in the seconds after a start, while the extension reconnects.
+  expect(doc.getElementById('updateNotice')!.hidden).toBe(true);
+  const now = mounted.window.Date.now();
+  mounted.window.Date.now = () => now + 21_000;
+  mounted.push(structuredClone(connected));
   expect(doc.getElementById('updateText')!.textContent).toContain('Browser extension not connected');
   expect(doc.getElementById('updateExtension')!.hidden).toBe(false);
   connected.bridge.present = true; connected.bridge.extensionVersion = connected.update.current;

@@ -9,6 +9,40 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.25] — Gemini answers keep their formatting, and clearer usage limits
+
+### Changed
+
+- **Your message shows as a bubble with typing dots while Gemini answers**, in place of the
+  "Gemini is answering…" status line. The dots give way to the tool approval prompt when Gemini
+  waits on one.
+- **Gemini answers are recorded as Markdown.** They were flattened text, which ran code, tables,
+  lists and paragraphs into one line. Gemini's web images and video cards, which the app cannot
+  show, each leave a line such as "Image, shown in Gemini: …" instead of their captions.
+- **The composer says "Gemini Auto"** for Gemini's Auto model, beside ChatGPT's Automatic.
+- **Settings → Gemini → Send to Gemini is gone**; the composer does the same with a Gemini model
+  picked. Its list of recent sends stays, as "Recent Gemini messages". "Model for messages sent from
+  here" is now "Default model".
+- Settings no longer tells you to remove and add the app in Gemini by hand when the tunnel address
+  changes: the app adds itself again.
+
+### Fixed
+
+All found and checked live on 2026-11-26 in Edge.
+
+- **A Gemini model at its usage limit showed as "Gemini 22 PM"** (from "Limit resets Nov 26, 12:22
+  PM") and a send to it failed with "not available on this account". The picker now shows the
+  reset time, the model list is read again every 15 minutes while a model is limited and right
+  after a send could not switch models, and the error says it may be a usage limit.
+- **A message Gemini never received vanished.** It goes back into the message box when the box is
+  empty.
+- **A second message in a new Gemini chat started a separate Gemini chat** and was not shown. It is
+  refused until the first answer arrives, and its text stays in the message box.
+- **"Browser extension not connected" showed on every start** for the seconds the extension takes
+  to connect. The warning now waits 20 seconds.
+- Clearer Gemini error texts for a busy chat, a missing app mention, a message box that was not
+  ready and a message Gemini did not accept.
+
 ## [2.2.24] — New chats start on the model you last used
 
 ### Changed

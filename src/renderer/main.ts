@@ -1455,7 +1455,9 @@ function updateSummary({ bridge, update, config, status }: AppState): { text: st
       : null;
   // A mismatched companion can fail the protocol gate before it becomes present.
   // Retain its last observed version until a matching companion actually reports in.
-  const missing = !stale && bridge.running && !bridge.present && isRunning(status.state) && browserExtensionRequired(config);
+  // The extension reconnects a few seconds after a start: no red warning in that time (live 2026-11-26).
+  const missing = !stale && bridge.running && !bridge.present && isRunning(status.state) && browserExtensionRequired(config) &&
+    Date.now() - windowOpenedAt >= EXTENSION_CONNECT_GRACE_MS;
   if (!stale && !missing && !update.latest && update.stage === 'idle' && !update.checkedAt && !update.notInstalled) return null;
 
   const lines: string[] = [];
@@ -1507,7 +1509,13 @@ function updateSummary({ bridge, update, config, status }: AppState): { text: st
 }
 
 /** The header bar, the Activity line and the one notification, from that single sentence. */
+const windowOpenedAt = Date.now();
+const EXTENSION_CONNECT_GRACE_MS = 20_000;
+let graceRepaint: number | undefined;
 function paintUpdate(next: AppState): void {
+  // Paint again when the grace ends, in case nothing else changes by then.
+  const left = windowOpenedAt + EXTENSION_CONNECT_GRACE_MS - Date.now();
+  if (left > 0) { window.clearTimeout(graceRepaint); graceRepaint = window.setTimeout(() => paintUpdate(next), left + 50); }
   const summary = updateSummary(next);
   const notice = $('updateNotice');
   const line = $('updateLine');

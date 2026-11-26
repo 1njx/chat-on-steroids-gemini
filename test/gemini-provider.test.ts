@@ -441,6 +441,23 @@ describe('Gemini models read by themselves', () => {
     expect(observeGeminiPage({ tab: 1, snapshot: page() }, later).commands).toEqual([expect.objectContaining({ kind: 'inspect-modes' })]);
   });
 
+  it('reads again after a send could not switch models, keeps a limited model named, and looks again in 15 min', async () => {
+    await loadModes();
+    const { id } = queueGeminiSend({ prompt: 'hi', modeId: '56fdd199312815e2' }) as { id: string };
+    observeGeminiPage({ tab: 1, snapshot: page() });
+    await completeGeminiCommand({ id, tab: 1, stage: 'failed', error: 'mode-unavailable', detail: 'mode disabled' });
+    const [read] = observeGeminiPage({ tab: 1, snapshot: page() }).commands;
+    expect(read).toMatchObject({ kind: 'inspect-modes' });
+    // Live 2026-11-26: Gemini greys a used-up model out and names the time it is back instead of the model.
+    const limited = MODES.map(m => m.id === '56fdd199312815e2' ? { ...m, model: null, available: false, note: 'Limit resets Nov 26, 12:22 PM' } : m);
+    await completeGeminiCommand({ id: read!.id, tab: 1, stage: 'completed', modes: limited, thinkingLevels: [] });
+    expect(geminiStatus().catalog!.modes[1]).toMatchObject({ model: 'Gemini 4 Hydrogen', available: false, note: 'Limit resets Nov 26, 12:22 PM' });
+    expect(queueGeminiSend({ prompt: 'hi', modeId: '56fdd199312815e2' })).toEqual({ ok: false, error: 'mode-unavailable' });
+    const at = geminiStatus().catalog!.observedAt;
+    expect(observeGeminiPage({ tab: 1, snapshot: page() }, at + 14 * 60_000).commands).toEqual([]);
+    expect(observeGeminiPage({ tab: 1, snapshot: page() }, at + 15 * 60_000).commands).toEqual([expect.objectContaining({ kind: 'inspect-modes' })]);
+  });
+
   it('backs off 10 min after a failed read, shows the failure, and a successful read clears it', async () => {
     const [first] = observeGeminiPage({ tab: 1, snapshot: page() }).commands;
     await fail(first!.id as string);

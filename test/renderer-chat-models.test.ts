@@ -868,6 +868,8 @@ it("offers each Gemini model's own thinking levels, and none for a model without
   gemini('auto').click();
   expect(composerGeminiChoice()).toEqual({ modeId: 'auto', thinkingLevel: null });
   expect(doc.querySelectorAll('#composerPowerChoices input')).toHaveLength(0);
+  // Named for its provider: a bare "Auto" read like ChatGPT's Automatic.
+  expect(doc.getElementById('composerModelLabel')!.textContent).toBe('Gemini Auto');
   gemini('neon').click();
   expect(composerGeminiChoice()).toEqual({ modeId: 'neon', thinkingLevel: 'Medium' });
 });

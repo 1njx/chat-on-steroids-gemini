@@ -1055,12 +1055,31 @@ describe('sending to Gemini from the composer', () => {
     expect(sendToGemini).toHaveBeenLastCalledWith({ prompt: 'Hello Gemini', conversation: null, modeId: 'neon', thinkingLevel: 'High' });
     expect(live.sent).toEqual([]);
     expect(field.value).toBe('');
-    expect(doc.getElementById('composerStatus')!.textContent).toBe('Gemini is answering…');
+    // The message shows as the person's bubble with Gemini's typing dots after it, not as a status line.
+    expect(doc.querySelector('#inputQueue [data-input-id="gemini:cmd-1"]')!.textContent).toBe('Hello Gemini');
+    expect(doc.querySelector('#inputQueue .typing-bubble')!.getAttribute('aria-label')).toBe('Gemini is answering…');
+    expect((doc.getElementById('timelineEmpty') as HTMLElement).hidden).toBe(true);
+    // The chat exists only once Gemini answers: a second message now would start a second chat, so it waits in the composer.
+    field.value = 'One more thing'; submit(); await settle();
+    expect(sendToGemini).toHaveBeenCalledTimes(1);
+    expect(doc.querySelector('.toast')!.textContent).toContain('Gemini is still starting this chat.');
+    expect(field.value).toBe('One more thing');
+    field.value = '';
+    expect(doc.getElementById('composerStatus')!.textContent).toBe('');
+    // A tool approval Gemini waits on replaces the dots with what to do; the bubble stays.
+    await app.gemini(status([command('cmd-1', 'sent', { approval: 'Chat On Steroids Core: Read a file?' })]));
+    expect(doc.getElementById('composerStatus')!.textContent).toContain('Chat On Steroids Core: Read a file?');
+    expect(doc.querySelector('#inputQueue .typing-bubble')).toBeNull();
+    expect(doc.querySelector('#inputQueue [data-input-id="gemini:cmd-1"]')).not.toBeNull();
+    await app.gemini(status([command('cmd-1', 'sent')]));
+    expect(doc.getElementById('composerStatus')!.textContent).toBe('');
+    expect(doc.querySelector('#inputQueue .typing-bubble')).not.toBeNull();
 
     // Gemini answered and main recorded the chat: the composer opens it.
     await app.gemini(status([command('cmd-1', 'completed', { sessionId: 'gemini-session', conversation: 'gemini:abcdef0123456789' })]));
     await waitFor(() => expect(doc.querySelector('#sessionList [data-id="gemini-session"]')!.outerHTML).toMatch(/is-sel|aria-current|aria-selected="true"/));
     expect(doc.getElementById('composerStatus')!.textContent).toBe('');
+    expect(doc.querySelector('#inputQueue [data-input-id^="gemini:"], #inputQueue .typing-bubble')).toBeNull();
     // In a Gemini chat the picker lists only Gemini's models, and Send continues that chat with the model last sent with.
     expect(doc.querySelector('#composerModelOptions [data-model]')).toBeNull();
     expect(doc.getElementById('composerModelLabel')!.textContent).toBe('Gemini 4 Neon · High');
@@ -1069,6 +1088,8 @@ describe('sending to Gemini from the composer', () => {
     // A failure says why in Gemini's words.
     await app.gemini(status([command('cmd-2', 'failed', { error: 'send-not-accepted' })]));
     expect(doc.querySelector('.toast')!.textContent).toContain('Gemini did not accept the message.');
+    // It never reached Gemini, so it is back in the composer to send again.
+    expect(field.value).toBe('And now?');
     expect(live.sent).toEqual([]);
   });
 });

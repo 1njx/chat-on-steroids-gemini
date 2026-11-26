@@ -4146,5 +4146,6 @@
   "Created in ChatGPT, with Allow all tools.": "Créé dans ChatGPT, avec « Autoriser tous les outils ».",
   "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "Créé dans ChatGPT. Il n’y a pas de réglage des autorisations ici, donc le premier appel d’outil demandera ; l’extension autorise alors les plugins de cette app.",
   "Open Gemini in Chrome to read its models": "Ouvrez Gemini dans Chrome pour lire ses modèles",
-  "Gemini is waiting for your OK in its tab ({0}). Answer it there, or turn on Full access in Settings → Gemini.": "Gemini attend votre accord dans son onglet ({0}). Répondez-y, ou activez Accès complet dans Paramètres → Gemini."
+  "Gemini is waiting for your OK in its tab ({0}). Answer it there, or turn on Full access in Settings → Gemini.": "Gemini attend votre accord dans son onglet ({0}). Répondez-y, ou activez Accès complet dans Paramètres → Gemini.",
+  "Gemini is still starting this chat. Send your next message once its first answer arrives.": "Gemini est encore en train de démarrer ce chat. Envoyez votre prochain message dès que sa première réponse arrive."
 }

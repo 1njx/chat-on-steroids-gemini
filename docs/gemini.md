@@ -118,10 +118,17 @@ Desktop and Plugins URLs the same way (Plugins page and Setup show them).
 
 **From the chat composer.** The composer's model menu lists every model Gemini's own picker
 showed, under a **Gemini** heading below ChatGPT's. A model that needs a higher plan is listed greyed out
-with that reason. Pick one and the thinking slider offers the thinking levels Gemini offers with
+with that reason; one at its usage limit is greyed out with Gemini's own note ("Limit resets Nov 26,
+12:22 PM"). A send that finds the model greyed out on the page fails, comes back into the composer and
+reads the models again; while one is limited they are read again every 15 minutes. Pick one and the thinking slider offers the thinking levels Gemini offers with
 that model (for example Low, Medium, High; none for Auto). A level the model does not offer is not
 asked for, so Gemini keeps its own. Send then goes to Gemini instead of ChatGPT: a new Gemini chat opens in the
-app once Gemini has answered, and its messages keep going to that Gemini chat. In a Gemini chat
+app once Gemini has answered, and its messages keep going to that Gemini chat. Until the answer
+arrives, your message shows as a bubble with typing dots under it, and a second message to the same
+chat is refused (a new chat exists only once Gemini answered its first message). Answers are
+recorded as Markdown read from Gemini's page, so code, tables, lists and headings keep their
+shape. The app cannot show Gemini's web images and videos: each leaves a line such as "Image,
+shown in Gemini: …" with its description. Gemini's own buttons are left out. In a Gemini chat
 the menu lists only Gemini's models; in a ChatGPT chat only ChatGPT's. Gemini gets text only:
 files, plans and edits are refused with a message.
 
@@ -131,9 +138,10 @@ in inside an embedded browser. Gemini pages in the built-in browser are ignored 
 there. A send that finds only a Gemini page without a composer (for example custom apps) opens a
 new chat in that tab.
 
-**Settings → Gemini → Send to Gemini** sends a message into a new (or a recent) Gemini chat in
-your browser through the extension, waits for the answer and records the turn in the app's
-history as a `gemini:<id>` chat. It:
+**Send with a Gemini model picked in the composer** sends the message into a new (or the open)
+Gemini chat in your browser through the extension, waits for the answer and records the turn in
+the app's history as a `gemini:<id>` chat. Settings → Gemini → Recent Gemini messages lists the
+last ones and how each went. It:
 
 - selects the model and thinking level you chose (or keeps Gemini's), **before** typing, because
   Gemini hides its model picker while a long draft is open;
@@ -296,8 +304,9 @@ when the token matches and Settings → Gemini says Gemini reached the server.
 
 **App → Gemini send** — Load the unpacked extension (Setup step 1), open gemini.google.com signed
 in. Settings → Gemini should show the page as connected and your plan. Press Refresh under
-Models, choose a model, set the connector name, write a message and press Send to Gemini. Pass
-when the row reaches "Answered" and the chat appears in the app's chat list with the answer.
+Models, set the connector name, pick a Gemini model in a new chat's composer and send a message.
+Pass when its row under Recent Gemini messages reaches "Answered" and the chat appears in the app's
+chat list with the answer.
 
 **Roblox Studio** — Add `StudioMCP.exe` as a plugin (above), open a place in Studio with the MCP
 server enabled, add the Plugins URL to Gemini, and ask Gemini via `@Chat On Steroids Plugins` to

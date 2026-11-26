@@ -30,7 +30,8 @@ const geminiLevels = (modeId?: string): string[] => {
 };
 const geminiModeLabel = (modeId: string): string => {
   const mode = gemini?.catalog?.modes.find(item => item.id === modeId);
-  return mode ? mode.model ?? mode.title : 'Gemini';
+  // "Gemini Auto", not "Auto": ChatGPT's own is "Automatic" and the composer shows one name.
+  return mode ? mode.model ?? `Gemini ${mode.title}` : 'Gemini';
 };
 /** The Gemini model last sent with, else the saved Gemini default, else what Gemini has selected, else its first available model. */
 function geminiDefault(): GeminiChoice | null {
@@ -425,7 +426,8 @@ function paintComposerChoices(): void {
       const name = mode.model ?? mode.title;
       const button = el('button', 'model-choice') as HTMLButtonElement;
       button.append(el('span', '', mode.available ? name
-        : mode.reason === 'requires-upgrade' ? () => t('{0} · needs a higher plan', [name]) : () => t('{0} · not available', [name])));
+        : mode.reason === 'requires-upgrade' ? () => t('{0} · needs a higher plan', [name])
+        : mode.note ? `${name} · ${mode.note}` : () => t('{0} · not available', [name])));
       button.type = 'button'; button.dataset.keepMenu = 'true'; button.dataset.geminiMode = mode.id;
       button.disabled = !mode.available;
       if (mode.model && mode.title) button.title = mode.title;

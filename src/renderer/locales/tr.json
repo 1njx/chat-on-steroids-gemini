@@ -4062,5 +4062,6 @@
   "Created in ChatGPT, with Allow all tools.": "ChatGPT'de oluşturuldu, “Tüm araçlara izin ver” ile.",
   "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "ChatGPT'de oluşturuldu. Burada izin ayarı yok, bu yüzden ilk araç çağrısı soracak; eklenti bu uygulamanın kendi eklentilerine izin verir.",
   "Open Gemini in Chrome to read its models": "Modellerini okumak için Gemini'yi Chrome'da açın",
-  "Gemini is waiting for your OK in its tab ({0}). Answer it there, or turn on Full access in Settings → Gemini.": "Gemini kendi sekmesinde onayınızı bekliyor ({0}). Orada yanıtlayın ya da Ayarlar → Gemini'de Tam erişim'i açın."
+  "Gemini is waiting for your OK in its tab ({0}). Answer it there, or turn on Full access in Settings → Gemini.": "Gemini kendi sekmesinde onayınızı bekliyor ({0}). Orada yanıtlayın ya da Ayarlar → Gemini'de Tam erişim'i açın.",
+  "Gemini is still starting this chat. Send your next message once its first answer arrives.": "Gemini bu sohbeti hâlâ başlatıyor. İlk yanıt geldiğinde sonraki mesajınızı gönderin."
 }

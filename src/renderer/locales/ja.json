@@ -3978,5 +3978,6 @@
   "Created in ChatGPT, with Allow all tools.": "ChatGPT に作成し、「すべてのツールを許可」にしました。",
   "Created in ChatGPT. It offers no Permissions setting here, so the first tool call will ask; the extension then allows this app's own plugins.": "ChatGPT に作成しました。ここには権限の設定がないため、最初のツール呼び出しで確認されます。拡張機能がこのアプリ自身のプラグインを許可します。",
   "Open Gemini in Chrome to read its models": "モデルを読み取るには Chrome で Gemini を開いてください",
-  "Gemini is waiting for your OK in its tab ({0}). Answer it there, or turn on Full access in Settings → Gemini.": "Gemini がタブであなたの許可を待っています（{0}）。そこで応答するか、設定 → Gemini でフルアクセスをオンにしてください。"
+  "Gemini is waiting for your OK in its tab ({0}). Answer it there, or turn on Full access in Settings → Gemini.": "Gemini がタブであなたの許可を待っています（{0}）。そこで応答するか、設定 → Gemini でフルアクセスをオンにしてください。",
+  "Gemini is still starting this chat. Send your next message once its first answer arrives.": "Gemini はまだこのチャットを開始しています。最初の回答が届いてから次のメッセージを送信してください。"
 }

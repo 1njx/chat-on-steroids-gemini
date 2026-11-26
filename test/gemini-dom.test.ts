@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const source = readFileSync(new URL('../extension/gemini-dom.js', import.meta.url), 'utf8');
 
-interface Mode { id: string; title: string; model: string | null; available: boolean; selected: boolean; reason: string | null }
+interface Mode { id: string; title: string; model: string | null; available: boolean; selected: boolean; reason: string | null; note?: string | null }
 interface GeminiDom {
   conversationId(href?: string): string | null;
   signInState(): 'signed-in' | 'signed-out' | 'unknown';
@@ -21,7 +21,7 @@ interface GeminiDom {
   send(options?: { acceptanceTimeoutMs?: number }): Promise<boolean>;
   generating(): boolean;
   stopGeneration(): boolean;
-  turns(): Array<{ id: string | null; user: string; answer: string; final: boolean }>;
+  turns(): Array<{ id: string | null; user: string; answer: string; answerHtml: string; final: boolean }>;
   errors(): Array<{ text: string; quota: boolean; signedOut: boolean }>;
   localized(): boolean;
   snapshot(): Record<string, unknown> & { account: unknown; lastTurn: { id: string; final: boolean } | null };
@@ -201,15 +201,18 @@ describe('Gemini page adapter', () => {
         const open = button.getAttribute('aria-expanded') !== 'true';
         button.setAttribute('aria-expanded', String(open));
         menu.innerHTML = open ? option('8c46e95b1a07cecc', 'Auto', 'Adapts to your needs') + option('56fdd199312815e2', 'Everyday help', '4 Hydrogen') +
-          option('e6fa609c3fa255c0', 'Deeper analysis', '4 Neon', true) + option('upsell_MODE_CATEGORY_ULTRA', 'Code &amp; complex work', '4 Carbon') : '';
+          option('e6fa609c3fa255c0', 'Deeper analysis', '4 Neon', true) + option('upsell_MODE_CATEGORY_ULTRA', 'Code &amp; complex work', '4 Carbon') +
+          // Live 2026-11-26: a model at its usage limit is greyed out and says when it is back instead of its name.
+          option('limited', 'Everyday help', 'Limit resets Nov 26, 12:22 PM').replace('aria-disabled="false"', 'aria-disabled="true"') : '';
       });
     }, 400);
     const result = await api.inspectModes();
-    expect(result!.modes.map(m => [m.title, m.model, m.available, m.selected])).toEqual([
-      ['Auto', null, true, false],
-      ['Everyday help', 'Gemini 4 Hydrogen', true, false],
-      ['Deeper analysis', 'Gemini 4 Neon', true, true],
-      ['Code & complex work', 'Gemini 4 Carbon', false, false],
+    expect(result!.modes.map(m => [m.title, m.model, m.available, m.selected, m.note])).toEqual([
+      ['Auto', null, true, false, null],
+      ['Everyday help', 'Gemini 4 Hydrogen', true, false, null],
+      ['Deeper analysis', 'Gemini 4 Neon', true, true, null],
+      ['Code & complex work', 'Gemini 4 Carbon', false, false, null],
+      ['Everyday help', null, false, false, 'Limit resets Nov 26, 12:22 PM'],
     ]);
     expect(document.querySelector('[data-test-id="bard-mode-menu-button"]')!.getAttribute('aria-expanded')).toBe('false');
     expect(api.readOpenModes()).toEqual([]);
@@ -282,6 +285,36 @@ describe('Gemini page adapter', () => {
       { id: '5c4f', user: 'next', answer: 'partial', answerHtml: '<p>partial</p>', final: false, approval: null },
     ]);
     expect(api.snapshot().lastTurn).toEqual({ id: '5c4f', final: false, answerChars: 7 });
+  });
+
+  it("names Gemini's web image and video cards in the answer instead of their captions (live markup 2026-11-26, trimmed)", () => {
+    const image = '<div class="attachment-container search-images"><response-element class="no-md"><single-image><div class="image-container">' +
+      '<img alt="Otter floating on water"><div class="caption"> Otter floating on water. <span>Source: River Otter Ecology Project</span></div></div></single-image></response-element></div>';
+    const videos = '<div class="attachment-container unknown"><response-element class="no-md"><base-carousel><base-video><div class="base-video-timestamp-badge"> 6:34 </div>' +
+      '<div class="base-video-title"> Funny Otters </div></base-video></base-carousel></response-element></div>';
+    addTurn('7d1e', 'otters', `Otters use tools.</p>${image}<p>They groom often.</p>${videos}<p>`);
+    const [turn] = api.turns();
+    expect(turn!.answer).toBe('Otters use tools.\n\n*Image, shown in Gemini: Otter floating on water*\n\nThey groom often.\n\n*Video, shown in Gemini: Funny Otters*');
+    expect(turn!.answerHtml).not.toMatch(/Source|Funny Otters|<img/);
+  });
+
+  it("keeps code, tables, lists and emphasis as Markdown, without Gemini's own buttons (live markup 2026-11-26, trimmed)", () => {
+    const code = '<response-element><code-block><div class="code-block"><div class="code-block-decoration"><span>Python</span><div class="buttons">' +
+      '<gem-icon-button><button aria-label="Copy code"><mat-icon fonticon="copy">copy</mat-icon></button></gem-icon-button></div></div>' +
+      '<pre><code data-test-id="code-content"><span class="hljs-keyword">def</span> add(a, b):\n    <span>return</span> a + b\n</code></pre></div></code-block></response-element>';
+    const table = '<div class="horizontal-scroll-wrapper"><div class="table-block-component"><response-element><table-block><div class="table-block">' +
+      '<div class="table-content"><table><thead><tr><th><span>Planet</span></th><th><span>Moons</span></th></tr></thead>' +
+      '<tbody><tr><td>Earth</td><td>1</td></tr><tr><td>Mars</td><td>2</td></tr></tbody></table></div>' +
+      '<div class="table-footer"><gem-icon-button><button aria-label="More options">more_horiz</button></gem-icon-button></div></div></table-block></response-element></div></div>';
+    addTurn('8e2f', 'code', `Here you go:</p>${code}${table}<h3>Notes</h3><ul><li>Uses <b>floats</b></li><li>Has <code>a + b</code><ol><li>nested</li></ol></li></ul><p>Done.`);
+    expect(api.turns()[0]!.answer).toBe([
+      'Here you go:',
+      '```python\ndef add(a, b):\n    return a + b\n```',
+      '| Planet | Moons |\n| --- | --- |\n| Earth | 1 |\n| Mars | 2 |',
+      '### Notes',
+      '- Uses **floats**\n- Has `a + b`\n   1. nested',
+      'Done.',
+    ].join('\n\n'));
   });
 
   it('keeps time through the extension worker in a hidden tab, whose own timers Chrome slows to once a minute', async () => {

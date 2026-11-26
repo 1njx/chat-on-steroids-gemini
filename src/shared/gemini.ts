@@ -10,6 +10,8 @@ export interface GeminiMode {
   selected: boolean;
   /** Why it is unavailable as the page showed it, e.g. "requires-upgrade". */
   reason: string | null;
+  /** What Gemini says beside a model it greys out, e.g. when a used-up model is back; in the page's language. */
+  note?: string | null;
   /** The thinking levels Gemini offers with this model ([] for none, e.g. Auto); null when not read. */
   levels?: string[] | null;
 }
@@ -94,12 +96,12 @@ export function geminiUrlFingerprint(url: string): string {
 export const GEMINI_ERRORS: Record<string, string> = {
   'signed-out': 'Gemini is signed out in the browser. Sign in at gemini.google.com.',
   'page-not-english': 'The Gemini page is not in English. Custom MCP apps and this integration require Gemini in English.',
-  'mode-unavailable': 'That Gemini model is not available on this account.',
+  'mode-unavailable': "Gemini would not switch to that model; it may have reached its usage limit. Pick another model or try again later.",
   'requires-upgrade': 'That Gemini model needs a higher Google AI plan on this account.',
   'thinking-level-unavailable': 'That thinking level is not offered for the selected model.',
-  'connector-not-offered': 'Gemini did not offer a connected app with that name. Add the Core MCP server under Gemini → Connectors → Custom and enter the exact name it shows.',
-  'composer-unavailable': 'The Gemini composer was not available.',
-  'send-not-accepted': 'Gemini did not accept the message.',
+  'connector-not-offered': 'Gemini did not offer a connected app with that name. Check the app name in Settings → Gemini, or add the app to Gemini again from there.',
+  'composer-unavailable': "Gemini's message box was not ready. Try sending again.",
+  'send-not-accepted': 'Gemini did not accept the message. Try sending it again.',
   'withdrawn': 'The message was withdrawn before it was sent.',
   'busy': 'Gemini was still answering in that chat.',
   'answer-timeout': 'Gemini did not finish answering within 30 minutes.',
@@ -115,7 +117,7 @@ export const GEMINI_ERRORS: Record<string, string> = {
   'mode-list-invalid': "Gemini's model picker did not look as expected, so no models were read.",
   'invalid-request': 'The request was not valid.',
   'invalid-conversation': 'That is not a Gemini chat.',
-  'conversation-busy': 'A message to that Gemini chat is already on its way.',
+  'conversation-busy': 'Gemini is still answering in this chat. Send your next message once the answer arrives.',
   'custom-apps-layout-unknown': "Gemini's custom apps page did not look as expected, so nothing was filled in. Add the app by hand: click Custom, paste the address, then Next.",
   'invalid-url': 'Gemini needs an https address. Finish the Tunnel step first.',
   'delete-failed': "Gemini did not delete the app with the old address after 3 tries. Delete it by hand (open it, More options, Delete, then Remove), then press the button again.",
