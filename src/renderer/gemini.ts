@@ -1,47 +1,52 @@
 /**
- * Settings → Gemini: a setup wizard like Setup's, connection status, the account's models and a send box.
+ * Settings → Gemini: a setup wizard like Setup's, connection status, the account's models and recent sends.
  * Projection only: every fact comes from the main process (src/main/gemini.ts) and every action
- * goes back through it. The page is English-only, like Gemini's own custom apps.
+ * goes back through it. Gemini's own buttons it names (Custom, Next, Connect) stay in English,
+ * because Google offers custom apps on the English Gemini page only.
  */
 import type { AppApi } from '../preload/index.js';
 import type { AppState } from '../shared/types.js';
 import { GEMINI_ERRORS, geminiUrlFingerprint, type GeminiCommandSummary, type GeminiStatus } from '../shared/gemini.js';
 import { el, icon } from './dom.js';
+import { onLanguageChange, t, tn } from './i18n.js';
 
 const byId = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
 
-const STAGES: Record<GeminiCommandSummary['stage'], string> = {
-  queued: 'Waiting for a Gemini page', claimed: 'Taken by a Gemini page', sending: 'Sending',
-  sent: 'Sent; Gemini is answering', completed: 'Answered', failed: 'Failed', cancelled: 'Withdrawn', unknown: 'Outcome unknown',
+const STAGES: Record<GeminiCommandSummary['stage'], () => string> = {
+  queued: () => t('Waiting for a Gemini page'), claimed: () => t('Taken by a Gemini page'), sending: () => t('Sending'),
+  sent: () => t('Sent; Gemini is answering'), completed: () => t('Answered'), failed: () => t('Failed'), cancelled: () => t('Withdrawn'),
+  unknown: () => t('Outcome unknown'),
 };
 
 export function geminiErrorText(code: string | null): string {
   if (!code) return '';
   const sent = code.startsWith('sent; ');
   const bare = sent ? code.slice(6) : code;
-  const text = GEMINI_ERRORS[bare] ?? bare;
-  return sent ? `Sent, then: ${text}` : text;
+  const known = GEMINI_ERRORS[bare];
+  const text = known === undefined ? bare : t(known);
+  return sent ? t('Sent, then: {0}', [text]) : text;
 }
 
 function ago(at: number, now = Date.now()): string {
   const s = Math.max(0, Math.round((now - at) / 1000));
-  return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} h ago`;
+  return s < 60 ? t('{0}s ago', [s]) : s < 3600 ? t('{0} min ago', [Math.round(s / 60)]) : t('{0} h ago', [Math.round(s / 3600)]);
 }
 
 export function paintGemini(status: GeminiStatus, now = Date.now()): void {
   byId('geminiPageStatus').textContent = status.pages
-    ? `${status.pages} Gemini page${status.pages === 1 ? '' : 's'} connected through the extension.`
-    : 'No Gemini page is reporting. Open gemini.google.com in the browser where the extension is connected.';
+    ? tn('{0} Gemini page connected through the extension.', '{0} Gemini pages connected through the extension.', status.pages)
+    : t('No Gemini page is reporting. Open gemini.google.com in the browser where the extension is connected.');
   byId('geminiAccountStatus').textContent = status.signIn === 'signed-in'
-    ? `Signed in${status.account?.plan ? ` · Google AI ${status.account.plan}` : ''}${status.selectedMode ? ` · Gemini shows ${status.selectedMode}` : ''}`
-    : status.signIn === 'signed-out' ? 'Signed out. Sign in at gemini.google.com.' : 'Unknown until a Gemini page reports.';
+    ? [t('Signed in'), status.account?.plan ? t('Google AI {0}', [status.account.plan]) : '', status.selectedMode ? t('Gemini shows {0}', [status.selectedMode]) : '']
+      .filter(Boolean).join(' · ')
+    : status.signIn === 'signed-out' ? t('Signed out. Sign in at gemini.google.com.') : t('Unknown until a Gemini page reports.');
   byId('geminiConnectorStatus').textContent = (status.connectorSeenAt
-    ? `Gemini last reached this app's MCP server ${ago(status.connectorSeenAt, now)}.`
-    : 'No call from Gemini yet in this run. Add the Core URL below in Gemini, then mention it in a chat.') +
+    ? t("Gemini last reached this app's MCP server {0}.", [ago(status.connectorSeenAt, now)])
+    : t('No call from Gemini yet in this run. Add the Core URL below in Gemini, then mention it in a chat.')) +
     [autoFillText(status, now), fillWaitText(status)].filter(Boolean).map(text => ` ${text}`).join('');
   const warnings = [
-    ...(status.localized ? ['A Gemini page is not in English. Google offers custom apps in English only, and this integration needs the English page.'] : []),
-    ...(status.quotaLimited ? ['Gemini shows a usage limit. Wait for the reset Gemini names; switching accounts or chats to avoid it is not supported.'] : []),
+    ...(status.localized ? [t('A Gemini page is not in English. Google offers custom apps in English only, and this integration needs the English page.')] : []),
+    ...(status.quotaLimited ? [t('Gemini shows a usage limit. Wait for the reset Gemini names; switching accounts or chats to avoid it is not supported.')] : []),
     ...status.errors.slice(0, 2),
   ];
   byId('geminiWarnings').hidden = !warnings.length;
@@ -49,15 +54,20 @@ export function paintGemini(status: GeminiStatus, now = Date.now()): void {
 
   const modes = status.catalog?.modes ?? [];
   const failure = status.modesFailure && (!status.catalog || status.modesFailure.at > status.catalog.observedAt) ? status.modesFailure : null;
+  const modeName = (m: typeof modes[number]): string => {
+    const name = m.model ?? m.title;
+    if (m.available) return name;
+    if (m.reason === 'requires-upgrade') return t('{0} (unavailable: needs a higher plan)', [name]);
+    return m.note ? t('{0} (unavailable: {1})', [name, m.note]) : t('{0} (unavailable)', [name]);
+  };
   byId('geminiModelList').textContent = (modes.length
-    ? modes.map(m => `${m.model ?? m.title}${m.available ? '' : ` (unavailable${m.reason === 'requires-upgrade' ? ': needs a higher plan' : m.note ? `: ${m.note}` : ''})`}`).join(' · ') +
-      ` — read ${ago(status.catalog!.observedAt, now)}`
-    : failure ? '' : 'Not read yet. It is read by itself when a signed-in Gemini page is open; Refresh reads it now. Reading never changes your model.') +
-    (failure ? `${modes.length ? '. ' : ''}Reading Gemini's models failed ${ago(failure.at, now)}: ${geminiErrorText(failure.error)} ` +
-      (failure.retryAt > now ? `It tries again by itself in ${Math.ceil((failure.retryAt - now) / 60_000)} min; Refresh tries now.` : 'Refresh to try again.') : '');
-  fillSelect(byId<HTMLSelectElement>('geminiDefaultMode'), 'As in Gemini',
+    ? t('{0} — read {1}', [modes.map(modeName).join(' · '), ago(status.catalog!.observedAt, now)])
+    : failure ? '' : t('Not read yet. It is read by itself when a signed-in Gemini page is open; Refresh reads it now. Reading never changes your model.')) +
+    (failure ? `${modes.length ? '. ' : ''}${t("Reading Gemini's models failed {0}: {1}", [ago(failure.at, now), geminiErrorText(failure.error)])} ` +
+      (failure.retryAt > now ? t('It tries again by itself in {0} min; Refresh tries now.', [Math.ceil((failure.retryAt - now) / 60_000)]) : t('Refresh to try again.')) : '');
+  fillSelect(byId<HTMLSelectElement>('geminiDefaultMode'), t('As in Gemini'),
     modes.filter(m => m.available).map(m => [m.id, m.model ? `${m.model} (${m.title})` : m.title]), status.settings.defaultModeId ?? '');
-  fillSelect(byId<HTMLSelectElement>('geminiThinking'), 'As in Gemini',
+  fillSelect(byId<HTMLSelectElement>('geminiThinking'), t('As in Gemini'),
     (status.catalog?.thinkingLevels ?? []).filter(l => l.available).map(l => [l.label, l.label]), status.settings.defaultThinkingLevel ?? '');
   const name = byId<HTMLInputElement>('geminiConnectorName');
   if (document.activeElement !== name) name.value = status.settings.connectorName ?? '';
@@ -69,14 +79,14 @@ export function paintGemini(status: GeminiStatus, now = Date.now()): void {
     row.className = 'gemini-command';
     row.dataset.stage = c.stage;
     const head = document.createElement('b');
-    head.textContent = `${STAGES[c.stage]} · ${ago(c.updatedAt, now)}`;
+    head.textContent = `${STAGES[c.stage]()} · ${ago(c.updatedAt, now)}`;
     const body = document.createElement('span');
-    body.textContent = [c.promptPreview ?? '', geminiErrorText(c.error), c.answerChars !== null ? `${c.answerChars} characters answered` : '']
+    body.textContent = [c.promptPreview ?? '', geminiErrorText(c.error), c.answerChars !== null ? t('{0} characters answered', [c.answerChars]) : '']
       .filter(Boolean).join(' — ');
     row.append(head, body);
     return row;
   }));
-  if (!list.childElementCount) list.textContent = 'None yet.';
+  if (!list.childElementCount) list.textContent = t('None yet.');
 }
 
 function fillSelect(select: HTMLSelectElement, empty: string, options: Array<[string, string]>, value: string): void {
@@ -112,9 +122,9 @@ export interface GeminiSetupHooks {
 export const GEMINI_SETUP_STEPS = ['browser', 'signin', 'folder', 'tunnel', 'add', 'try'] as const;
 type TaskStep = typeof GEMINI_SETUP_STEPS[number];
 type SetupStep = TaskStep | 'ready';
-const STEP_LABELS: Record<TaskStep, string> = {
-  browser: 'Browser extension connected', signin: 'Signed in to Gemini', folder: 'Folder shared', tunnel: 'https address ready',
-  add: 'App added in Gemini', try: 'Gemini ran one of the app\'s tools',
+const STEP_LABELS: Record<TaskStep, () => string> = {
+  browser: () => t('Browser extension connected'), signin: () => t('Signed in to Gemini'), folder: () => t('Folder shared'),
+  tunnel: () => t('https address ready'), add: () => t('App added in Gemini'), try: () => t("Gemini ran one of the app's tools"),
 };
 let appState: AppState | null = null;
 let geminiState: GeminiStatus | null = null;
@@ -173,19 +183,19 @@ export function paintGeminiSetup(now = Date.now()): void {
   progress.setAttribute('aria-valuenow', String(finished));
   progress.classList.toggle('is-complete', current === null);
   byId('geminiSetupProgressText').textContent = current === null
-    ? `All ${GEMINI_SETUP_STEPS.length} steps done` : `${finished} of ${GEMINI_SETUP_STEPS.length} steps done`;
+    ? t('All {0} steps done', [GEMINI_SETUP_STEPS.length]) : t('{0} of {1} steps done', [finished, GEMINI_SETUP_STEPS.length]);
 
   pill('geminiBrowserPill', done.has('browser') ? 'ok' : state.bridge.paired ? 'wait' : 'off', done.has('browser')
-    ? 'Extension connected' : state.bridge.paired ? 'Set up, but not connected now: open your browser' : 'Waiting for the extension…');
+    ? t('Extension connected') : state.bridge.paired ? t('Set up, but not connected now: open your browser') : t('Waiting for the extension…'));
   pill('geminiSigninPill', done.has('signin') ? 'ok' : status?.signIn === 'signed-out' ? 'bad' : status?.pages ? 'wait' : 'off', done.has('signin')
-    ? `Signed in${status?.account?.plan ? ` · Google AI ${status.account.plan}` : ''}`
-    : status?.signIn === 'signed-out' ? 'Signed out: sign in on the Gemini page'
-      : status?.pages ? 'Gemini page open; waiting for it to report…' : 'No Gemini page open yet');
-  const signinWarn = status?.localized ? 'This Gemini page is not in English. Set Gemini to English: custom apps are offered in English only.' : '';
+    ? [t('Signed in'), status?.account?.plan ? t('Google AI {0}', [status.account.plan]) : ''].filter(Boolean).join(' · ')
+    : status?.signIn === 'signed-out' ? t('Signed out: sign in on the Gemini page')
+      : status?.pages ? t('Gemini page open; waiting for it to report…') : t('No Gemini page open yet'));
+  const signinWarn = status?.localized ? t('This Gemini page is not in English. Set Gemini to English: custom apps are offered in English only.') : '';
   byId('geminiSigninWarn').hidden = !signinWarn;
   byId('geminiSigninWarn').textContent = signinWarn;
   const roots = state.config.roots.length;
-  pill('geminiFolderPill', roots ? 'ok' : 'off', roots ? `${roots} folder${roots === 1 ? '' : 's'} shared` : 'No folder shared yet');
+  pill('geminiFolderPill', roots ? 'ok' : 'off', roots ? tn('{0} folder shared', '{0} folders shared', roots) : t('No folder shared yet'));
 
   const kind = state.config.tunnel.kind;
   const connected = state.status.state === 'connected';
@@ -194,14 +204,14 @@ export function paintGeminiSetup(now = Date.now()): void {
   const wanted = status?.settings.httpsTunnel === true;
   const sideBusy = kind === 'openai' && wanted && connected && side?.state !== 'error' && !side?.url;
   const sideFailed = kind === 'openai' && side?.state === 'error';
-  pill('geminiTunnelPill', done.has('tunnel') ? 'ok' : busy || sideBusy ? 'wait' : sideFailed ? 'bad' : 'off', done.has('tunnel') ? 'Connected with an https address'
-    : busy ? 'Connecting…' : sideBusy ? "Starting Gemini's tunnel…" : sideFailed ? `Gemini's tunnel failed: ${side?.detail ?? ''}`
-    : kind === 'manual' && connected ? 'Connected, but your own tunnel has no https address yet (Setup → Advanced)' : 'Not connected');
+  pill('geminiTunnelPill', done.has('tunnel') ? 'ok' : busy || sideBusy ? 'wait' : sideFailed ? 'bad' : 'off', done.has('tunnel') ? t('Connected with an https address')
+    : busy ? t('Connecting…') : sideBusy ? t("Starting Gemini's tunnel…") : sideFailed ? t("Gemini's tunnel failed: {0}", [side?.detail ?? ''])
+    : kind === 'manual' && connected ? t('Connected, but your own tunnel has no https address yet (Setup → Advanced)') : t('Not connected'));
   byId('geminiTunnelBeside').hidden = kind !== 'openai';
   byId('geminiTunnelWarn').hidden = kind !== 'cloudflared';
   byId('geminiTunnelBack').hidden = kind !== 'cloudflared';
   byId('geminiTunnelOff').hidden = kind !== 'openai' || !wanted;
-  byId('geminiTunnelGoLabel').textContent = kind === 'openai' && !wanted ? 'Start a tunnel for Gemini' : 'Connect';
+  byId('geminiTunnelGoLabel').textContent = kind === 'openai' && !wanted ? t('Start a tunnel for Gemini') : t('Connect');
   byId<HTMLButtonElement>('geminiTunnelGo').disabled = done.has('tunnel') || busy || sideBusy
     || (connected && (kind !== 'openai' || (wanted && !sideFailed)));
 
@@ -213,7 +223,7 @@ export function paintGeminiSetup(now = Date.now()): void {
   byId('geminiNamedService').textContent = local ? new URL(local).origin.replace('127.0.0.1', 'localhost') : 'http://localhost:port';
 
   const url = coreHttpsUrl(state);
-  byId('geminiSetupUrl').textContent = url ?? 'Finish the Tunnel step first.';
+  byId('geminiSetupUrl').textContent = url ?? t('Finish the Tunnel step first.');
   byId<HTMLButtonElement>('geminiSetupCopy').disabled = !url;
   byId<HTMLButtonElement>('geminiFillApp').disabled = !url;
   pill('geminiAddPill', ...addPill(status, url, now));
@@ -226,22 +236,22 @@ export function paintGeminiSetup(now = Date.now()): void {
   byId('geminiFillPill').hidden = !fill;
   if (fill) pill('geminiFillPill', ...fillPill(fill, url));
   const name = status?.settings.connectorName || 'Chat On Steroids Core';
-  byId('geminiTryPrompt').textContent = `@${name} list the files in my shared folder`;
-  pill('geminiTryPill', done.has('try') ? 'ok' : 'off', status?.toolCallSeenAt ? `Gemini ran one of the app's tools ${ago(status.toolCallSeenAt, now)}`
-    : 'Waiting for Gemini to run one of the app\'s tools…');
+  byId('geminiTryPrompt').textContent = t('@{0} list the files in my shared folder', [name]);
+  pill('geminiTryPill', done.has('try') ? 'ok' : 'off', status?.toolCallSeenAt ? t("Gemini ran one of the app's tools {0}", [ago(status.toolCallSeenAt, now)])
+    : t("Waiting for Gemini to run one of the app's tools…"));
 
   byId('geminiReadyChecks').replaceChildren(...GEMINI_SETUP_STEPS.map(step => {
     const row = el('li', `ready-check${done.has(step) ? ' is-passed' : ''}`);
-    row.append(icon(done.has(step) ? 'i-check-circle' : 'i-warning'), el('span', '', STEP_LABELS[step]));
+    row.append(icon(done.has(step) ? 'i-check-circle' : 'i-warning'), el('span', '', STEP_LABELS[step]()));
     if (!done.has(step)) {
-      const go = el('button', 'ready-go', 'Go to step');
+      const go = el('button', 'ready-go', t('Go to step'));
       go.setAttribute('type', 'button');
       go.addEventListener('click', () => openStep(step));
       row.append(go);
     }
     return row;
   }));
-  byId('geminiReadyTitle').textContent = current === null ? 'Gemini is set up' : 'Almost there';
+  byId('geminiReadyTitle').textContent = current === null ? t('Gemini is set up') : t('Almost there');
 }
 
 /**
@@ -251,16 +261,16 @@ export function paintGeminiSetup(now = Date.now()): void {
  */
 export function addPill(status: GeminiStatus | null, url: string | null, now = Date.now()): ['ok' | 'wait' | 'off' | 'bad', string] {
   const checks = addChecks(status, url);
-  if (checks.every(check => check.ok)) return ['ok', `Gemini has the app once, with this address, and reached it ${ago(status!.connectorSeenAt!, now)}`];
-  if (status?.connectorSeenAt) return ['wait', `Gemini reached the app ${ago(status.connectorSeenAt, now)}; ${checks.filter(check => !check.ok).length} check(s) below are not passed yet.`];
+  if (checks.every(check => check.ok)) return ['ok', t('Gemini has the app once, with this address, and reached it {0}', [ago(status!.connectorSeenAt!, now)])];
+  if (status?.connectorSeenAt) return ['wait', t('Gemini reached the app {0}; {1} check(s) below are not passed yet.', [ago(status.connectorSeenAt, now), checks.filter(check => !check.ok).length])];
   const given = status?.settings.givenUrlHash ?? null;
   if (url && given && given !== geminiUrlFingerprint(url)) {
-    return ['bad', `Your Gemini custom app has an old address. Update it to ${url} — Gemini cannot edit an address, so "Add it in Gemini for me" deletes the old app and adds it again.`];
+    return ['bad', t('Your Gemini custom app has an old address. Update it to {0} — Gemini cannot edit an address, so "Add it in Gemini for me" deletes the old app and adds it again.', [url])];
   }
-  if (url && given) return ['wait', 'Gemini has this address. Mention the app in a Gemini chat (next step) so Gemini reaches it.'];
+  if (url && given) return ['wait', t('Gemini has this address. Mention the app in a Gemini chat (next step) so Gemini reaches it.')];
   return ['off', status?.settings.namedTunnelHost
-    ? 'Waiting for Gemini to reach the app. Your own tunnel keeps this address across restarts.'
-    : 'Waiting for Gemini to reach the app. A quick tunnel gets a new address at each start: add the app again with it.'];
+    ? t('Waiting for Gemini to reach the app. Your own tunnel keeps this address across restarts.')
+    : t('Waiting for Gemini to reach the app. A quick tunnel gets a new address at each start: add the app again with it.')];
 }
 
 /**
@@ -275,27 +285,28 @@ export function addChecks(status: GeminiStatus | null, url: string | null): Arra
   const name = status?.settings.connectorName || 'Chat On Steroids Core';
   const after = (at: number | null | undefined) => since !== null && typeof at === 'number' && at >= since;
   return [
-    { label: 'The address answers through the tunnel', ok: !!reach?.ok,
-      hint: !url ? 'finish the Tunnel step first' : reach ? 'it did not answer from outside; check the Tunnel step (checked again every 30 seconds)' : 'checking…' },
-    { label: `Gemini has ${name} once, with this address`, ok: !!hash && status?.settings.verifiedUrlHash === hash,
-      hint: 'press "Add it in Gemini for me": it deletes old copies, adds this address and checks the list' },
-    { label: 'Gemini connected to the app', ok: after(status?.connectorSeenAt),
-      hint: 'waiting for Gemini to reach the app at this address' },
-    { label: "Gemini read the app's tools", ok: after(status?.toolsListedAt),
-      hint: "waiting for Gemini to list the app's tools (it does when it connects)" },
+    { label: t('The address answers through the tunnel'), ok: !!reach?.ok,
+      hint: !url ? t('finish the Tunnel step first') : reach ? t('it did not answer from outside; check the Tunnel step (checked again every 30 seconds)') : t('checking…') },
+    { label: t('Gemini has {0} once, with this address', [name]), ok: !!hash && status?.settings.verifiedUrlHash === hash,
+      hint: t('press "Add it in Gemini for me": it deletes old copies, adds this address and checks the list') },
+    { label: t('Gemini connected to the app'), ok: after(status?.connectorSeenAt),
+      hint: t('waiting for Gemini to reach the app at this address') },
+    { label: t("Gemini read the app's tools"), ok: after(status?.toolsListedAt),
+      hint: t("waiting for Gemini to list the app's tools (it does when it connects)") },
   ];
 }
 
 /** Said when no page with the extension took "Add it in Gemini for me" (the default browser may have none). */
 export const UNCLAIMED = 'Open Gemini in the browser that has the Chat On Steroids extension.';
-const UNCLAIMED_HINT = `If nothing happens there: ${UNCLAIMED}`;
+const unclaimed = (): string => t(UNCLAIMED);
+const unclaimedHint = (): string => t('If nothing happens there: {0}', [unclaimed()]);
 
 /** The last "Add it in Gemini for me" for Settings → Gemini, while it waits for a page or when none took it; '' otherwise. */
 export function fillWaitText(status: GeminiStatus): string {
   const fill = [...status.commands].reverse().find(c => c.kind === 'fill-app');
   if (!fill || fill.id === status.autoFill?.id) return '';
-  if (fill.stage === 'queued') return `"Add it in Gemini for me" is opening Gemini custom apps in your default browser. ${UNCLAIMED_HINT}`;
-  if (fill.stage === 'failed' && fill.error === 'gemini-page-not-connected') return `"Add it in Gemini for me" found no Gemini page with the extension. ${UNCLAIMED}`;
+  if (fill.stage === 'queued') return t('"Add it in Gemini for me" is opening Gemini custom apps in your default browser. {0}', [unclaimedHint()]);
+  if (fill.stage === 'failed' && fill.error === 'gemini-page-not-connected') return t('"Add it in Gemini for me" found no Gemini page with the extension. {0}', [unclaimed()]);
   return '';
 }
 
@@ -304,31 +315,43 @@ export function autoFillText(status: GeminiStatus, now = Date.now()): string {
   const fill = status.autoFill ? status.commands.find(c => c.id === status.autoFill!.id) : null;
   if (!fill) return '';
   const name = status.settings.connectorName || 'Chat On Steroids Core';
-  const lead = `Your tunnel address changed ${ago(status.autoFill!.at, now)}, so the app`;
-  if (fill.stage === 'completed') return `${lead} added ${name} in Gemini again with the new address.`;
+  const when = ago(status.autoFill!.at, now);
+  const error = fill.error === 'gemini-page-not-connected' ? unclaimed() : geminiErrorText(fill.error);
+  if (fill.stage === 'completed') return t('Your tunnel address changed {0}, so the app added {1} in Gemini again with the new address.', [when, name]);
   const retryAt = status.autoFill!.retryAt;
-  if (retryAt) return `${lead} tried to add ${name} in Gemini again, which did not finish${fill.error ? `: ${fill.error === 'gemini-page-not-connected' ? UNCLAIMED : geminiErrorText(fill.error)}` : '.'} It tries again by itself ${retryAt <= now ? 'now' : `in ${Math.ceil((retryAt - now) / 60_000)} min`}.`;
-  if (fill.stage === 'failed') return `${lead} tried to add ${name} in Gemini again, which failed: ${fill.error === 'gemini-page-not-connected' ? UNCLAIMED : geminiErrorText(fill.error)}`;
-  if (fill.stage === 'cancelled' || fill.stage === 'unknown') return `${lead} started adding ${name} in Gemini again, but that stopped. Use "Add it in Gemini for me" in Set up Gemini.`;
-  return `${lead} is adding ${name} in Gemini again with the new address, in your browser.`;
+  if (retryAt) {
+    return (fill.error
+      ? t('Your tunnel address changed {0}, so the app tried to add {1} in Gemini again, which did not finish: {2}', [when, name, error])
+      : t('Your tunnel address changed {0}, so the app tried to add {1} in Gemini again, which did not finish.', [when, name])) + ' ' +
+      (retryAt <= now ? t('It tries again by itself now.') : t('It tries again by itself in {0} min.', [Math.ceil((retryAt - now) / 60_000)]));
+  }
+  if (fill.stage === 'failed') return t('Your tunnel address changed {0}, so the app tried to add {1} in Gemini again, which failed: {2}', [when, name, error]);
+  if (fill.stage === 'cancelled' || fill.stage === 'unknown') {
+    return t('Your tunnel address changed {0}, so the app started adding {1} in Gemini again, but that stopped. Use "Add it in Gemini for me" in Set up Gemini.', [when, name]);
+  }
+  return t('Your tunnel address changed {0}, so the app is adding {1} in Gemini again with the new address, in your browser.', [when, name]);
 }
 
 /** What the last "Add it in Gemini for me" did, in the person's words. */
 export function fillPill(fill: GeminiCommandSummary, url: string | null): ['ok' | 'wait' | 'off' | 'bad', string] {
-  if (fill.stage === 'queued') return ['wait', `Opening Gemini custom apps in your default browser… ${UNCLAIMED_HINT}`];
-  if (fill.stage === 'claimed') return ['wait', 'Gemini custom apps is open; the extension is adding the app there…'];
+  if (fill.stage === 'queued') return ['wait', t('Opening Gemini custom apps in your default browser… {0}', [unclaimedHint()])];
+  if (fill.stage === 'claimed') return ['wait', t('Gemini custom apps is open; the extension is adding the app there…')];
   // Nothing took it: no Gemini page with the extension reported, e.g. the default browser has no extension.
-  if (fill.stage === 'failed' && fill.error === 'gemini-page-not-connected') return ['bad', UNCLAIMED];
+  if (fill.stage === 'failed' && fill.error === 'gemini-page-not-connected') return ['bad', unclaimed()];
   if (fill.stage === 'failed') {
     // Those two errors already say what to do by hand; a second instruction would contradict them.
-    return ['bad', `${geminiErrorText(fill.error)}${['custom-apps-layout-unknown', 'delete-failed'].includes(fill.error ?? '') ? '' : ' Add the app by hand: Open custom apps, click Custom, paste the address, then Next.'}`];
+    return ['bad', `${geminiErrorText(fill.error)}${['custom-apps-layout-unknown', 'delete-failed'].includes(fill.error ?? '') ? ''
+      : ` ${t('Add the app by hand: Open custom apps, click Custom, paste the address, then Next.')}`}`];
   }
-  if (fill.stage !== 'completed') return ['off', STAGES[fill.stage]];
-  if (fill.outcome === 'connected') return ['ok', 'Added in Gemini and connected. Mention the app in a Gemini chat to use it.'];
-  if (fill.outcome === 'filled') return ['ok', 'Filled in. In Gemini, check the address, click the highlighted Next, tick Google\'s notice and Connect, then Connect once more to save.'];
-  if (fill.outcome === 'current') return ['ok', 'Gemini already has this app with this address. Old copies, if there were any, are deleted.'];
-  if (fill.outcome === 'old') return ['bad', `Gemini has the app with an old address and cannot edit it. In Gemini, open the highlighted More options and choose Delete, then press Add it in Gemini for me again${url ? ` to add ${url}` : ''}.`];
-  return ['off', 'Done.'];
+  if (fill.stage !== 'completed') return ['off', STAGES[fill.stage]()];
+  if (fill.outcome === 'connected') return ['ok', t('Added in Gemini and connected. Mention the app in a Gemini chat to use it.')];
+  if (fill.outcome === 'filled') return ['ok', t("Filled in. In Gemini, check the address, click the highlighted Next, tick Google's notice and Connect, then Connect once more to save.")];
+  if (fill.outcome === 'current') return ['ok', t('Gemini already has this app with this address. Old copies, if there were any, are deleted.')];
+  if (fill.outcome === 'old') {
+    return ['bad', url ? t('Gemini has the app with an old address and cannot edit it. In Gemini, open the highlighted More options and choose Delete, then press Add it in Gemini for me again to add {0}.', [url])
+      : t('Gemini has the app with an old address and cannot edit it. In Gemini, open the highlighted More options and choose Delete, then press Add it in Gemini for me again.')];
+  }
+  return ['off', t('Done.')];
 }
 
 function openStep(name: SetupStep): void {
@@ -342,8 +365,8 @@ export function paintGeminiConnector(state: AppState): void {
   paintGeminiSetup();
   const url = coreHttpsUrl(state);
   byId('geminiCoreUrl').textContent = url ?? (state.config.tunnel.kind === 'openai'
-    ? 'The OpenAI Secure Tunnel only serves ChatGPT. Start a tunnel for Gemini in the Tunnel step of Set up Gemini above.'
-    : 'Connect first: the Tunnel step of Set up Gemini above.');
+    ? t('The OpenAI Secure Tunnel only serves ChatGPT. Start a tunnel for Gemini in the Tunnel step of Set up Gemini above.')
+    : t('Connect first: the Tunnel step of Set up Gemini above.'));
   byId<HTMLButtonElement>('geminiCopyUrl').disabled = !url;
   byId('geminiCopyUrl').dataset.url = url ?? '';
 }
@@ -363,21 +386,25 @@ export function initGemini(api: AppApi, toast: (message: string) => void, hooks?
   // No repaint timer: status pushes arrive every few seconds while a Gemini page reports, and an
   // uncleared interval kept every mounted window alive (renderer test workers ran out of memory on macOS CI).
   api.onGeminiChanged(paint);
+  onLanguageChange(() => {
+    if (last) paintGemini(last);
+    if (appState) paintGeminiConnector(appState);
+  });
   byId('geminiRefreshModels').closest('section')?.parentElement?.addEventListener('pointerenter', () => { if (last) paintGemini(last); });
 
   const save = async (patch: Parameters<AppApi['saveGeminiSettings']>[0]): Promise<void> => {
     const reply = await api.saveGeminiSettings(patch);
-    if (!reply.ok || !reply.data.ok) toast('That Gemini setting was not saved.');
+    if (!reply.ok || !reply.data.ok) toast(t('That Gemini setting was not saved.'));
   };
   byId('geminiCopyUrl').addEventListener('click', async () => {
     const url = byId('geminiCopyUrl').dataset.url;
-    if (url && (await api.writeClipboard(url)).ok) { toast('Core URL copied. Treat it like a password.'); void rememberGiven(api, url); }
+    if (url && (await api.writeClipboard(url)).ok) { toast(t('Core URL copied. Treat it like a password.')); void rememberGiven(api, url); }
   });
   byId('geminiOpenConnectors').addEventListener('click', () => { void api.openGeminiConnectors(); });
   byId('geminiOpenConnectorsDefault').addEventListener('click', () => { void api.openGeminiConnectors({ external: true }); });
   byId('geminiRefreshModels').addEventListener('click', async () => {
     const reply = await api.requestGeminiModes();
-    toast(reply.ok ? 'Reading Gemini\'s model picker in your browser…' : 'Could not ask the browser.');
+    toast(reply.ok ? t("Reading Gemini's model picker in your browser…") : t('Could not ask the browser.'));
   });
   byId<HTMLInputElement>('geminiConnectorName').addEventListener('change', event => {
     void save({ connectorName: (event.target as HTMLInputElement).value.trim() || null });
@@ -407,11 +434,11 @@ function initGeminiSetup(api: AppApi, toast: (message: string) => void, hooks?: 
     const back = el('button', 'btn step-back');
     back.setAttribute('type', 'button');
     back.dataset.geminiNav = 'back';
-    back.append(icon('i-arrow-left'), el('span', '', 'Back'));
+    back.append(icon('i-arrow-left'), el('span', '', () => t('Back')));
     const next = el('button', 'btn step-next');
     next.setAttribute('type', 'button');
     next.dataset.geminiNav = 'next';
-    next.append(el('span', '', 'Next'), icon('i-arrow-right'));
+    next.append(el('span', '', () => t('Next')), icon('i-arrow-right'));
     nav.append(back, next);
     body.append(nav);
   }
@@ -435,7 +462,7 @@ function initGeminiSetup(api: AppApi, toast: (message: string) => void, hooks?: 
   byId('geminiTunnelBack').addEventListener('click', () => hooks?.switchBackToOpenAi());
   byId('geminiNamedSave').addEventListener('click', () => {
     const host = byId<HTMLInputElement>('geminiNamedHost').value.trim();
-    if (!host) { toast('Enter the public hostname of your Cloudflare tunnel.'); return; }
+    if (!host) { toast(t('Enter the public hostname of your Cloudflare tunnel.')); return; }
     hooks?.useNamedTunnel(host, byId<HTMLInputElement>('geminiNamedToken').value);
     byId<HTMLInputElement>('geminiNamedToken').value = '';
   });
@@ -444,7 +471,7 @@ function initGeminiSetup(api: AppApi, toast: (message: string) => void, hooks?: 
     const url = appState ? coreHttpsUrl(appState) : null;
     if (!url) return;
     const reply = await api.fillGeminiApp(url);
-    if (!reply.ok || !reply.data.ok) toast(reply.ok && !reply.data.ok ? geminiErrorText(reply.data.error) : 'The app did not accept that.');
+    if (!reply.ok || !reply.data.ok) toast(reply.ok && !reply.data.ok ? geminiErrorText(reply.data.error) : t('The app did not accept that.'));
   });
   byId('geminiOpenGemini').addEventListener('click', () => { void api.openGemini(); });
   byId('geminiOpenGeminiDefault').addEventListener('click', () => { void api.openGemini({ external: true }); });
@@ -452,9 +479,9 @@ function initGeminiSetup(api: AppApi, toast: (message: string) => void, hooks?: 
   byId('geminiSetupOpenAppsDefault').addEventListener('click', () => { void api.openGeminiConnectors({ external: true }); });
   byId('geminiSetupCopy').addEventListener('click', async () => {
     const url = appState ? coreHttpsUrl(appState) : null;
-    if (url && (await api.writeClipboard(url)).ok) { toast('Address copied. Treat it like a password.'); void rememberGiven(api, url); }
+    if (url && (await api.writeClipboard(url)).ok) { toast(t('Address copied. Treat it like a password.')); void rememberGiven(api, url); }
   });
   byId('geminiTryCopy').addEventListener('click', async () => {
-    if ((await api.writeClipboard(byId('geminiTryPrompt').textContent ?? '')).ok) toast('Copied. Paste it in a new Gemini chat.');
+    if ((await api.writeClipboard(byId('geminiTryPrompt').textContent ?? '')).ok) toast(t('Copied. Paste it in a new Gemini chat.'));
   });
 }

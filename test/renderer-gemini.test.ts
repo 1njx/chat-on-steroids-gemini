@@ -68,6 +68,24 @@ describe('Settings → Gemini', () => {
     expect(models).toContain('tries again by itself in 9 min; Refresh tries now.');
   });
 
+  it('paints its status in the chosen language, plural forms included', async () => {
+    const { paintGemini } = await import('../src/renderer/gemini.js');
+    const { setLanguage } = await import('../src/renderer/i18n.js');
+    try {
+      setLanguage('de');
+      paintGemini(status({ pages: 2 }));
+      const doc = dom.window.document;
+      expect(doc.getElementById('geminiPageStatus')!.textContent).toBe('2 Gemini-Seiten über die Erweiterung verbunden.');
+      expect(doc.getElementById('geminiModelList')!.textContent).toContain('Gemini 4 Carbon (nicht verfügbar: braucht ein höheres Abo)');
+      expect(doc.getElementById('geminiCommands')!.textContent).toBe('Noch keine.');
+      setLanguage('ru');
+      paintGemini(status({ pages: 3 }));
+      expect(doc.getElementById('geminiPageStatus')!.textContent).toBe('3 страницы Gemini подключены через расширение.');
+    } finally {
+      setLanguage('en');
+    }
+  });
+
   it('never offers the OpenAI Secure Tunnel as a Gemini address', async () => {
     const { paintGeminiConnector } = await import('../src/renderer/gemini.js');
     const doc = dom.window.document;

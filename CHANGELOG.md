@@ -9,6 +9,19 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.2.26] — Settings → Gemini in your language
+
+### Changed
+
+- **Settings → Gemini follows the app's language.** The page was marked as not to be translated,
+  so it stayed in English in every language. Its setup steps, statuses, model list, Gemini error
+  messages (also shown in chats) and "Recent Gemini messages" now come in all 12 languages, with
+  each language's plural forms. Gemini's own button names ("Custom", "Next", "Connect", "Always
+  allow") stay in English, because Gemini offers custom apps on its English page only. The page
+  also repaints right away when the language changes.
+- The "Gemini is set up" step no longer points to a send form below; that form was removed in
+  2.2.25.
+
 ## [2.2.25] — Gemini answers keep their formatting, and clearer usage limits
 
 ### Changed

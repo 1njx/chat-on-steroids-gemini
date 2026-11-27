@@ -263,6 +263,8 @@ the plugin at the new folder (Roblox's own `mcp.bat` resolves it, but the app do
 - **Unattributed recording**: Gemini's tool calls are filed under Unattributed activity, not inside
   the matching Gemini chat.
 - **English only**: Google offers custom apps in English, and the page adapter reads English labels.
+  Settings → Gemini itself follows the app's language; the Gemini buttons it names ("Custom",
+  "Next", "Connect") stay in English, as Gemini shows them.
 - **Quick tunnel address changes** on every start (see Requirements).
 
 ## Verification record

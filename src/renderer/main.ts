@@ -3359,7 +3359,7 @@ mountSetupAuto(async () => {
       for (const end = Date.now() + 180_000; Date.now() < end; await new Promise(resolve => setTimeout(resolve, 1000))) {
         const command = await api.getGeminiStatus().then(reply => reply.ok ? reply.data.commands.find(entry => entry.id === queued.id) : null).catch(() => null);
         if (command?.stage === 'completed') return null;
-        if (command && ['failed', 'cancelled'].includes(command.stage)) return GEMINI_ERRORS[command.error ?? ''] ?? `Gemini: ${command.error ?? 'failed'}`;
+        if (command && ['failed', 'cancelled'].includes(command.stage)) return GEMINI_ERRORS[command.error ?? ''] !== undefined ? t(GEMINI_ERRORS[command.error ?? '']!) : `Gemini: ${command.error ?? 'failed'}`;
       }
       return 'Gemini did not finish in time. Use the Gemini step by hand';
     } : null,

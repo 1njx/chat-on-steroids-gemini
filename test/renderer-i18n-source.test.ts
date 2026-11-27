@@ -208,3 +208,26 @@ it('translates every message a branch in a new chat can end with (#482)', async 
     expect([...Object.values(BRANCH_ERRORS), ...refusals].filter(text => !Object.hasOwn(catalog, text)), locale).toEqual([]);
   }
 });
+
+it('translates Settings → Gemini: its page text, its errors and the no-page hint', async () => {
+  // The page was marked translate="no" until 2.2.25, so its static text never reached a catalog.
+  const { GEMINI_ERRORS } = await import('../src/shared/gemini.js');
+  const { JSDOM } = await import('jsdom');
+  const doc = new JSDOM(readFileSync('src/renderer/index.html', 'utf8')).window.document;
+  const panel = doc.querySelector('[data-panel="gemini"]')!;
+  expect(panel.closest('[translate="no"]')).toBeNull();
+  const texts = new Set<string>(Object.values(GEMINI_ERRORS));
+  texts.add(readFileSync('src/renderer/gemini.ts', 'utf8').match(/export const UNCLAIMED = '([^']+)'/)![1]!);
+  const walker = doc.createTreeWalker(panel, 4 /* SHOW_TEXT */);
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text;
+    if (node.parentElement?.closest('script, style, svg, code, kbd, textarea, [translate="no"]')) continue;
+    const key = node.data.replace(/\s+/g, ' ').trim();
+    if (/[A-Za-z]{2}/.test(key)) texts.add(key);
+  }
+  expect(texts.size).toBeGreaterThan(100);
+  for (const locale of LOCALES) {
+    const catalog = JSON.parse(readFileSync(`src/renderer/locales/${locale}.json`, 'utf8')) as Record<string, string>;
+    expect([...texts].filter(text => !Object.hasOwn(catalog, text)), locale).toEqual([]);
+  }
+});
