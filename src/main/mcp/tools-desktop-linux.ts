@@ -83,7 +83,8 @@ function safeWindow(row: WindowRow): boolean {
   // Other running CoS copies have different PIDs, so also reject the packaged
   // desktop ID and the app's common executable/display-name variants.
   const normalizedAppId = row.app_name.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const isOwnApp = normalizedAppId === 'chatonsteroids' ||
+  // "chatonsteroids" is both the executable and the display name before 2.3.0.
+  const isOwnApp = normalizedAppId === 'chatonsteroids' || normalizedAppId === 'gemwebcode' ||
     normalizedAppId === 'comchatonsteroidsapp' ||
     normalizedAppId === 'comchatonsteroidsappdesktop';
   return row.id.length > 0 && row.app_name.length > 0 && row.process_instance.length > 0 && row.pid > 0 &&

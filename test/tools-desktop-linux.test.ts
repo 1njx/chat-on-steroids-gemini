@@ -164,7 +164,7 @@ describe.runIf(process.platform === 'linux')('native Linux connector authorizati
   });
   it('refuses other CoS instances by executable, display name or packaged Linux desktop ID', async () => {
     const { observe } = handlers();
-    for (const app_name of ['chat-on-steroids', 'Gem Web Code', 'com.chatonsteroids.app', 'com.chatonsteroids.app.desktop']) {
+    for (const app_name of ['chat-on-steroids', 'Gem Web Code', 'Chat On Steroids', 'com.chatonsteroids.app', 'com.chatonsteroids.app.desktop']) {
       testState.backend.mockReset();
       testState.backend.mockResolvedValue(good('list-windows', [{ ...window, app_name }]));
       const denied = await observe({ what: 'snapshot', window_id: window.id });
