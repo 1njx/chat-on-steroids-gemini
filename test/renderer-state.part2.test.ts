@@ -769,7 +769,7 @@ it('walks the Firefox add-on install, without Developer mode or a folder', async
   (document.querySelector('[data-external-browser="firefox"]') as HTMLButtonElement).click();
   expect([shown('extensionStepOpen'), shown('extensionStepDev'), shown('extensionStepLoad'), shown('extensionStepAddon'), shown('extensionStepChatGpt')])
     .toEqual([false, false, false, true, true]);
-  expect(document.getElementById('extensionStepAddon')!.textContent).toBe('Add the Chat On Steroids add-on to Firefox');
+  expect(document.getElementById('extensionStepAddon')!.textContent).toBe('Add the Gem Web Code add-on to Firefox');
   expect(document.getElementById('extensionStepChatGpt')!.textContent).toBe('Open ChatGPT in Firefox');
   expect(document.querySelector<HTMLImageElement>('#setupExternalIcon')!.src).toContain('firefox');
   // The unpacked folder and its ZIP are for Chromium browsers only.
@@ -1308,7 +1308,7 @@ it('says nothing about being current until the check has actually answered', asy
   // Green, both versions, and the same sentence as the one notification this window shows.
   expect(line.hidden).toBe(false);
   expect(line.className).toBe('upline is-ok');
-  expect(line.textContent).toBe('Up to date! Chat On Steroids 2.0.2 · extension 2.0.2');
+  expect(line.textContent).toBe('Up to date! Gem Web Code 2.0.2 · extension 2.0.2');
   expect(doc.querySelector('.toast')!.textContent).toBe(line.textContent);
   // Nothing to act on, so the header bar stays out of the way.
   expect(doc.getElementById('updateNotice')!.hidden).toBe(true);
@@ -1317,7 +1317,7 @@ it('says nothing about being current until the check has actually answered', asy
   doc.querySelector('.toast')!.remove();
   mounted.push(structuredClone(checked) as any);
   expect(doc.querySelector('.toast')).toBeNull();
-  expect(line.textContent).toBe('Up to date! Chat On Steroids 2.0.2 · extension 2.0.2');
+  expect(line.textContent).toBe('Up to date! Gem Web Code 2.0.2 · extension 2.0.2');
 });
 
 /**
@@ -1590,7 +1590,7 @@ it('says when the last update did not install, in place of the ready line', asyn
   state.update = { current: '2.0.2', latest: '2.0.3', stage: 'ready', error: null, checkedAt: Date.now(), notInstalled: '2.0.3' };
   mounted.push(state);
   const line = mounted.window.document.getElementById('updateLine')!;
-  expect(line.textContent).toContain('Chat On Steroids 2.0.3 did not install; this is still 2.0.2.');
+  expect(line.textContent).toContain('Gem Web Code 2.0.3 did not install; this is still 2.0.2.');
   // The same version ready again: the notice already says to choose Install, once.
   expect(line.textContent).not.toContain('is downloaded and ready');
   expect(line.className).toContain('bad');

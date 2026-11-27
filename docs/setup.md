@@ -23,9 +23,9 @@ Want screen and keyboard control? Enable **Desktop** permissions and connect its
 
 ### OpenAI Secure MCP Tunnel
 
-**Set everything up** (top of Setup, after you pick a folder and the access level) chains steps 1–4 through the browser extension in your signed-in tabs: the tunnel and key, **Connect**, the plugins in ChatGPT with **Allow all tools**, and the app in Gemini when Gemini's tunnel is on. Each part shows its own progress; a part that fails says why and opens its step for the manual way. It never signs in for you: signed out, it stops and says so. Every page it works in opens in your own browser window, brought to the front (a covered or minimized page barely loads), with a panel on the page: "Chat On Steroids is setting this up — please don't click or type in this tab until it says done", each step as it happens, then done (green) or the exact error (red, the same words Setup shows).
+**Set everything up** (top of Setup, after you pick a folder and the access level) chains steps 1–4 through the browser extension in your signed-in tabs: the tunnel and key, **Connect**, the plugins in ChatGPT with **Allow all tools**, and the app in Gemini when Gemini's tunnel is on. Each part shows its own progress; a part that fails says why and opens its step for the manual way. It never signs in for you: signed out, it stops and says so. Every page it works in opens in your own browser window, brought to the front (a covered or minimized page barely loads), with a panel on the page: "Gem Web Code is setting this up — please don't click or type in this tab until it says done", each step as it happens, then done (green) or the exact error (red, the same words Setup shows).
 
-**Set it up for me** (Tunnel and Key steps) does steps 1–2 at platform.openai.com: it takes the tunnel this app already uses or one named "Chat On Steroids", or creates one in your only ChatGPT workspace (with several workspaces you create it by hand), then creates a **Restricted** key with **Tunnels: Read** and **Use** in **Default project**. The key goes straight into this computer's secure storage, never into settings, logs or a page address. These pages are matched in English only.
+**Set it up for me** (Tunnel and Key steps) does steps 1–2 at platform.openai.com: it takes the tunnel this app already uses or one named "Gem Web Code", or creates one in your only ChatGPT workspace (with several workspaces you create it by hand), then creates a **Restricted** key with **Tunnels: Read** and **Use** in **Default project**. The key goes straight into this computer's secure storage, never into settings, logs or a page address. These pages are matched in English only.
 
 1. Create a tunnel in [Platform → Tunnels](https://platform.openai.com/settings/organization/tunnels), in the same workspace you use in ChatGPT.
 2. Create a **Restricted** [API key](https://platform.openai.com/settings/organization/api-keys) with **Tunnels: Read** and **Tunnels: Use**.
@@ -41,7 +41,7 @@ Core, Desktop and Plugins are separate plugins in ChatGPT. Configure each surfac
 
 **Cloudflare quick tunnel:** connect in CoS and use the displayed public URL as the MCP server URL in ChatGPT. The random path is a secret and changes on restart.
 
-**Your own HTTPS tunnel** (for example a named Cloudflare tunnel): forward to the loopback URL shown by CoS and preserve its secret path. Treat the resulting URL like a password. By default the secret path changes every time CoS starts, even when your hostname stays the same, so after each restart you would update the URL in each Chat On Steroids app in ChatGPT and refresh it. Turn on **Settings → General → For developers → Keep plugin URLs across restarts** to keep the paths instead (they are stored in your system's secure storage; turning it off forgets them). It keeps the local port as well, so point your tunnel at the loopback address CoS shows after turning it on; if another program takes that port, CoS starts on a new one and says so under that setting, with both port numbers. The OpenAI Secure Tunnel needs neither, because ChatGPT stores its tunnel ID instead of a URL.
+**Your own HTTPS tunnel** (for example a named Cloudflare tunnel): forward to the loopback URL shown by CoS and preserve its secret path. Treat the resulting URL like a password. By default the secret path changes every time CoS starts, even when your hostname stays the same, so after each restart you would update the URL in each Gem Web Code app in ChatGPT and refresh it. Turn on **Settings → General → For developers → Keep plugin URLs across restarts** to keep the paths instead (they are stored in your system's secure storage; turning it off forgets them). It keeps the local port as well, so point your tunnel at the loopback address CoS shows after turning it on; if another program takes that port, CoS starts on a new one and says so under that setting, with both port numbers. The OpenAI Secure Tunnel needs neither, because ChatGPT stores its tunnel ID instead of a URL.
 
 ### ChatGPT Business, Enterprise and Edu workspaces
 
@@ -75,7 +75,7 @@ comma-separated override and port `0` remain available for isolated development/
 With **Background chats** on, the tabs the app opens for workers and recovered chats stay in the
 background. **Settings → Browser → Background tabs open in** chooses where: **Their own
 minimized window** (default) or **A tab group in your browser window**. The tab group is a collapsed
-"Chat On Steroids" group in the window you used last, and it stays there. The app never selects a
+"Gem Web Code" group in the window you used last, and it stays there. The app never selects a
 tab or changes the window you are using. Chrome saves open tab groups automatically. The app's
 group closes with its last chat, so it isn't kept, but if you close that window while app chats are
 open, Chrome may keep the group in its saved groups, where you can delete it. Browsers without tab
@@ -142,7 +142,7 @@ A project can be a folder on another computer that you reach with SSH. Click **+
 - **SSH address**: `me@server`, `me@server:2222`, or a `Host` name from your `~/.ssh/config`.
 - **Folder on the server**: an absolute path such as `/srv/app`, or one in your home folder such as `~/app`.
 
-**Test and add** connects once and checks that the folder exists. Chat On Steroids uses your own
+**Test and add** connects once and checks that the folder exists. Gem Web Code uses your own
 SSH setup (`~/.ssh/config`, your agent, keys and known hosts) and installs nothing on the server.
 The server needs SSH with SFTP and a POSIX shell (Linux, macOS, BSD).
 
@@ -183,7 +183,7 @@ History is recorded locally and kept until you delete a chat; recording can't be
 
 ### Steps for you
 
-When ChatGPT needs something only you can do (a sign-in, a USB key, a command it must not run), it hands you a **step for you**. It appears in the chat and above the message box with the exact command, the folder and the files it expects. Run it yourself in your own terminal, then press **Mark as done** or **Skip**; ChatGPT is told which. Chat On Steroids never runs or checks the command.
+When ChatGPT needs something only you can do (a sign-in, a USB key, a command it must not run), it hands you a **step for you**. It appears in the chat and above the message box with the exact command, the folder and the files it expects. Run it yourself in your own terminal, then press **Mark as done** or **Skip**; ChatGPT is told which. Gem Web Code never runs or checks the command.
 
 ### Chats working at once
 

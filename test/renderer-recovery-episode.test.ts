@@ -52,7 +52,7 @@ it('is no longer current once the chat works again, and is still current while o
 });
 
 it('does not count a routine fresh turn as recovery, unless an episode is already running', () => {
-  const fresh = 'Continue the task from where you are. (Chat On Steroids starts a fresh turn every so often so long work stays reliable; nothing else changed.)';
+  const fresh = 'Continue the task from where you are. (Gem Web Code starts a fresh turn every so often so long work stays reliable; nothing else changed.)';
   expect(recoveryEpisode([asked(0), tool(1), automatic(30, fresh), tool(31)])).toBeNull();
   const episode = recoveryEpisode([asked(0), error(1), automatic(2, fresh)])!;
   expect(episode.items.map(item => item.text)).toEqual(['The response stream is unavailable (resume HTTP 404).', 'fresh-turn']);

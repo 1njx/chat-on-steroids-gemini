@@ -145,7 +145,7 @@ import type { ToolOutcome } from '../../shared/session.js';
 const requestOwner = (requestId: string): string | null => requestCorrelation(requestId)?.conversationId ?? null;
 
 const WORKER_CONNECTION_PROFILE_REFUSAL =
-  'WORKER_CONNECTION_PROFILE_MISMATCH: this worker belongs to a different Chat On Steroids Setup profile. ' +
+  'WORKER_CONNECTION_PROFILE_MISMATCH: this worker belongs to a different Gem Web Code Setup profile. ' +
   'No local tool was run. Return to the owning prime and switch back to the connection that created this worker family; ' +
   'cross-profile worker routing is not automatic.';
 
@@ -624,7 +624,7 @@ function withUnattributedNotice(
   };
 }
 
-export const GEMINI_RESULT_NOTE = '\n--- Chat On Steroids ---\nRecorded under Gemini activity. Report the actual tool result above; never repeat a successful change.';
+export const GEMINI_RESULT_NOTE = '\n--- Gem Web Code ---\nRecorded under Gemini activity. Report the actual tool result above; never repeat a successful change.';
 
 /** Every text part of a result joined into the first text slot, so a client that keeps one part keeps all. */
 export function singleTextForGemini(result: ToolResult): ToolResult {
@@ -1086,7 +1086,7 @@ async function dispatchTracked(
             fail(
               'CONVERSATION_SUPERSEDED: Compact & Resume replaced this ChatGPT conversation. Its transcript remains readable, but it can no longer execute local tools. ' +
                 (replacement
-                  ? `The work continues in https://chatgpt.com/c/${replacement.conversationId}${replacement.title.trim() ? `, shown in Chat On Steroids as ${JSON.stringify(replacement.title.trim())}` : ''}. Tell the user to continue there; no local tool was run.`
+                  ? `The work continues in https://chatgpt.com/c/${replacement.conversationId}${replacement.title.trim() ? `, shown in Gem Web Code as ${JSON.stringify(replacement.title.trim())}` : ''}. Tell the user to continue there; no local tool was run.`
                   : 'Continue only in the replacement chat; no local tool was run.')
             )
           )
@@ -1664,7 +1664,7 @@ export function createRegistrar(server: McpServer | null, ctx: ToolContext, surf
     },
     featureDisabled(feature, setting) {
       return fail(
-        `FEATURE_DISABLED: ${feature} is switched off in Chat On Steroids. ` +
+        `FEATURE_DISABLED: ${feature} is switched off in Gem Web Code. ` +
           `Ask the user to enable "${setting}" in the app, then try again.`
       );
     }

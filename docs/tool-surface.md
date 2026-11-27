@@ -6,7 +6,7 @@ authoritative; `src/main/mcp/surfaces.ts`, `src/main/mcp/tools-core.ts`,
 
 ## Connectors
 
-Chat On Steroids publishes three connectors. They are separate discovery and permission boundaries
+Gem Web Code publishes three connectors. They are separate discovery and permission boundaries
 and use separate secret tokenized local paths. Each one also offers `exec`, a JavaScript runtime that
 composes that connector's own tools.
 

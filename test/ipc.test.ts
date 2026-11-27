@@ -430,7 +430,7 @@ it('reports a newer schedule store as incompatible instead of claiming there are
     const result = await call('schedules:list');
     expect(result).toEqual({
       ok: false,
-      error: 'These schedules were saved by a newer version of Chat On Steroids. Update the app to change them.'
+      error: 'These schedules were saved by a newer version of Gem Web Code. Update the app to change them.'
     });
     expect(await call('schedules:get', { sessionId: 'future-session-id' })).toEqual(result);
     expect(await readDurable('scheduled-runs')).toEqual(future);
@@ -1891,7 +1891,7 @@ describe('in-app feedback', () => {
     const reply = await handlers.get('feedback:openIssue')!(null, { kind: 'bug', what: 'The Stop button stays grey.', frequency: 'Sometimes' });
     expect(reply).toEqual({ ok: true, data: { trimmed: false } });
     const url = new URL(vi.mocked(shell.openExternal).mock.calls.at(-1)![0] as string);
-    expect(url.origin + url.pathname).toBe('https://github.com/1njx/chat-on-steroids-gemini/issues/new');
+    expect(url.origin + url.pathname).toBe('https://github.com/1njx/gem-web-code/issues/new');
     expect(url.searchParams.get('template')).toBe('bug_report.yml');
     expect(url.searchParams.get('version')).toBe('2.1.46');
     expect(url.searchParams.get('operating_system')).toBeTruthy();
@@ -3043,7 +3043,7 @@ it('saves a diagnostics report through the renderer channel without personal det
     (app as { getPath: typeof getPath }).getPath = getPath;
   }
   const report = await fs.readFile(target, 'utf8');
-  expect(report).toContain('# Chat On Steroids diagnostics report');
+  expect(report).toContain('# Gem Web Code diagnostics report');
   expect(report).toContain('did not report back in time');
   expect(report).toMatch(/open '~[\\/]<p:[0-9a-f]{4}>[\\/]<p:[0-9a-f]{4}>\.xlsx'/);
   for (const personal of ['home-jane', 'Acme', 'invoice', 'jane@example.com', 'Quarterly tax return']) expect(report).not.toContain(personal);
@@ -3482,7 +3482,7 @@ describe('settings backup over IPC', () => {
   it('refuses a file that is not a backup, and does nothing when a dialog is cancelled', async () => {
     const other = path.join(dir, 'package.json');
     await fs.writeFile(other, JSON.stringify({ name: 'something' }));
-    expect(await pick(other)).toEqual({ ok: false, error: 'This file is not a Chat On Steroids settings backup.' });
+    expect(await pick(other)).toEqual({ ok: false, error: 'This file is not a Gem Web Code settings backup.' });
     vi.mocked(dialog.showOpenDialog).mockResolvedValueOnce({ canceled: true, filePaths: [] });
     expect(await handlers.get('settings:importPick')!(null, undefined)).toEqual({ ok: true, data: null });
     vi.mocked(dialog.showSaveDialog).mockResolvedValueOnce({ canceled: true } as never);

@@ -152,7 +152,7 @@ it('forgets the pause marker when the switch could not be turned off, and keeps 
   const telegram = fakeTelegram();
   await start(telegram, chats, { setAutomation: async () => false });
   telegram.say('/pause');
-  await vi.waitFor(() => expect(telegram.sent.at(-1)?.text).toBe('Could not do that. Open the chat in Chat On Steroids.'), { timeout: 5_000, interval: 10 });
+  await vi.waitFor(() => expect(telegram.sent.at(-1)?.text).toBe('Could not do that. Open the chat in Gem Web Code.'), { timeout: 5_000, interval: 10 });
   expect(await readDurable('telegram-paused')).toEqual([]);
 });
 

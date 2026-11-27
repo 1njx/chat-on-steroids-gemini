@@ -1596,7 +1596,7 @@ var CLF_DOM = (() => {
   /**
    * Visible assistant activity in the exact DOM order ChatGPT drew it.
    *
-   * Chat On Steroids remains authoritative for its own call labels/results. This only supplies
+   * Gem Web Code remains authoritative for its own call labels/results. This only supplies
    * the missing chronology: a visible commentary paragraph can sit between two calls, and
    * the recorder clock cannot recover that after a fast turn. ChatGPT's completed DOM can.
    */
@@ -1976,7 +1976,8 @@ var CLF_DOM = (() => {
    * The closing sentence every worker wake ends with (src/main/agents.ts planRevivalText), compared
    * without whitespace: ProseMirror's textContent drops the paragraph break before it.
    */
-  const REVIVAL_RESIDUE = new RegExp('\\(ChatOnSteroids:youarestill[A-Za-z0-9_-]{1,40}inthesamerun,' +
+  // Wakes written before 2.3.0 carry the app's old name.
+  const REVIVAL_RESIDUE = new RegExp('\\((?:GemWebCode|ChatOnSteroids):youarestill[A-Za-z0-9_-]{1,40}inthesamerun,' +
     'andthisistheprimeagenttalkingtoyouagaininthechatyoualreadyknow\\.' +
     'Pickupfromwhatyoudidherebeforeratherthanstartingover\\.' +
     // With a connector suffix the sentence names this computer's Core: "the agents tool of … (Windows): ".
@@ -1999,7 +2000,7 @@ var CLF_DOM = (() => {
    * How every Compact & Resume brief begins (src/main/session/handoff.ts resumeBootstrapText),
    * compared without whitespace: its marker, then the fixed first sentence.
    */
-  const RESUME_RESIDUE = /^\[\[CLF-RESUME:[A-Za-z0-9_-]{8,64}\]\]ContinuingaChatOnSteroidssessionthatwascompacted\./;
+  const RESUME_RESIDUE = /^\[\[CLF-RESUME:[A-Za-z0-9_-]{8,64}\]\]Continuinga(?:GemWebCode|ChatOnSteroids)sessionthatwascompacted\./;
   /**
    * How the app's first message of a chat begins: its context block (src/main/agents.ts). ChatGPT keeps
    * this one on a Project home too after it was sent from there, with the connector mention's label

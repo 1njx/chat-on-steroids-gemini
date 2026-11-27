@@ -30,7 +30,7 @@ function persist(): Promise<boolean> {
 }
 
 export const ROTATION_FENCE_REFUSAL =
-  'TURN_CONTINUING: Chat On Steroids is continuing this task in a fresh turn, so this call was not run. ' +
+  'TURN_CONTINUING: Gem Web Code is continuing this task in a fresh turn, so this call was not run. ' +
   'Do not retry it in this turn: the next message continues the task, and you can make the call there.';
 
 /** Resolves once the fence is on disk (false when it could not be saved): the Stop waits for it. */

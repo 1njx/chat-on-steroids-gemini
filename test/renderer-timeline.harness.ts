@@ -96,7 +96,7 @@ export function toolCall(seq: number, callId: string): SessionEvent {
       conversationId: 'chat-a',
       attributionMethod: 'request_id',
       args: text('{"path":"README.md"}'),
-      result: text('# Chat On Steroids'),
+      result: text('# Gem Web Code'),
       outcome: 'ok',
       durationMs: 40,
       summary: { kind: 'read', title: 'Read README.md', tone: 'neutral' }

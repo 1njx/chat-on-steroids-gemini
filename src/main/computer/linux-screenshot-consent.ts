@@ -29,7 +29,7 @@ export async function testLinuxScreenshotConsent(deps: LinuxScreenshotConsentDep
   }
   if (!deps.focused()) {
     logInfo('linux screenshot consent: refused because the main window is not focused');
-    throw new Error('Activate the Chat On Steroids window before requesting screenshot permission.');
+    throw new Error('Activate the Gem Web Code window before requesting screenshot permission.');
   }
   await (deps.checkVersion ?? checkLinuxScreenshotVersion)();
   // User focus and live settings can change while checking the backend version.
@@ -39,7 +39,7 @@ export async function testLinuxScreenshotConsent(deps: LinuxScreenshotConsentDep
   }
   if (!deps.focused()) {
     logInfo('linux screenshot consent: refused because the main window lost focus during the version check');
-    throw new Error('The Chat On Steroids window lost focus; no screenshot was requested.');
+    throw new Error('The Gem Web Code window lost focus; no screenshot was requested.');
   }
   const result = await (deps.run ?? runLinuxScreenshot)({ kind: 'screenshot', display: 0 });
   if (!result.ok) {

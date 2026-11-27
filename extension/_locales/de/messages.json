@@ -6,7 +6,7 @@
     "message": "die App hat nicht geantwortet"
   },
   "content_app_not_running": {
-    "message": "Chat On Steroids läuft auf diesem PC nicht."
+    "message": "Gem Web Code läuft auf diesem PC nicht."
   },
   "content_auto_compaction": {
     "message": "Automatisches Komprimieren"
@@ -84,7 +84,7 @@
     "message": "die dafür geöffnete Seite zeigte eine andere Unterhaltung"
   },
   "content_browser_disconnected": {
-    "message": "Die Browserverbindung in Chat On Steroids ist getrennt."
+    "message": "Die Browserverbindung in Gem Web Code ist getrennt."
   },
   "content_cancel": {
     "message": "Abbrechen"
@@ -93,7 +93,7 @@
     "message": "Chat blockiert"
   },
   "content_chat_blocked_tip": {
-    "message": "Dieser Chat ist in der App Chat On Steroids blockiert: Seine Tool-Aufrufe werden abgelehnt, und Goal, Loop und automatisches Komprimieren sind aus. Zum Freigeben öffnest du in der Seitenleiste der App das ⋯-Menü dieses Chats und wählst „Chat freigeben“."
+    "message": "Dieser Chat ist in der App Gem Web Code blockiert: Seine Tool-Aufrufe werden abgelehnt, und Goal, Loop und automatisches Komprimieren sind aus. Zum Freigeben öffnest du in der Seitenleiste der App das ⋯-Menü dieses Chats und wählst „Chat freigeben“."
   },
   "content_chat_still_opening": {
     "message": "dieser Chat wird noch geöffnet – versuch es gleich noch einmal"
@@ -606,7 +606,7 @@
     "message": "Wird gespeichert …"
   },
   "content_settings_aria": {
-    "message": "Einstellungen von Chat On Steroids"
+    "message": "Einstellungen von Gem Web Code"
   },
   "content_stage_handoff_attention": {
     "message": "Die Übergabe-Antwort braucht deine Aufmerksamkeit"
@@ -771,13 +771,13 @@
     "message": "Schreibt …"
   },
   "extension_action_title": {
-    "message": "Chat On Steroids"
+    "message": "Gem Web Code"
   },
   "extension_description": {
-    "message": "Verbindet ChatGPT mit Chat On Steroids und steuert Browser-Tabs im Hintergrund über DOM, Screenshots und Entwicklertools."
+    "message": "Verbindet ChatGPT mit Gem Web Code und steuert Browser-Tabs im Hintergrund über DOM, Screenshots und Entwicklertools."
   },
   "extension_name": {
-    "message": "Chat On Steroids Browser-Erweiterung"
+    "message": "Gem Web Code Browser-Erweiterung"
   },
   "popup_advanced": {
     "message": "Erweitert"
@@ -993,7 +993,7 @@
     "message": "Sitzungsaufzeichnung"
   },
   "popup_secure_storage_unavailable": {
-    "message": "Sicherer Speicher für Zugangsdaten ist nicht verfügbar. Öffne Chat On Steroids für eine Anleitung."
+    "message": "Sicherer Speicher für Zugangsdaten ist nicht verfügbar. Öffne Gem Web Code für eine Anleitung."
   },
   "popup_sent_to_app": {
     "message": "An die App gesendet"
@@ -1083,7 +1083,7 @@
     "message": "Erneut versuchen"
   },
   "popup_version_mismatch_help": {
-    "message": "App v$1 (Protokoll $2); Erweiterung v$3 (Protokoll $4). Öffne die Erweiterungsseite deines Browsers, aktiviere den Entwicklermodus und klicke bei dieser Erweiterung auf „Aktualisieren“ bzw. „Neu laden“. Bleibt der Unterschied bestehen, nutze in Chat On Steroids „Erweiterungsordner öffnen“ und lade diesen Ordner. Lade ChatGPT-Tabs neu, sobald ihre laufende Arbeit fertig ist."
+    "message": "App v$1 (Protokoll $2); Erweiterung v$3 (Protokoll $4). Öffne die Erweiterungsseite deines Browsers, aktiviere den Entwicklermodus und klicke bei dieser Erweiterung auf „Aktualisieren“ bzw. „Neu laden“. Bleibt der Unterschied bestehen, nutze in Gem Web Code „Erweiterungsordner öffnen“ und lade diesen Ordner. Lade ChatGPT-Tabs neu, sobald ihre laufende Arbeit fertig ist."
   },
   "popup_yes": {
     "message": "ja"
@@ -1122,7 +1122,7 @@
     "message": "Der eigene Endpunkt für die Fortsetzung ist ungültig. Prüfe die URL in den Einstellungen; nutze HTTPS oder einen lokalen HTTP-Endpunkt."
   },
   "content_history_rate_limited": {
-    "message": "ChatGPT hat den Zugriff auf diesen Chatverlauf vorübergehend begrenzt. Chat On Steroids pausiert die automatische Wiederherstellung bis zum Ablauf der Wartezeit."
+    "message": "ChatGPT hat den Zugriff auf diesen Chatverlauf vorübergehend begrenzt. Gem Web Code pausiert die automatische Wiederherstellung bis zum Ablauf der Wartezeit."
   },
   "content_goal_error_rate_limited": {
     "message": "Der Anbieter der Fortsetzung drosselt die Anfragen. Warte auf den angezeigten neuen Versuch oder wähle ein anderes Modell für die Fortsetzung."
@@ -1215,7 +1215,7 @@
     "message": "Fehlgeschlagen. Anmeldung in CoS neu starten."
   },
   "popup_app_not_running_help": {
-    "message": "Stelle sicher, dass Chat On Steroids auf diesem Computer geöffnet ist. Die Browser-Erweiterung verbindet sich dann von selbst."
+    "message": "Stelle sicher, dass Gem Web Code auf diesem Computer geöffnet ist. Die Browser-Erweiterung verbindet sich dann von selbst."
   },
   "content_workers_finished": {
     "message": "$1 fertig"
@@ -1272,7 +1272,7 @@
     "message": "wartet auf die App"
   },
   "content_task_waiting_app": {
-    "message": "Wartet auf eine Antwort von Chat On Steroids."
+    "message": "Wartet auf eine Antwort von Gem Web Code."
   },
   "content_revival_draft_appeared": {
     "message": "Während der Weckruf des Workers vorbereitet wurde, wurde etwas in den Chat geschrieben, daher hat der Weckruf es nicht ersetzt."

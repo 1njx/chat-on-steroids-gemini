@@ -43,7 +43,7 @@ const fixture = `(() => {
    const hide=text=>request.hide?redactPersonalText(redactSecretText(text)):redactSecretText(text);
    const html=transcriptHtml(hide(chat.title),messages.map(m=>({role:m.role,text:hide(m.text)})),{user:t('You'),assistant:'ChatGPT'},
     {lang:request.lang,date:new Intl.DateTimeFormat(request.lang,{dateStyle:'long'}).format(new Date(Date.UTC(2026,9,24,12))),
-     footer:t('Shared from Chat On Steroids'),hidden:t('hidden')});
+     footer:t('Shared from Gem Web Code'),hidden:t('hidden')});
    return ok({done:'preview',preview:'00000000-0000-4000-8000-00000000000'+window.shares.length%10,html,hidden:hiddenCount(html)});
   }
  };

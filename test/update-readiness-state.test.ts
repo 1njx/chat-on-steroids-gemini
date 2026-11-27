@@ -107,7 +107,7 @@ it('explains replacement and the launch location only for a confirmed manual mac
   manual.update.latest = '99.0.0';
   const app = (next: any) => updateReadiness(next).find(row => row.id === 'app')!;
   expect(app(manual).detail).toContain('Install 99.0.0 manually');
-  expect(app(manual).nextStep).toContain('fully quit Chat On Steroids'); expect(app(manual).nextStep).toContain('/Applications');
+  expect(app(manual).nextStep).toContain('fully quit Gem Web Code'); expect(app(manual).nextStep).toContain('/Applications');
   const { setLanguage } = await import('../src/renderer/i18n.js');
   setLanguage('ja'); expect(app(manual).nextStep).toContain('完全に終了'); expect(app(manual).nextStep).toContain('/Applications');
   setLanguage('en');

@@ -53,7 +53,7 @@ export function showDesktopAskPrompt(prompt: DesktopAskPrompt): Promise<'go' | '
   const win = new BrowserWindow({
     x: Math.round(area.x + area.width - WIDTH - MARGIN), y: Math.round(area.y + MARGIN), width: WIDTH, height: HEIGHT,
     frame: false, resizable: false, minimizable: false, maximizable: false, fullscreenable: false, skipTaskbar: true,
-    alwaysOnTop: true, show: false, title: 'Chat On Steroids', backgroundColor: palette.background,
+    alwaysOnTop: true, show: false, title: 'Gem Web Code', backgroundColor: palette.background,
     // Never takes the focus: a non-activating panel on macOS, a window that is not activated by a click on Windows.
     ...(process.platform === 'darwin' ? { type: 'panel' } : { focusable: false }),
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, preload: path.join(__dirname, '../preload/desktop-ask.js') }
@@ -93,7 +93,7 @@ export function showDesktopAskPrompt(prompt: DesktopAskPrompt): Promise<'go' | '
           win.showInactive();
         });
     });
-    const pending: DesktopAskPending = { id: randomUUID(), title: mainText('Chat On Steroids wants to use your mouse and keyboard'),
+    const pending: DesktopAskPending = { id: randomUUID(), title: mainText('Gem Web Code wants to use your mouse and keyboard'),
       step: stepLine(prompt, mainText), chat: (prompt.chat ?? '').slice(0, 120) };
     waiting = { pending, answer: finish };
     mirror(pending);

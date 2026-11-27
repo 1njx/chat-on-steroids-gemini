@@ -73,7 +73,7 @@ export function requestOpenaiSetup(names: { tunnelName: string; keyName: string;
     knownTunnelId: z.string().regex(TUNNEL_ID).optional().catch(undefined) });
   const parsed = schema.safeParse(names);
   if (!parsed.success) return { ok: false, error: 'invalid-request' };
-  return { ok: true, id: queue('openai-setup', null, { ...parsed.data, tunnelDescription: 'Chat On Steroids on this computer' }) };
+  return { ok: true, id: queue('openai-setup', null, { ...parsed.data, tunnelDescription: 'Gem Web Code on this computer' }) };
 }
 
 /** What the extension's status pass offers: open tasks, a lapsed claim offered again. */

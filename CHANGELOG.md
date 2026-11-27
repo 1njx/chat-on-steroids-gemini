@@ -9,6 +9,23 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.3.0] — Chat On Steroids is now Gem Web Code
+
+### Changed
+
+- **The app is now Gem Web Code**, focused on Google Gemini, with ChatGPT kept. The name changed in
+  the window, installer and shortcuts, the browser extension, Settings, the README and docs, in all
+  12 languages. It started as a fork of Chat On Steroids (MIT), whose copyright line stays.
+- **Nothing to move:** the app data folder (`chat-on-steroids`), the Windows app id and the release
+  file names stay, so 2.2.x updates itself to 2.3.0 in place with its chats and settings.
+- **Gemini's custom app is "Gem Web Code Core".** An account that still has "Chat On Steroids Core"
+  keeps working: a message mentions it when the new name is not offered (and Full access answers its
+  approval cards), and "Add it in Gemini for me" deletes it before adding the new one.
+- **ChatGPT connectors keep their names** ("Chat On Steroids Core/Desktop/Plugins"): they are what
+  you typed in ChatGPT, and the extension recognizes the app's traffic by those exact names.
+- **The repository is now `1njx/gem-web-code`.** GitHub redirects the old address, so 2.2.x still
+  finds this update.
+
 ## [2.2.26] — Settings → Gemini in your language
 
 ### Changed

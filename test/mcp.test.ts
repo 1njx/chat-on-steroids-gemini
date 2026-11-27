@@ -4209,7 +4209,7 @@ describe('exec sessions belong to the chat that opened them', () => {
     expect(await rebindSession(untitled.id, chatD, chatE)).toBe(true);
     const bare = await asChat('wfr_where_d', 'read', { paths: ['/workspace/src/app.ts'] });
     expect(textOf(bare)).toContain(`https://chatgpt.com/c/${chatE}. Tell the user to continue there`);
-    expect(textOf(bare)).not.toContain('shown in Chat On Steroids as');
+    expect(textOf(bare)).not.toContain('shown in Gem Web Code as');
   });
 
   it('refuses every tool from a chat whose handoff brief has been asked for, until the move is over', async () => {

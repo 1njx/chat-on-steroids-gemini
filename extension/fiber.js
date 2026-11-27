@@ -136,7 +136,7 @@
    * (`server.ts`), so these are this app naming itself rather than labels somebody typed.
    * The pre-1.7.1 name stays so an older chat's evidence still reads.
    *
-   * Exact names, never a prefix: `Chat On Steroids Backup` would be somebody else's
+   * Exact names, never a prefix: `Gem Web Code Backup` would be somebody else's
    * connector, and a prefix test would have this app vouch for its traffic.
    *
    * A computer that shares its ChatGPT account with another names its connectors with a suffix
@@ -148,7 +148,7 @@
   const LEGACY_APPS = ['TobisComputer'];
   const SUFFIXED_APP = /^Chat On Steroids (Core|Desktop|Plugins) \([\p{L}\p{N} ._-]{1,32}\)$/u;
   let OUR_APPS = [...PLAIN_APPS, ...LEGACY_APPS];
-  /** Takes the names an ask carries: three "Chat On Steroids …" names, in core/desktop/plugins order. */
+  /** Takes the names an ask carries: three "Gem Web Code …" names, in core/desktop/plugins order. */
   function adoptAppNames(names) {
     if (!Array.isArray(names) || names.length !== 3) return;
     const words = ['Core', 'Desktop', 'Plugins'];

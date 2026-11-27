@@ -126,7 +126,7 @@ function showConnection(): void {
   }
   // Values needed for ChatGPT setup stay copyable; tool lists belong to each plugin.
   copy(t("Name in ChatGPT"), surface?.connectorName ?? 'Chat On Steroids Plugins');
-  copy(t("Description"), surface?.description ?? 'Tools from your enabled Chat On Steroids plugins.');
+  copy(t("Description"), surface?.description ?? 'Tools from your enabled Gem Web Code plugins.');
   const url = surface?.publicUrl ?? (config.tunnel.kind === 'manual' ? surface?.localUrl : null);
   if (url) copy(t("MCP server URL"), url);
   body.append(el('p', 'hint', () => config.tunnel.kind === 'openai'

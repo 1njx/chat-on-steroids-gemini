@@ -65,7 +65,7 @@ app.whenReady().then(async () => {
   assert.equal(card.visible, true, 'The step card is shown in the timeline');
   assert.equal(card.summaryHidden, true, 'The card replaces the tool row headline');
   assert.equal(card.pre, 'cd firmware && make flash PORT=/dev/tty.usbserial-0001');
-  assert.match(card.text, /Run it yourself, in your own terminal: Chat On Steroids does not run or check it\./);
+  assert.match(card.text, /Run it yourself, in your own terminal: Gem Web Code does not run or check it\./);
   assert.doesNotMatch(card.text.toLowerCase(), /\bsafe\b|verified/);
   assert.deepEqual(card.buttons, ['Mark as done', 'Skip']);
   assert.match(card.text, /found, 18 kB, /); assert.match(card.text, /not there yet/);

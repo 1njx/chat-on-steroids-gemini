@@ -1,4 +1,4 @@
-# Chat On Steroids — product logic and agent map
+# Gem Web Code — product logic and agent map
 
 Read this file before changing the app. It explains the product, feature logic, owners and
 working rules without requiring old worklogs. If the host injected only a prefix, read the
@@ -27,7 +27,7 @@ bridge protocol **14** in the checked declarations (`package.json`, `src/main/ve
 
 ## 1. What the whole app is meant to do
 
-Chat On Steroids is a Windows/macOS/Linux Electron workspace around ChatGPT. The user can work
+Gem Web Code is a Windows/macOS/Linux Electron workspace around ChatGPT. The user can work
 from the desktop app while ChatGPT generates answers in its own browser conversation. The app
 sends instructions, records the conversation, supplies local tools over MCP, and coordinates
 long-running work. The companion extension connects that browser conversation to the local
@@ -228,7 +228,7 @@ goes out only once its fence is on disk (`armRotationFence` resolves), and not a
 | Keep awake | The computer (`ui.keepAwake` on, missing means on; `ui.keepScreenAwake` off). | Codex's "Prevent sleep while running". One select: Off / The computer / The computer and screen. `keep-awake.ts` holds `powerSaveBlocker` (`prevent-app-suspension`: the system stays awake, the screen may sleep; with `keepScreenAwake`, `prevent-display-sleep`, because Windows Modern Standby laptops go to standby once the screen turns off whatever else is held, and the hold is swapped when the choice changes) while any session is working by `sessionWorkingAt` with the bridge's `sessionActivityExpiresAt` deadline, so a chat that died mid-turn releases it when its deadline passes. Refreshed on session changes, at the nearest deadline, every 60 s and when the setting changes. |
 | Browser bridge port | Auto. | `ui.browserBridgePort` accepts Auto or 8765–8769. Auto falls back to 18765–18769, then 38765–38769 (`BROWSER_BRIDGE_AUTO_PORTS`, mirrored by the extension's `PORTS`; #1314: Windows reserved the primary range). Effective `CLF_BRIDGE_PORTS` overrides it and disables the Settings control. |
 | Background chats | On. | Omitted legacy settings use On; explicit saved On/Off remains exact. Cold Windows startup requests a minimized browser window. |
-| Background placement | Window. | `ui.backgroundPlacement` `'window'` / `'group'` (an unknown saved value reads as `'window'`), published in `/status` as `backgroundPlacement`. Group mode puts every background tab in one collapsed "Chat On Steroids" tab group in the last-focused normal window (never the background window, never incognito), then keeps using it; failures fall back to the minimized window. No follow and no compaction tab selection in the user's window (#128). |
+| Background placement | Window. | `ui.backgroundPlacement` `'window'` / `'group'` (an unknown saved value reads as `'window'`), published in `/status` as `backgroundPlacement`. Group mode puts every background tab in one collapsed "Gem Web Code" tab group in the last-focused normal window (never the background window, never incognito), then keeps using it; failures fall back to the minimized window. No follow and no compaction tab selection in the user's window (#128). |
 
 Keep evidence levels separate in all reports: **source → tests → build → package → installed
 payload → live browser/device/provider behavior**. Passing one level does not prove the next.
@@ -1134,8 +1134,8 @@ user's new messages, so ChatGPT and the recorded wire value never carry the cred
 unmistakable shapes are masked: provider key prefixes (OpenAI, Anthropic, GitHub, AWS, Stripe,
 Slack, Google), JSON Web Tokens, private key blocks, and values of settings whose names end in a
 secret word (`…_API_KEY`, `…_TOKEN`, `…_PASSWORD`, …; placeholders such as `${VAR}`, `<your key>`
-or `changeme` stay). Each becomes `[<kind> hidden by Chat On Steroids]` (a setting keeps its name:
-`[value hidden by Chat On Steroids]`). Nested calls inside `exec` see the real value; files and the
+or `changeme` stay). Each becomes `[<kind> hidden by Gem Web Code]` (a setting keeps its name:
+`[value hidden by Gem Web Code]`). Nested calls inside `exec` see the real value; files and the
 terminal are unchanged. `config.ui.secretsShield` (missing = on) turns it off everywhere; a
 project's `secretsShieldOff: true` (`LocalProject`, durable `projects`) turns it off for its chats.
 The project is looked up only after something matched, and a project that cannot be read keeps
@@ -3468,7 +3468,7 @@ tool within 60 s. No URL, cookie or credential leaves the page.
 
 In tab-group mode (#128) the extension keeps the group's id in `chrome.storage.session`
 (`chatBackgroundGroup`) and mirrors it to local storage (`chatBackgroundGroupMirror`); a mirrored id is
-trusted only while the group still carries the title "Chat On Steroids", and `onStartup` drops the
+trusted only while the group still carries the title "Gem Web Code", and `onStartup` drops the
 mirror. After a browser restart only an exactly titled group in a normal window whose every tab the
 app owns is adopted again. Group mode's reconcile never moves or regroups tabs. Only a group the app
 just created is collapsed, and every grouped tab is created inactive. A group that vanishes during
@@ -4283,7 +4283,7 @@ the pre-click question shown), because a transcript can hydrate in steps, and it
 later with the same verdict. Then `releaseUndeliveredSourceDispatchNow` hands the fence back to `attempted-unresolved` (the
 app re-checks every condition) for one new Send. ChatGPT restores an unsent draft on every load,
 so an earlier attempt's own handoff request can stay in the box; in its text the marker runs
-straight into the instruction (`]]Chat On Steroids…`). `handoffMarked` recognizes it: the repair
+straight into the instruction (`]]Gem Web Code…`). `handoffMarked` recognizes it: the repair
 check does not hold on it, and the attempt replaces it only when it is exactly the instruction
 under another token (`handoffResidue`); edited text stays the person's draft (#134).
 

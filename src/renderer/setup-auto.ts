@@ -123,7 +123,7 @@ export function mountSetupAuto(deps: () => Promise<SetupAutoDeps>): void {
     const note = document.createElement('p');
     note.className = 'hint';
     note.setAttribute('translate', 'no');
-    note.textContent = 'Opens platform.openai.com in your signed-in browser, takes the tunnel this app uses or one named "Chat On Steroids" (or creates it), then creates a Restricted key with Tunnels: Read and Use. The key goes only into this computer\'s secure storage.';
+    note.textContent = 'Opens platform.openai.com in your signed-in browser, takes the tunnel this app uses or one named "Gem Web Code" (or creates it), then creates a Restricted key with Tunnels: Read and Use. The key goes only into this computer\'s secure storage.';
     mine.addEventListener('click', () => {
       mine.disabled = true;
       void deps().then(ready => runOpenai(ready, (tone, text) => { note.dataset.tone = tone; note.textContent = text; })).finally(() => { mine.disabled = false; });

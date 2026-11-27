@@ -1,27 +1,32 @@
-<p align="center"><img src="docs/images/readme-hero.svg?v=2" width="960" alt="Turn ChatGPT into Codex-style local coding. Chat On Steroids: Your files. Your terminal. Your ChatGPT plan." /></p>
+<p align="center"><img src="docs/images/readme-hero.svg?v=3" width="960" alt="Gem Web Code: let Gemini code on your computer. Your files. Your terminal. Your Gemini plan. ChatGPT works too." /></p>
 
-> **Gemini edition.** This is an independent fork of
-> [Chat On Steroids](https://github.com/totec448-spec/chat-on-steroids) (MIT) that adds **Google
-> Gemini** as a second provider: Gemini uses this app's files, terminal, skills, desktop and
-> plugins (including Roblox Studio's MCP server) through Gemini custom apps, and Settings →
-> Gemini sets it up and sends messages to Gemini. Read **[docs/gemini.md](docs/gemini.md)** for
-> setup, the live Gemini 4 Neon verification and the known limitations. Not affiliated with,
-> endorsed by or approved by Google or OpenAI. Everything below describes the upstream app, which
-> this fork keeps unchanged for ChatGPT.
+**Gem Web Code** lets Google Gemini (gemini.google.com, in your own browser) work on your
+computer: read and edit files in the folders you share, run commands in a terminal, and use
+skills, the desktop and plugins (including Roblox Studio's MCP server) through a Gemini custom
+app. Chats run from this app's window with the Gemini model you pick, and Gemini's answers are
+recorded here. ChatGPT works too, through the same browser extension.
+
+Start with **[docs/gemini.md](docs/gemini.md)**: setup, requirements (Google offers custom apps
+to personal accounts, 18+, in the US, in English) and the known limitations.
+
+> Gem Web Code started as a fork of [Chat On Steroids](https://github.com/totec448-spec/chat-on-steroids)
+> (MIT) and keeps its ChatGPT features. It is not affiliated with, endorsed by or approved by
+> Google, OpenAI or the Chat On Steroids authors. Much of the rest of this page describes those
+> ChatGPT features.
 
 <p align="center">
-  <a href="https://github.com/1njx/chat-on-steroids-gemini/releases/latest/download/Chat-On-Steroids-Setup-x64.exe"><img src="docs/images/download-windows.svg" width="208" height="56" alt="Download for Windows x64" /></a>&nbsp;
-  <a href="https://github.com/1njx/chat-on-steroids-gemini/releases/latest/download/Chat-On-Steroids-macOS-arm64.dmg"><img src="docs/images/download-macos.svg" width="208" height="56" alt="Download for macOS Apple silicon" /></a>&nbsp;
-  <a href="https://github.com/1njx/chat-on-steroids-gemini/releases/latest/download/Chat-On-Steroids-Linux-x64.deb"><img src="docs/images/download-linux.svg" width="208" height="56" alt="Download for Linux x64" /></a>
+  <a href="https://github.com/1njx/gem-web-code/releases/latest/download/Chat-On-Steroids-Setup-x64.exe"><img src="docs/images/download-windows.svg" width="208" height="56" alt="Download for Windows x64" /></a>&nbsp;
+  <a href="https://github.com/1njx/gem-web-code/releases/latest/download/Chat-On-Steroids-macOS-arm64.dmg"><img src="docs/images/download-macos.svg" width="208" height="56" alt="Download for macOS Apple silicon" /></a>&nbsp;
+  <a href="https://github.com/1njx/gem-web-code/releases/latest/download/Chat-On-Steroids-Linux-x64.deb"><img src="docs/images/download-linux.svg" width="208" height="56" alt="Download for Linux x64" /></a>
 </p>
 
-<p align="center"><a href="https://github.com/1njx/chat-on-steroids-gemini/releases/latest">All downloads</a> · <a href="docs/gemini.md">Gemini setup</a></p>
+<p align="center"><a href="https://github.com/1njx/gem-web-code/releases/latest">All downloads</a> · <a href="docs/gemini.md">Gemini setup</a></p>
 
 <p align="center"><sub>Independent beta. Use at your own risk and within your provider's rules. <a href="#responsible-use-and-provider-rules">Read the usage notice</a> before connecting.</sub></p>
 
 <br />
 
-<p align="center"><a href="docs/images/demo.mp4"><img src="docs/images/demo.gif" width="960" alt="Chat On Steroids in action: model selection, task plans, live tool results and reusable workers" /></a></p>
+<p align="center"><a href="docs/images/demo.mp4"><img src="docs/images/demo.gif" width="960" alt="Gem Web Code in action: model selection, task plans, live tool results and reusable workers" /></a></p>
 
 <p align="center"><a href="#get-started">Get started</a> &nbsp;·&nbsp; <a href="docs/images/demo.mp4">Watch the demo</a> &nbsp;·&nbsp; <a href="CHANGELOG.md">What’s new</a></p>
 
@@ -30,7 +35,7 @@
 <h2 align="center">Code. Delegate. Keep going.</h2>
 
 <p align="center">
-<img src="docs/images/workspace.png" width="960" alt="Chat On Steroids at work: a conversation with live tool results, a task plan, and two workers beside it" />
+<img src="docs/images/workspace.png" width="960" alt="Gem Web Code at work: a conversation with live tool results, a task plan, and two workers beside it" />
 </p>
 
 **Work on the real project.** Let ChatGPT read and edit files, run tests, keep terminals open and use your desktop. Follow the actual tool results as they arrive.
@@ -114,7 +119,7 @@ Move a chat into a project from its menu or by dragging it, and undo it right aw
 
 ## Responsible use and provider rules
 
-Chat On Steroids is an independent, open-source workspace for coding and other authorized tasks with your own files and tools. It is intended to support productive work within the rules of the services you use. **It is not intended to bypass usage limits, account restrictions or safety controls.**
+Gem Web Code is an independent, open-source workspace for coding and other authorized tasks with your own files and tools. It is intended to support productive work within the rules of the services you use. **It is not intended to bypass usage limits, account restrictions or safety controls.**
 
 Use CoS in accordance with OpenAI's applicable [Terms of Use](https://openai.com/policies/terms-of-use/) ([Europe Terms](https://openai.com/policies/eu-terms-of-use/) for the EEA, Switzerland and UK), [Usage Policies](https://openai.com/policies/usage-policies/) and [Service Terms](https://openai.com/policies/service-terms/), plus your workspace's rules and any connected service's terms.
 

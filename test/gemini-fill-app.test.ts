@@ -87,16 +87,16 @@ async function addInGemini(apps: App[], { flakyMenus = 0, lateMs = 0, duplicateO
       const box = dialogs.querySelector('input')!;
       const add = () => {
         pressed.push(`add ${input.value}`);
-        apps.push({ name: 'Chat On Steroids Core', url: input.value });
+        apps.push({ name: 'Gem Web Code Core', url: input.value });
         // A Gemini that kept a second copy: the list then shows two apps with the name.
-        if (duplicateOnAdd) apps.push({ name: 'Chat On Steroids Core (2)', url: input.value });
+        if (duplicateOnAdd) apps.push({ name: 'Gem Web Code Core (2)', url: input.value });
         dialogs.innerHTML = '';
         render();
       };
       const connect = button(dialogs.firstElementChild!, '<button disabled>Connect</button>', () => {
         if (!saveStep) { add(); return; }
         pressed.push('notice connect');
-        dialogs.innerHTML = '<mat-dialog-container role="dialog"><h2>Save your custom app</h2><input type="text" value="Chat On Steroids Core"></mat-dialog-container>';
+        dialogs.innerHTML = '<mat-dialog-container role="dialog"><h2>Save your custom app</h2><input type="text" value="Gem Web Code Core"></mat-dialog-container>';
         button(dialogs.firstElementChild!, '<button>Cancel</button>', () => { dialogs.innerHTML = ''; });
         const save = button(dialogs.firstElementChild!, '<button disabled>Connect</button>', add) as HTMLButtonElement;
         setTimeout(() => { save.disabled = false; }, 500);
@@ -132,60 +132,70 @@ async function addInGemini(apps: App[], { flakyMenus = 0, lateMs = 0, duplicateO
 
 it('deletes every old and duplicate Core app first, keeps the one with this address, and adds nothing', async () => {
   const { final, pressed, apps } = await addInGemini([
-    { name: 'Chat On Steroids Core', url: address('old-one') },
+    { name: 'Gem Web Code Core', url: address('old-one') },
     { name: 'Other app', url: address('someone-else') },
-    { name: 'chat-on-steroids core (2)', url: NEW },
-    { name: 'Chat On Steroids Core', url: address('old-two') },
-    { name: 'Chat On Steroids Core', url: NEW },
+    { name: 'gem-web-code core (2)', url: NEW },
+    { name: 'Gem Web Code Core', url: address('old-two') },
+    { name: 'Gem Web Code Core', url: NEW },
   ]);
   expect(final).toMatchObject({ stage: 'completed', outcome: 'current', existingUrl: NEW });
   expect(pressed).toEqual([`delete ${address('old-one')}`, `delete ${address('old-two')}`, `delete ${NEW}`]);
-  expect(apps.map(app => [app.name, app.url])).toEqual([['Other app', address('someone-else')], ['chat-on-steroids core (2)', NEW]]);
+  expect(apps.map(app => [app.name, app.url])).toEqual([['Other app', address('someone-else')], ['gem-web-code core (2)', NEW]]);
+}, 30_000);
+
+it('deletes the app under its pre-2.3.0 name "Chat On Steroids Core" too, even at this address, then adds "Gem Web Code Core"', async () => {
+  const { final, pressed, apps } = await addInGemini([
+    { name: 'Chat On Steroids Core', url: NEW },
+    { name: 'Other app', url: address('someone-else') },
+  ]);
+  expect(final).toMatchObject({ stage: 'completed', outcome: 'connected', verified: true });
+  expect(pressed).toEqual([`delete ${NEW}`, `add ${NEW}`]);
+  expect(apps).toEqual([{ name: 'Other app', url: address('someone-else') }, { name: 'Gem Web Code Core', url: NEW }]);
 }, 30_000);
 
 it('tries a delete that did not take again, and gives up after three tries without adding', async () => {
-  const retried = await addInGemini([{ name: 'Chat On Steroids Core', url: address('old-one') }], { flakyMenus: 2 });
+  const retried = await addInGemini([{ name: 'Gem Web Code Core', url: address('old-one') }], { flakyMenus: 2 });
   expect(retried.final).toMatchObject({ stage: 'completed', outcome: 'connected' });
   expect(retried.pressed).toEqual(['menu did not open', 'menu did not open', `delete ${address('old-one')}`, `add ${NEW}`]);
   dom!.window.close(); dom = null;
-  const stuck = await addInGemini([{ name: 'Chat On Steroids Core', url: address('old-one') }], { flakyMenus: 9 });
+  const stuck = await addInGemini([{ name: 'Gem Web Code Core', url: address('old-one') }], { flakyMenus: 9 });
   expect(stuck.final).toMatchObject({ stage: 'failed', error: 'delete-failed' });
   expect(stuck.pressed).toEqual(['menu did not open', 'menu did not open', 'menu did not open']);
-  expect(stuck.apps).toEqual([{ name: 'Chat On Steroids Core', url: address('old-one') }]);
+  expect(stuck.apps).toEqual([{ name: 'Gem Web Code Core', url: address('old-one') }]);
 }, 60_000);
 
 it('deletes every old Core app before it adds and connects the new one', async () => {
   const { final, pressed, apps } = await addInGemini([
-    { name: 'Chat On Steroids Core', url: address('old-one') },
-    { name: 'Chat On Steroids Core (2)', url: address('old-two') },
+    { name: 'Gem Web Code Core', url: address('old-one') },
+    { name: 'Gem Web Code Core (2)', url: address('old-two') },
   ]);
   expect(final).toMatchObject({ stage: 'completed', outcome: 'connected' });
   expect(pressed).toEqual([`delete ${address('old-one')}`, `delete ${address('old-two')}`, `add ${NEW}`]);
-  expect(apps).toEqual([{ name: 'Chat On Steroids Core', url: NEW }]);
+  expect(apps).toEqual([{ name: 'Gem Web Code Core', url: NEW }]);
 }, 30_000);
 
 it('finds an old Core app in a list that loads late, and deletes it before adding', async () => {
-  const { final, pressed, apps } = await addInGemini([{ name: 'Chat On Steroids Core', url: address('old-one') }], { lateMs: 600 });
+  const { final, pressed, apps } = await addInGemini([{ name: 'Gem Web Code Core', url: address('old-one') }], { lateMs: 600 });
   expect(final).toMatchObject({ stage: 'completed', outcome: 'connected', verified: true });
   expect(pressed).toEqual([`delete ${address('old-one')}`, `add ${NEW}`]);
-  expect(apps).toEqual([{ name: 'Chat On Steroids Core', url: NEW }]);
+  expect(apps).toEqual([{ name: 'Gem Web Code Core', url: NEW }]);
 }, 30_000);
 
 it("reads an app's address only once Gemini synced its details, so a cached old address neither deletes the current app nor fails the check", async () => {
-  const current = await addInGemini([{ name: 'Chat On Steroids Core', url: NEW }], { staleDetails: true });
+  const current = await addInGemini([{ name: 'Gem Web Code Core', url: NEW }], { staleDetails: true });
   expect(current.final).toMatchObject({ stage: 'completed', outcome: 'current', existingUrl: NEW, verified: true });
   expect(current.pressed).toEqual([]);
   dom!.window.close(); dom = null;
-  const replaced = await addInGemini([{ name: 'Chat On Steroids Core', url: address('old-one') }], { staleDetails: true });
+  const replaced = await addInGemini([{ name: 'Gem Web Code Core', url: address('old-one') }], { staleDetails: true });
   expect(replaced.final).toMatchObject({ stage: 'completed', outcome: 'connected', verified: true });
   expect(replaced.pressed).toEqual([`delete ${address('old-one')}`, `add ${NEW}`]);
 }, 60_000);
 
 it('presses Connect on "Save your custom app" too, once it is enabled, when Gemini asks to save the app', async () => {
-  const { final, pressed, apps, panel } = await addInGemini([{ name: 'Chat On Steroids Core', url: address('old-one') }], { saveStep: true });
+  const { final, pressed, apps, panel } = await addInGemini([{ name: 'Gem Web Code Core', url: address('old-one') }], { saveStep: true });
   expect(final).toMatchObject({ stage: 'completed', outcome: 'connected', verified: true });
   expect(pressed).toEqual([`delete ${address('old-one')}`, 'notice connect', `add ${NEW}`]);
-  expect(apps).toEqual([{ name: 'Chat On Steroids Core', url: NEW }]);
+  expect(apps).toEqual([{ name: 'Gem Web Code Core', url: NEW }]);
   expect(panel!.steps.slice(-3)).toEqual(['Connect', 'Saving the app', 'Checking the app in Gemini']);
 }, 30_000);
 
@@ -197,12 +207,12 @@ it('fails the add when the list afterwards does not show exactly one app with th
 const DELETE_STEP = (n: number) => `Deleting the old app (try ${n} of 3)`;
 
 it('brings its tab to the front first, and the panel names each step, then done, never the address', async () => {
-  const { sent, panel, style, html } = await addInGemini([{ name: 'Chat On Steroids Core', url: address('old-one') }]);
+  const { sent, panel, style, html } = await addInGemini([{ name: 'Gem Web Code Core', url: address('old-one') }]);
   expect(sent[0]).toBe('gemini_focus');
   expect(panel).toMatchObject({
-    state: 'done', title: "Chat On Steroids is setting this up — please don't click or type in this tab until it says done",
+    state: 'done', title: "Gem Web Code is setting this up — please don't click or type in this tab until it says done",
     steps: ['Opening custom apps', 'Checking existing apps', DELETE_STEP(1), 'Adding the app', 'Next', "Ticking Google's notice", 'Connect', 'Checking the app in Gemini'],
-    ending: 'Done: Chat On Steroids Core is added and connected in Gemini, once, with this address.'
+    ending: 'Done: Gem Web Code Core is added and connected in Gemini, once, with this address.'
   });
   expect(style).toBe('none');
   // The panel never shows the Core address (it ends in a secret token).
@@ -210,7 +220,7 @@ it('brings its tab to the front first, and the panel names each step, then done,
 }, 30_000);
 
 it('counts the delete tries in the panel and ends red with the same words the app shows', async () => {
-  const { panel } = await addInGemini([{ name: 'Chat On Steroids Core', url: address('old-one') }], { flakyMenus: 9 });
+  const { panel } = await addInGemini([{ name: 'Gem Web Code Core', url: address('old-one') }], { flakyMenus: 9 });
   expect(panel).toMatchObject({ state: 'failed', steps: ['Opening custom apps', 'Checking existing apps', DELETE_STEP(1), DELETE_STEP(2), DELETE_STEP(3)],
     ending: `${GEMINI_ERRORS['delete-failed']} The app shows the same message in Setup.` });
 }, 60_000);

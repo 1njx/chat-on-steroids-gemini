@@ -24,7 +24,7 @@ const STORE = 'scheduled-runs';
 const MAX_SCHEDULES = 500;
 const SCHEDULE_LIST_PREVIEW_CHARS = 320;
 const SCHEDULE_STATE_READ_ERROR = 'Could not read scheduled-runs state';
-const SCHEDULE_FUTURE_VERSION_ERROR = 'These schedules were saved by a newer version of Chat On Steroids. Update the app to change them.';
+const SCHEDULE_FUTURE_VERSION_ERROR = 'These schedules were saved by a newer version of Gem Web Code. Update the app to change them.';
 
 const at = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 export const scheduleRepeatSchema = z.discriminatedUnion('kind', [
@@ -115,7 +115,7 @@ async function load(): Promise<ScheduledRun[]> {
   return raw.data.schedules;
 }
 const save = async (schedules: ScheduledRun[], onPersisted?: () => void) => {
-  if (foreign) throw new Error('These schedules were saved by a newer version of Chat On Steroids. Update the app to change them.');
+  if (foreign) throw new Error('These schedules were saved by a newer version of Gem Web Code. Update the app to change them.');
   await writeDurableNow(STORE, { version: 1, schedules }, onPersisted ? { onPersisted } : undefined);
 };
 

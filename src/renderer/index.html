@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
-    <title>Chat On Steroids</title>
+    <title>Gem Web Code</title>
     <link rel="stylesheet" href="./icons.css" />
     <link rel="stylesheet" href="./styles.css" />
     <link rel="stylesheet" href="./scheduled.css" />
@@ -34,7 +34,7 @@
       <aside class="sidebar" id="sidebar">
         <div class="sidebar-resize" id="sidebarResize" role="separator" tabindex="0" aria-label="Chat list width" aria-orientation="vertical" aria-controls="sidebar" title="Drag to resize · Double-click to reset"></div>
         <button class="btn" id="backToChat" type="button" hidden><i class="ico ph ph-arrow-left" aria-hidden="true"></i><span>Back to chat</span></button>
-        <div class="sidebar-brand"><span class="mark"><svg class="ico" viewBox="0 0 24 24"><use href="#i-mark" /></svg></span><strong>Chat On Steroids</strong><button class="btn sidebar-brand-seen" id="markAllSeen" type="button" title="Mark all as seen" aria-label="Mark all as seen" hidden><i class="ico ph ph-checks" aria-hidden="true"></i></button><button class="btn sidebar-brand-search" id="searchChatsButton" type="button" aria-haspopup="dialog" aria-controls="searchDialog" title="Search chats" aria-label="Search chats"><i class="ico ph ph-magnifying-glass" aria-hidden="true"></i></button></div>
+        <div class="sidebar-brand"><span class="mark"><svg class="ico" viewBox="0 0 24 24"><use href="#i-mark" /></svg></span><strong>Gem Web Code</strong><button class="btn sidebar-brand-seen" id="markAllSeen" type="button" title="Mark all as seen" aria-label="Mark all as seen" hidden><i class="ico ph ph-checks" aria-hidden="true"></i></button><button class="btn sidebar-brand-search" id="searchChatsButton" type="button" aria-haspopup="dialog" aria-controls="searchDialog" title="Search chats" aria-label="Search chats"><i class="ico ph ph-magnifying-glass" aria-hidden="true"></i></button></div>
         <div class="sidebar-primary" id="sidebarPrimary">
           <button class="btn new-chat" id="newChat" type="button"><i class="ico ph ph-pencil-simple" aria-hidden="true"></i>New chat</button>
           <button class="btn sidebar-primary-link" id="sidebarPlugins" data-sidebar-page="plugins" type="button"><i class="ico ph ph-puzzle-piece" aria-hidden="true"></i>Plugins</button>
@@ -165,7 +165,7 @@
         <div class="offer-icon"><i class="ico ph ph-arrows-clockwise" aria-hidden="true"></i></div>
         <div class="offer-text">
           <b id="pluginRefreshOfferTitle">Keep plugins up to date in ChatGPT</b>
-          <em>When an update changes a plugin's tools, Chat On Steroids refreshes it in ChatGPT for you. You can change this later in Settings.</em>
+          <em>When an update changes a plugin's tools, Gem Web Code refreshes it in ChatGPT for you. You can change this later in Settings.</em>
         </div>
         <div class="offer-actions">
           <button class="offer-later" id="pluginRefreshOfferLater" type="button">Not now</button>
@@ -174,7 +174,7 @@
       </div>
       <div class="notice" id="pluginRefreshReminder" role="status" hidden>
         <i class="ico ph ph-activity" aria-hidden="true"></i>
-        <span>The tools of a Chat On Steroids plugin changed. Refresh that plugin in ChatGPT; this is separate from the browser extension.</span>
+        <span>The tools of a Gem Web Code plugin changed. Refresh that plugin in ChatGPT; this is separate from the browser extension.</span>
         <button class="btn btn-icon" id="dismissPluginRefreshReminder" type="button" title="Dismiss reminder" aria-label="Dismiss reminder"><i class="ico ph ph-x" aria-hidden="true"></i></button>
       </div>
       <!-- #1864: the ask-before-mouse-and-keyboard question, while it waits in the screen's corner too.
@@ -287,7 +287,7 @@
               <header class="settings-section-head"><div><h2>For developers</h2><p>Troubleshooting details and access for tools on this computer.</p></div></header>
               <div class="settings-surface pane appearance-settings-card">
                 <label class="setting"><span class="setting-text"><b>Developer mode</b><em>Show turn boundaries and recovery events in the chat.</em></span><input id="developerMode" type="checkbox" /></label>
-                <label class="setting"><span class="setting-text"><b>Keep plugin URLs across restarts</b><em>For your own tunnel, such as a named Cloudflare tunnel, whose URL ChatGPT stores. The local port stays the same too, so the tunnel can point at it. Anyone with that URL can use your Chat On Steroids plugins until you turn this off. Needs secure storage.</em><em id="mcpPortMoved" class="is-warn" role="status" hidden></em></span><input id="mcpPersistentUrls" type="checkbox" /></label>
+                <label class="setting"><span class="setting-text"><b>Keep plugin URLs across restarts</b><em>For your own tunnel, such as a named Cloudflare tunnel, whose URL ChatGPT stores. The local port stays the same too, so the tunnel can point at it. Anyone with that URL can use your Gem Web Code plugins until you turn this off. Needs secure storage.</em><em id="mcpPortMoved" class="is-warn" role="status" hidden></em></span><input id="mcpPersistentUrls" type="checkbox" /></label>
                 <label class="setting"><span class="setting-text"><b>Local control API</b><em>Let agents on this computer read app status and chats.</em></span><input id="controlApiEnabled" type="checkbox" /></label>
                 <label class="setting"><span class="setting-text"><b>Allow actions</b><em>Let those agents also send messages, start new chats and cancel messages. Needs the local control API.</em></span><input id="controlApiAllowActions" type="checkbox" disabled /></label>
                 <!-- #1794: veto-only; empty is off. Only an address on this computer is accepted. -->
@@ -397,12 +397,12 @@
           <div id="pluginsInstalled" aria-live="polite"></div>
           <div class="plugin-section-head"><h2>Explore plugins</h2><span class="muted">Made for your workflow</span></div>
           <div id="pluginsExplore" class="plugin-directory"></div>
-          <details class="plugin-legal"><summary><svg class="disclosure-chevron details-chevron" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6 3.5 10.5 8 6 12.5"></path></svg>Legal Notices / Third-party Licenses</summary><p>Catalog illustrations are original Chat On Steroids artwork, Copyright © 2026 Chat On Steroids contributors, licensed under the app’s MIT license. They illustrate independent integrations and are not official product logos or endorsements. Product names belong to their respective owners.</p><p>Installed plugins retain their own licenses. Open a plugin’s details to see its source, version and license. Review the upstream project before installation. Bundled dependency notices and reviewed catalog license texts are included in THIRD-PARTY-NOTICES.txt with the application; external plugins are downloaded separately.</p><button class="btn" id="pluginsLegalOpen" type="button">Open full third-party license texts</button></details>
+          <details class="plugin-legal"><summary><svg class="disclosure-chevron details-chevron" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6 3.5 10.5 8 6 12.5"></path></svg>Legal Notices / Third-party Licenses</summary><p>Catalog illustrations are original Gem Web Code artwork, Copyright © 2026 Gem Web Code contributors, licensed under the app’s MIT license. They illustrate independent integrations and are not official product logos or endorsements. Product names belong to their respective owners.</p><p>Installed plugins retain their own licenses. Open a plugin’s details to see its source, version and license. Review the upstream project before installation. Bundled dependency notices and reviewed catalog license texts are included in THIRD-PARTY-NOTICES.txt with the application; external plugins are downloaded separately.</p><button class="btn" id="pluginsLegalOpen" type="button">Open full third-party license texts</button></details>
           </div>
         </section>
         <section class="panel plugins-panel skills-panel" data-panel="skills">
           <div class="plugins-content">
-            <header class="plugin-page-head"><div><h1>Skills</h1><p>Reusable instructions for the work you do in Chat On Steroids.</p></div><div class="plugin-search-actions"><label class="plugin-search"><i class="ico ph ph-magnifying-glass" aria-hidden="true"></i><input id="skillsSearch" type="search" placeholder="Search skills" aria-label="Search skills" /></label><details class="plugin-menu skill-import-menu"><summary class="btn plugin-add" aria-label="Import a skill" title="Import a skill"><i class="ico ph ph-plus" aria-hidden="true"></i></summary><div class="plugin-menu-actions"><button class="btn" id="skillsImportFolder" type="button">Import folder</button><button class="btn" id="skillsImportFile" type="button">Import SKILL.md</button><button class="btn" id="skillsImportGithub" type="button">Import from GitHub</button></div></details></div></header>
+            <header class="plugin-page-head"><div><h1>Skills</h1><p>Reusable instructions for the work you do in Gem Web Code.</p></div><div class="plugin-search-actions"><label class="plugin-search"><i class="ico ph ph-magnifying-glass" aria-hidden="true"></i><input id="skillsSearch" type="search" placeholder="Search skills" aria-label="Search skills" /></label><details class="plugin-menu skill-import-menu"><summary class="btn plugin-add" aria-label="Import a skill" title="Import a skill"><i class="ico ph ph-plus" aria-hidden="true"></i></summary><div class="plugin-menu-actions"><button class="btn" id="skillsImportFolder" type="button">Import folder</button><button class="btn" id="skillsImportFile" type="button">Import SKILL.md</button><button class="btn" id="skillsImportGithub" type="button">Import from GitHub</button></div></details></div></header>
             <div class="plugin-refresh-guide pet-import-guide"><p>Import a folder, a standalone SKILL.md, or a public GitHub skill. Local skills can be linked to their GitHub source to check for updates; installing an update stays your choice.</p></div>
             <dialog class="plugin-dialog pet-delete-dialog" id="skillGithubDialog" aria-labelledby="skillGithubTitle">
               <div class="plugin-dialog-head"><h2 id="skillGithubTitle">Import from GitHub</h2><button class="btn" id="skillGithubClose" type="button">Close</button></div>
@@ -432,7 +432,7 @@
               <div class="plugin-dialog-head"><h2 id="petFormatTitle">What can I import?</h2><button class="btn" id="petsFormatClose" type="button">Close</button></div>
               <div class="plugin-dialog-body pet-format-content">
                 <div class="pet-format-guide-head"><p>A compatible pet is a folder with three files.</p><button class="btn" id="petsCopyInstructions" type="button">Copy instructions</button></div>
-                <p class="pet-format-folder">Import the folder itself with <code>pet.json</code>, <code>atlas.png</code>, and <code>animations.json</code>. Chat On Steroids validates all three before copying the pet into your local library.</p>
+                <p class="pet-format-folder">Import the folder itself with <code>pet.json</code>, <code>atlas.png</code>, and <code>animations.json</code>. Gem Web Code validates all three before copying the pet into your local library.</p>
                 <div class="pet-format-ai-help">
                   <strong>AI-assisted creation</strong>
                   <p>Copy the production brief below and replace <code>&lt;describe your character here&gt;</code> with the character, personality, colors, style, accessories, and references you want. In Codex, invoke <code>$hatch-pet</code> for visual generation and QA; its official URL is included for discovery, while this app’s 96-frame CoS format remains authoritative.</p>
@@ -711,7 +711,7 @@
                   <section id="browserExtensionStage" class="browser-stage" aria-labelledby="browserExtensionTitle">
                     <div class="browser-stage-copy">
                       <ol class="browser-install-steps">
-                        <li data-install-engine="gecko" hidden><div><b id="extensionStepAddon">Add the Chat On Steroids add-on to Firefox</b><button type="button" class="btn btn-solid" id="openFirefoxAddon"><i class="ico ph ph-puzzle-piece" aria-hidden="true"></i><span>Get the add-on</span></button>
+                        <li data-install-engine="gecko" hidden><div><b id="extensionStepAddon">Add the Gem Web Code add-on to Firefox</b><button type="button" class="btn btn-solid" id="openFirefoxAddon"><i class="ico ph ph-puzzle-piece" aria-hidden="true"></i><span>Get the add-on</span></button>
                           <p>Firefox asks before it adds the add-on. Choose Add.</p></div></li>
                         <li data-install-engine="chromium"><div><b id="extensionStepOpen">Open the extensions page</b><button type="button" class="btn btn-quiet" id="openExtensionSettings"><span id="setupExtensionAddress" translate="no">chrome://extensions</span><i class="ico ph ph-copy" aria-hidden="true"></i></button>
                           <p id="extensionStepOpenHint">Click the address to copy it, then paste it into the address bar and press Enter.</p></div></li>
@@ -734,7 +734,7 @@
                       <h3 id="browserLocationTitle" tabindex="-1">Where should ChatGPT run?</h3>
                       <p class="step-lead">You can change this later in Settings.</p>
                       <div class="browser-choice" role="radiogroup" aria-label="ChatGPT browser">
-                        <button class="browser-option" id="useCosBrowser" type="button" role="radio" data-browser-choice="cos"><img src="./browser-icons/cos.png" alt="" /><b>In Chat On Steroids</b><em>Use the app’s built-in browser.</em></button>
+                        <button class="browser-option" id="useCosBrowser" type="button" role="radio" data-browser-choice="cos"><img src="./browser-icons/cos.png" alt="" /><b>In Gem Web Code</b><em>Use the app’s built-in browser.</em></button>
                         <button class="browser-option" id="useExtensionBrowser" type="button" role="radio" data-browser-choice="extension"><img id="setupExternalIcon" src="./browser-icons/chrome.svg" alt="" /><b>In your browser</b><em id="setupExternalLabel"></em></button>
                       </div>
                       <div data-browser-variant="cos" class="browser-action"><button class="btn btn-solid" id="showCosBrowser" type="button"><i class="ico ph ph-sign-in" aria-hidden="true"></i><span>Sign in to ChatGPT</span></button><span class="status-pill" id="cosBrowserState" data-tone="off" role="status"></span></div>
@@ -1013,7 +1013,7 @@
               </div>
 
               <div class="field">
-                <label class="inline" id="startAtLoginRow" hidden><input type="checkbox" id="startAtLogin" /> Start Chat On Steroids when I sign in</label>
+                <label class="inline" id="startAtLoginRow" hidden><input type="checkbox" id="startAtLogin" /> Start Gem Web Code when I sign in</label>
                 <label class="inline"><input type="checkbox" id="autoConnect" /> Connect automatically at startup</label>
                 <label class="inline"><input type="checkbox" id="minimizeToTray" /> <span id="minimizeToTrayCopy">Keep running when closed</span></label>
               </div>
@@ -1051,7 +1051,7 @@
                   <div class="step-mark"><i class="ico tick ph ph-check" aria-hidden="true"></i></div>
                   <div class="step-body">
                     <h3>Connect your browser</h3>
-                    <p class="step-lead">Gemini runs in your own browser. The Chat On Steroids extension lets this app read the Gemini page and send messages there.</p>
+                    <p class="step-lead">Gemini runs in your own browser. The Gem Web Code extension lets this app read the Gemini page and send messages there.</p>
                     <p class="status-pill" id="geminiBrowserPill" data-tone="off" role="status"></p>
                     <div class="step-actions"><button class="btn btn-solid" id="geminiBrowserSetup" type="button"><i class="ico ph ph-puzzle-piece" aria-hidden="true"></i>Install the extension</button></div>
                     <p class="hint">It is the same extension ChatGPT uses: if you set it up for ChatGPT, this step is already done. The button opens Setup's browser step, with pictures for Chrome, Edge, Brave and Firefox. Come back here when it shows Connected.</p>
@@ -1121,7 +1121,7 @@
                     <p class="step-lead">Copy this address, then add it in Gemini as a custom app.</p>
                     <div class="gemini-copy-row"><code id="geminiSetupUrl" translate="no"></code><button class="btn" id="geminiSetupCopy" type="button" disabled><i class="ico ph ph-copy" aria-hidden="true"></i>Copy URL</button></div>
                     <div class="step-actions"><button class="btn btn-solid" id="geminiFillApp" type="button" disabled><i class="ico ph ph-pencil-simple" aria-hidden="true"></i>Add it in Gemini for me</button><button class="btn" id="geminiSetupOpenApps" type="button"><i class="ico ph ph-arrow-square-out" aria-hidden="true"></i>Open custom apps</button><button class="btn" id="geminiSetupOpenAppsDefault" type="button">Open in default browser</button></div>
-                    <p class="hint">“Add it in Gemini for me” uses the extension on your signed-in Gemini page. It will click, in this order: Delete and Remove on every “Chat On Steroids Core” app with an old address and on any duplicate, Custom (Create custom app), Next after filling in this address, Google's notice (“I understand and accept the security and privacy risks…”) and Connect. A page that looks different gets nothing changed.</p>
+                    <p class="hint">“Add it in Gemini for me” uses the extension on your signed-in Gemini page. It will click, in this order: Delete and Remove on every “Gem Web Code Core” app with an old address and on any duplicate, Custom (Create custom app), Next after filling in this address, Google's notice (“I understand and accept the security and privacy risks…”) and Connect. A page that looks different gets nothing changed.</p>
                     <p class="status-pill" id="geminiFillPill" data-tone="off" role="status" hidden></p>
                     <div class="setup-guide" data-setup-guide="gemini-add"></div>
                     <p class="hint">After Connect, Gemini lists the app's tools under “Save your custom app”. Click Connect there once more to save it.</p>
@@ -1166,11 +1166,11 @@
               </div>
             </section>
             <section class="appearance-section">
-              <header class="settings-section-head"><div><h2>Add Chat On Steroids to Gemini</h2><p>Gemini reaches this app as a custom MCP app. Gemini needs an https address, so use the Cloudflare tunnel (Setup → Tunnel) or your own HTTPS tunnel; the OpenAI Secure Tunnel only serves ChatGPT. Google currently offers custom apps to personal accounts, 18+, in the US, with Gemini history on, in English.</p></div></header>
+              <header class="settings-section-head"><div><h2>Add Gem Web Code to Gemini</h2><p>Gemini reaches this app as a custom MCP app. Gemini needs an https address, so use the Cloudflare tunnel (Setup → Tunnel) or your own HTTPS tunnel; the OpenAI Secure Tunnel only serves ChatGPT. Google currently offers custom apps to personal accounts, 18+, in the US, with Gemini history on, in English.</p></div></header>
               <div class="settings-surface pane appearance-settings-card">
                 <div class="setting"><span class="setting-text"><b>Core MCP server URL</b><em id="geminiCoreUrl" translate="no">Connect a Cloudflare or HTTPS tunnel first.</em></span><button class="btn" id="geminiCopyUrl" type="button" disabled>Copy</button></div>
                 <div class="setting"><span class="setting-text"><b>Open Gemini custom apps</b><em>Click Custom, paste the URL, Next, read Google's notice, tick it and Connect. Gemini lists the app's tools; Connect again to save it.</em></span><button class="btn" id="geminiOpenConnectors" type="button">Open</button><button class="btn" id="geminiOpenConnectorsDefault" type="button">Default browser</button></div>
-                <label class="setting"><span class="setting-text"><b>App name to mention</b><em>The name Gemini shows for the app (usually “Chat On Steroids Core”). Messages sent from the app start with an @-mention of it, which is how Google says to make Gemini use it. Empty means “Chat On Steroids Core” once the app is added in Gemini, and no mention before that.</em></span><input id="geminiConnectorName" type="text" maxlength="80" placeholder="Chat On Steroids Core" /></label>
+                <label class="setting"><span class="setting-text"><b>App name to mention</b><em>The name Gemini shows for the app (usually “Gem Web Code Core”). Messages sent from the app start with an @-mention of it, which is how Google says to make Gemini use it. Empty means “Gem Web Code Core” once the app is added in Gemini, and no mention before that.</em></span><input id="geminiConnectorName" type="text" maxlength="80" placeholder="Gem Web Code Core" /></label>
                 <div class="setting"><span class="setting-text"><b>Tunnel addresses change</b><em>A Cloudflare quick tunnel gets a new address every start. Gemini cannot edit a custom app's address, so this app adds itself again for the new one by itself, opening Gemini's custom apps page for a moment. For a lasting address use your own named tunnel and turn on General → For developers → Keep plugin URLs across restarts.</em></span></div>
               </div>
             </section>
@@ -1212,7 +1212,7 @@
               </button>
               <span class="mark"><svg class="ico" viewBox="0 0 24 24"><use href="#i-mark" /></svg></span>
               <span class="title">
-                Chat On Steroids
+                Gem Web Code
                 <span id="headerSub">Not set up yet</span>
               </span>
               <span class="state">
@@ -1640,7 +1640,7 @@
                 <header class="settings-page-head automation-page-head" data-agents-page="browser"><div><h1>Browser</h1><p>Background tabs, browser preferences, and history on this computer.</p></div></header>
                 <header data-agents-page="browser" class="settings-section-head automation-section-head"><div><h2 class="settings-section-title">Browser & history</h2><p>Manage background tabs, browser preferences, and history compaction.</p></div></header>
                 <div data-agents-page="browser" class="settings-surface pane">
-                  <label class="setting"><span class="setting-text"><b>ChatGPT browser</b><em>Used when the app launches a browser. Install the browser extension and sign in to ChatGPT in this browser's active profile. Already connected tabs stay in their browser. The built-in Chat On Steroids browser needs no install and runs hidden in the tray.</em></span><select id="chatBrowser"><option value="chrome">Google Chrome / Chromium</option><option value="edge">Microsoft Edge</option><option value="brave">Brave Browser</option><option value="firefox">Mozilla Firefox</option><option value="cos">Chat On Steroids browser (built-in)</option></select></label>
+                  <label class="setting"><span class="setting-text"><b>ChatGPT browser</b><em>Used when the app launches a browser. Install the browser extension and sign in to ChatGPT in this browser's active profile. Already connected tabs stay in their browser. The built-in Gem Web Code browser needs no install and runs hidden in the tray.</em></span><select id="chatBrowser"><option value="chrome">Google Chrome / Chromium</option><option value="edge">Microsoft Edge</option><option value="brave">Brave Browser</option><option value="firefox">Mozilla Firefox</option><option value="cos">Gem Web Code browser (built-in)</option></select></label>
                   <label class="setting" id="cosBrowserMinimizeRow" hidden><span class="setting-text"><b>Minimize the built-in browser to</b><em>Where its window goes when you minimize it. Its chats go on either way.</em></span><select id="cosBrowserMinimize"><option value="taskbar" id="cosBrowserMinimizeTaskbar">Taskbar</option><option value="tray" id="cosBrowserMinimizeTray">Tray</option></select></label>
                   <div class="setting"><span class="setting-text"><b>Browser extension</b><em>Disconnect the browser extension from this app.</em></span><button class="btn" id="bridgeUnpair" type="button">Disconnect browser</button></div>
                   <label class="setting"><span class="setting-text"><b>Browser bridge port</b><em id="browserBridgePortHint">Auto uses the first available port. A fixed port must be available.</em></span><select id="browserBridgePort"><option value="auto">Auto</option><option value="8765">8765</option><option value="8766">8766</option><option value="8767">8767</option><option value="8768">8768</option><option value="8769">8769</option></select></label>
@@ -1872,7 +1872,7 @@
     <dialog class="plugin-dialog ssh-project-dialog" id="sshProjectDialog" aria-labelledby="sshProjectTitle">
       <div class="plugin-dialog-head"><h2 id="sshProjectTitle">Add a folder on a server</h2><button class="btn" id="sshProjectClose" type="button">Close</button></div>
       <form id="sshProjectForm" class="plugin-dialog-body">
-        <p>Chat On Steroids connects with your own SSH setup: your ~/.ssh/config, agent, keys and known hosts. Signing in works with a key only, and nothing is installed on the server.</p>
+        <p>Gem Web Code connects with your own SSH setup: your ~/.ssh/config, agent, keys and known hosts. Signing in works with a key only, and nothing is installed on the server.</p>
         <label class="plugin-field" for="sshProjectAddress"><span>SSH address</span><input id="sshProjectAddress" required autocomplete="off" spellcheck="false" placeholder="me@server, me@server:2222 or a Host from ~/.ssh/config" /></label>
         <label class="plugin-field" for="sshProjectFolder"><span>Folder on the server</span><input id="sshProjectFolder" required autocomplete="off" spellcheck="false" placeholder="/srv/app or ~/app" /></label>
         <p id="sshProjectError" class="plugin-error" role="alert" hidden></p>
@@ -1955,7 +1955,7 @@
           <div class="setting feedback-report"><span class="setting-text"><b>Diagnostics report</b><em id="feedbackReportNote">Needed for a problem report. Read it before you attach it.</em></span><button class="btn" id="feedbackSaveReport" type="button">Save report…</button></div>
         </div>
         <p class="feedback-note">GitHub opens with this filled in. You submit it there; the app sends nothing.</p>
-        <p class="feedback-note" id="feedbackFeatures">New features come as pull requests, not issues. <a href="https://github.com/totec448-spec/chat-on-steroids/blob/main/CONTRIBUTING.md#new-features" target="_blank" rel="noopener noreferrer">How to start one</a></p>
+        <p class="feedback-note" id="feedbackFeatures">New features come as pull requests, not issues. <a href="https://github.com/1njx/gem-web-code/blob/main/CONTRIBUTING.md#new-features" target="_blank" rel="noopener noreferrer">How to start one</a></p>
         <p id="feedbackError" class="plugin-error" role="alert" hidden></p>
         </div>
         <div class="pet-delete-actions"><button class="btn" id="feedbackCancel" type="button">Cancel</button><button class="btn btn-solid" id="feedbackSubmit" type="submit">Continue on GitHub</button></div>

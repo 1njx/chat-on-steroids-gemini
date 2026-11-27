@@ -68,7 +68,7 @@ configuration, or targets the person's other running application windows.
 ## Maintainer-review security follow-up
 
 The stage-3 own-window exclusion (added after this manual GTK fixture session)
-rejects native semantic snapshots of Chat On Steroids's own Electron windows
+rejects native semantic snapshots of Gem Web Code's own Electron windows
 using the main process PID and the application's recognized IDs, including
 `com.chatonsteroids.app.desktop`. Unit tests assert that no native snapshot
 is invoked for either kind of own window and that post-Ask owner changes to

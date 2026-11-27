@@ -703,7 +703,7 @@ describe('reading a row out of the page', () => {
     });
   });
 
-  it.each(['Chat On Steroids Core', 'Chat On Steroids Desktop', 'Chat On Steroids Plugins', 'Chat On Steroids Backup', 'Gmail'])(
+  it.each(['Chat On Steroids Core', 'Chat On Steroids Desktop', 'Chat On Steroids Plugins', 'Gem Web Code Backup', 'Gmail'])(
     'keeps result-only metadata scoped to the exact supported connector %s', async app => {
       const result = answer('result-scope', 'unused', 'read', app);
       result.author.name = 'api_tool.call_tool';
@@ -712,7 +712,7 @@ describe('reading a row out of the page', () => {
       // Duplicate provider objects are ambiguous, including result-only shapes.
       expect(turns[0]!.calls).toEqual([]);
       const single = await scan([], [{ id: 'result-scope-turn', messages: [result] }]);
-      expect(single.turns[0]!.calls).toHaveLength(['Chat On Steroids Backup', 'Gmail'].includes(app) ? 0 : 1);
+      expect(single.turns[0]!.calls).toHaveLength(['Gem Web Code Backup', 'Gmail'].includes(app) ? 0 : 1);
     });
 
   /**
@@ -738,7 +738,7 @@ describe('reading a row out of the page', () => {
     ['this install\'s suffixed names', ['Chat On Steroids Core (Windows)', 'Chat On Steroids Desktop (Windows)', 'Chat On Steroids Plugins (Windows)'], 'Chat On Steroids Core (Windows)', true],
     ['the plain name while this install uses a suffix', ['Chat On Steroids Core (Windows)', 'Chat On Steroids Desktop (Windows)', 'Chat On Steroids Plugins (Windows)'], APP, false],
     ['another computer\'s suffixed name', ['Chat On Steroids Core', 'Chat On Steroids Desktop', 'Chat On Steroids Plugins'], 'Chat On Steroids Core (Mac)', false],
-    ['names that are not this app\'s, which are ignored', ['Chat On Steroids Backup', 'x', 'y'], APP, true]
+    ['names that are not this app\'s, which are ignored', ['Gem Web Code Backup', 'x', 'y'], APP, true]
   ])('recognizes calls by %s', async (_case, apps, app, ours) => {
     const ask = request('req-1', 'read_file', { app });
     const { rows } = await scan([row([ask, answer('res-1', 'req-1', 'read_file', app)])], [], false, apps);
@@ -859,15 +859,15 @@ describe('the calls a turn says it made', () => {
   });
 
   /**
-   * A name is not a prefix game. `Chat On Steroids Backup` shares every character of the
+   * A name is not a prefix game. `Gem Web Code Backup` shares every character of the
    * brand and is still a different integration; matching on the brand rather than on the
    * exact connector names would make this app vouch for its calls and file a stranger's
    * traffic into this chat's session.
    */
   it('refuses a connector whose name merely starts with this app’s brand', async () => {
     const messages = [
-      request('req-fake', 'read', { app: 'Chat On Steroids Backup' }),
-      answer('res-fake', 'req-fake', 'read', 'Chat On Steroids Backup'),
+      request('req-fake', 'read', { app: 'Gem Web Code Backup' }),
+      answer('res-fake', 'req-fake', 'read', 'Gem Web Code Backup'),
       request('req-mine', 'read')
     ];
     const { turns } = await scan([], [{ id: 'turn-lookalike', messages }]);

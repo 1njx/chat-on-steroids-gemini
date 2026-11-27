@@ -1569,7 +1569,7 @@
     const takeUtf8 = (value, budget) => {
       if (typeof value !== 'string') return value;
       if (utf8Bytes(value) <= budget) return value;
-      const marker = '\n\n[Chat On Steroids: browser observation truncated to fit transport.]';
+      const marker = '\n\n[Gem Web Code: browser observation truncated to fit transport.]';
       const markerBytes = utf8Bytes(marker);
       let low = 0;
       let high = value.length;
@@ -6837,7 +6837,7 @@
    * ChatGPT account is used on several computers ("Chat On Steroids Core (Windows)"). The other
    * computer's calls run there, so they are not ours here (CLF_DOM.connectorNames).
    *
-   * Exact names, never a prefix: `Chat On Steroids Backup` would be somebody else's
+   * Exact names, never a prefix: `Gem Web Code Backup` would be somebody else's
    * connector, and a prefix test would have this app vouch for its traffic.
    */
   const LEGACY_CONNECTORS = ['TobisComputer'];
@@ -7833,7 +7833,7 @@
       return {
         mode: 'off',
         label: t('content_compact', 'Compact'),
-        hint: t('content_browser_disconnected', 'Browser connection is disconnected in Chat On Steroids.'),
+        hint: t('content_browser_disconnected', 'Browser connection is disconnected in Gem Web Code.'),
         action: 'none'
       };
     }
@@ -7841,7 +7841,7 @@
       return {
         mode: 'off',
         label: t('content_compact', 'Compact'),
-        hint: t('content_app_not_running', 'Chat On Steroids is not running on this PC.'),
+        hint: t('content_app_not_running', 'Gem Web Code is not running on this PC.'),
         action: 'none'
       };
     }
@@ -8134,7 +8134,7 @@
             : blocked === 'blocked'
               ? t('content_task_blocked_unavailable', 'This chat is blocked in the app. Release it there to drive it again.')
               : goalUnknown
-              ? t('content_task_waiting_app', 'Waiting for Chat On Steroids to answer.')
+              ? t('content_task_waiting_app', 'Waiting for Gem Web Code to answer.')
               : !hasKey
               ? t('content_task_api_key_unavailable', 'Add an OpenRouter API key in the app first.')
               : ''
@@ -8485,7 +8485,7 @@
       'data-clf-tip',
       t(
         'content_chat_blocked_tip',
-        'This chat is blocked in the Chat On Steroids app: its tool calls are refused and Goal, Loop and auto-compaction are off. To release it, open this chat’s ⋯ menu in the app’s sidebar and choose “Release chat”.'
+        'This chat is blocked in the Gem Web Code app: its tool calls are refused and Goal, Loop and auto-compaction are off. To release it, open this chat’s ⋯ menu in the app’s sidebar and choose “Release chat”.'
       )
     );
     blocked.hidden = true;
@@ -8578,7 +8578,7 @@
     root.className = 'clf-menu';
     root.dataset.clfMenu = '1';
     root.setAttribute('role', 'dialog');
-    root.setAttribute('aria-label', t('content_settings_aria', 'Chat On Steroids settings'));
+    root.setAttribute('aria-label', t('content_settings_aria', 'Gem Web Code settings'));
     root.hidden = true;
     (document.body || document.documentElement).append(root);
     return root;
@@ -9340,7 +9340,7 @@
     // Never disabled any more: it opens a sheet, and a sheet that explains why compaction is
     // unavailable is exactly what somebody clicking a dead button wanted to be told.
     control.button.disabled = false;
-    setAttr(control.button, 'aria-label', t('content_settings_aria', 'Chat On Steroids settings'));
+    setAttr(control.button, 'aria-label', t('content_settings_aria', 'Gem Web Code settings'));
     setAttr(control.button, 'aria-haspopup', 'dialog');
     if (!control.button.hasAttribute('aria-expanded')) control.button.setAttribute('aria-expanded', 'false');
     // The meter only while the button is a button. During a run the control is saying what
@@ -10881,7 +10881,7 @@
    * the person's draft again, which is preserved (#134).
    */
   // ChatGPT's editor keeps paragraphs as elements, so in its text the marker runs straight into the
-  // instruction ("]]Chat On Steroids…"); CONTINUATION_MARKER, which wants a space, missed it live.
+  // instruction ("]]Gem Web Code…"); CONTINUATION_MARKER, which wants a space, missed it live.
   const HANDOFF_MARKED = /^\s*\[\[CLF-HANDOFF:[A-Za-z0-9_-]{16,64}\]\]/;
   /** A composer holding a handoff request this app typed (any attempt's), and no attachment. */
   function handoffMarked(box) {
@@ -11890,7 +11890,7 @@
     if (data.error) return String(data.error).slice(0, 160);
     if (reply.error === 'app_not_found') return t(
       'content_app_not_running',
-      'Chat On Steroids is not running on this PC.'
+      'Gem Web Code is not running on this PC.'
     );
     return reply.error ? String(reply.error).slice(0, 160) : '';
   }
@@ -13060,7 +13060,7 @@
     if (!why) return true;
     if (now - historyRetryHeldToldAt >= 60_000) {
       historyRetryHeldToldAt = now;
-      console.info(`Chat On Steroids: not pressing Retry: ${why}.`);
+      console.info(`Gem Web Code: not pressing Retry: ${why}.`);
     }
     return false;
   }
@@ -13380,7 +13380,7 @@
     limit.published = limit.retryAt;
     emit({
       kind: 'chat_error',
-      text: t('content_history_rate_limited', 'ChatGPT temporarily limited access to this conversation history. Chat On Steroids is pausing automatic recovery until the retry wait ends.'),
+      text: t('content_history_rate_limited', 'ChatGPT temporarily limited access to this conversation history. Gem Web Code is pausing automatic recovery until the retry wait ends.'),
       recoverable: false,
       blocking: true,
       retryAt: limit.retryAt

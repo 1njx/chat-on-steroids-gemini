@@ -77,13 +77,14 @@ it("takes a finished answer whose busy marker a covered tab never cleared, once 
 
 /** Gemini's tool approval card as drawn inside an answer (live markup 2026-11-25, trimmed). */
 const CARD = '<div class="attachment-container action-card"><response-element class="no-md"><action-card><div class="container"><remy-confirmation-card-v2>' +
-  '<h3 class="header-text"> Chat On Steroids Core </h3><div class="body-text"><div class="v2-body-content"><div class="body-row"><div class="body-text body-text--collapsed">' +
+  '<h3 class="header-text"> Gem Web Code Core </h3><div class="body-text"><div class="v2-body-content"><div class="body-row"><div class="body-text body-text--collapsed">' +
   '<p>Let Gemini use <strong>exec command</strong>?</p></div></div><div class="disclaimer-text"><p>Choose to let Gemini take action on this app without asking again.</p></div>' +
   '<div class="button-row"><button>Don\'t allow</button><button>Allow once</button><button aria-disabled="false"><span>Always allow</span></button></div></div></div>' +
   '</remy-confirmation-card-v2></div></action-card></response-element></div>';
 
 /** One authorized send on a page whose answer first asks for approval; `answer()` draws the real answer. */
-async function sendWithApproval(alwaysAllow: string | null, until: (results: Array<Record<string, unknown>>) => boolean) {
+async function sendWithApproval(alwaysAllow: string | null, until: (results: Array<Record<string, unknown>>) => boolean,
+  { connector = null as string | null, cardApp = 'Gem Web Code Core', offered = [] as string[] } = {}) {
   dom = new JSDOM(`<a aria-label="Google Account: Pat (pat@example.com)" href="#"></a>
     <infinite-scroller data-test-id="chat-history-container"></infinite-scroller>
     <rich-textarea><div class="ql-editor" contenteditable="true"></div></rich-textarea><button aria-label="Send message">send</button>`,
@@ -96,7 +97,7 @@ async function sendWithApproval(alwaysAllow: string | null, until: (results: Arr
   doc.querySelector('button[aria-label="Send message"]')!.addEventListener('click', () => {
     doc.querySelector('.ql-editor')!.textContent = '';
     doc.querySelector('infinite-scroller')!.innerHTML = '<div class="conversation-container" id="turn1"><user-query><div class="query-text">list my files</div></user-query>' +
-      `<model-response><message-content><div class="markdown">${CARD}</div></message-content></model-response></div>`;
+      `<model-response><message-content><div class="markdown">${CARD.replace('Gem Web Code Core', cardApp)}</div></message-content></model-response></div>`;
     [...doc.querySelectorAll('remy-confirmation-card-v2 button')].find(b => b.textContent === 'Always allow')!.addEventListener('click', answer);
   });
   const results: Array<Record<string, unknown>> = [];
@@ -105,22 +106,39 @@ async function sendWithApproval(alwaysAllow: string | null, until: (results: Arr
   (window as unknown as { chrome: unknown }).chrome = { runtime: { id: 'test', lastError: undefined, sendMessage(payload: Record<string, unknown>, reply: (value: unknown) => void) {
     if (payload.type === 'gemini_result') results.push(payload);
     if (payload.type === 'gemini_focus') focused.push(payload);
-    const commands = payload.type === 'gemini_state' && !handed ? [{ id: 'send-1', kind: 'send', prompt: 'list my files', conversationId: null, connector: null, alwaysAllow }] : [];
+    const commands = payload.type === 'gemini_state' && !handed ? [{ id: 'send-1', kind: 'send', prompt: 'list my files', conversationId: null, connector, alwaysAllow }] : [];
     if (commands.length) handed = true;
     setTimeout(() => reply(payload.type === 'gemini_result' && payload.stage === 'sending' ? { ok: true, authorized: true } : { ok: true, commands }), 0);
   } } };
   window.eval(domSource);
+  // Gemini's @ menu offers only these app names; the chip itself is not drawn here.
+  const mentioned: string[] = [];
+  const api = (window as unknown as { CLF_GEMINI_DOM: { mentionConnector: (name: string) => Promise<boolean>; appendPrompt: (text: string) => boolean } }).CLF_GEMINI_DOM;
+  api.mentionConnector = async name => { mentioned.push(name); return offered.includes(name); };
+  // jsdom has no execCommand; the prompt after a mention is typed into the box directly.
+  api.appendPrompt = text => { doc.querySelector('.ql-editor')!.textContent += text; return true; };
   window.eval(contentSource);
   for (const end = Date.now() + 20_000; Date.now() < end && !until(results); ) await new Promise(r => setTimeout(r, 100));
-  return { results, focused, answer };
+  return { results, focused, answer, mentioned };
 }
 
 it("never reports Gemini's tool approval card as the answer; Full access presses Always allow on this app's card", async () => {
-  const { results, focused } = await sendWithApproval('Chat On Steroids Core', r => r.some(x => ['completed', 'failed'].includes(String(x.stage))));
+  const { results, focused } = await sendWithApproval('Gem Web Code Core', r => r.some(x => ['completed', 'failed'].includes(String(x.stage))));
   expect(results.map(r => r.stage)).toEqual(['sending', 'sent', 'completed']);
   expect(results[2]).toMatchObject({ answer: 'Your folder has 3 files.' });
   expect(focused).toEqual([]);
 }, 30_000);
+
+it('mentions the app under its pre-2.3.0 name when Gemini offers only that one, and Full access answers its card', async () => {
+  const done = (r: Array<Record<string, unknown>>) => r.some(x => ['completed', 'failed'].includes(String(x.stage)));
+  const { results, mentioned } = await sendWithApproval('Gem Web Code Core', done,
+    { connector: 'Gem Web Code Core', cardApp: 'Chat On Steroids Core', offered: ['Chat On Steroids Core'] });
+  expect(mentioned).toEqual(['Gem Web Code Core', 'Chat On Steroids Core']);
+  expect(results.map(r => r.stage)).toEqual(['sending', 'sent', 'completed']);
+  dom!.window.close(); dom = null;
+  const missing = await sendWithApproval(null, done, { connector: 'Gem Web Code Core', offered: [] });
+  expect(missing.results.at(-1)).toMatchObject({ stage: 'failed', error: 'connector-not-offered', connector: 'Gem Web Code Core' });
+}, 60_000);
 
 it("without Full access it waits on the card, tells the app once and shows the tab, then takes the real answer", async () => {
   let answered = false;
@@ -130,7 +148,7 @@ it("without Full access it waits on the card, tells the app once and shows the t
   });
   function drawAnswer() { (dom!.window.document.querySelector('.markdown') as HTMLElement).innerHTML = '<p>Your folder has 3 files.</p>'; }
   expect(run.results.map(r => r.stage)).toEqual(['sending', 'sent', 'approval', 'approval', 'completed']);
-  expect(run.results[2]).toMatchObject({ approval: 'Chat On Steroids Core: Let Gemini use exec command?' });
+  expect(run.results[2]).toMatchObject({ approval: 'Gem Web Code Core: Let Gemini use exec command?' });
   expect(run.results[3]).toMatchObject({ approval: '' });
   expect(run.results[4]).toMatchObject({ answer: 'Your folder has 3 files.' });
   expect(run.focused).toHaveLength(1);

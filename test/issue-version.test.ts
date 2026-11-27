@@ -22,7 +22,7 @@ it('reads the App version answer of the bug form', () => {
 });
 
 it('accepts only a real version number', () => {
-  for (const value of ['2.1.32', 'v2.1.31', '2.1.32 (extension 2.1.32)', 'Chat On Steroids 2.1.29']) expect(hasVersionNumber(value)).toBe(true);
+  for (const value of ['2.1.32', 'v2.1.31', '2.1.32 (extension 2.1.32)', 'Gem Web Code 2.1.29']) expect(hasVersionNumber(value)).toBe(true);
   // Answers seen in real reports.
   for (const value of ['latest', 'lastest linux', 'last', '21.0', '2.01', '.9', '_No response_', '']) expect(hasVersionNumber(value)).toBe(false);
 });
@@ -75,7 +75,7 @@ it('accepts a new report with the version, the attached diagnostics file and the
   expect(Date.parse(INTAKE_SINCE)).toBeLessThan(Date.parse('2026-10-16T09:00:00Z'));
   expect(intakeDecision(fresh(fullReport()), opened)).toEqual({ decision: 'none', missing: [] });
   // Pasted instead of attached still carries the whole report.
-  const pasted = '```\n# Chat On Steroids diagnostics report\n\nCreated 2026-10-15T10:00:00.000Z.\n```';
+  const pasted = '```\n# Gem Web Code diagnostics report\n\nCreated 2026-10-15T10:00:00.000Z.\n```';
   expect(intakeDecision(fresh(fullReport({ diagnostics: pasted })), opened).missing).toEqual([]);
 });
 

@@ -12,14 +12,14 @@
  * extension does nothing" into a diagnosable mismatch.
  */
 
-export const APP_VERSION = '2.2.26';
+export const APP_VERSION = '2.3.0';
 
 /**
  * Standalone extension recovery must stay on the app's own release. Using GitHub's moving
  * `latest` asset can pair an older installed app with a newer, incompatible bridge protocol.
  */
 export function extensionDownloadUrl(version = APP_VERSION): string {
-  return `https://github.com/1njx/chat-on-steroids-gemini/releases/download/v${encodeURIComponent(version)}/Chat-On-Steroids-Extension.zip`;
+  return `https://github.com/1njx/gem-web-code/releases/download/v${encodeURIComponent(version)}/Chat-On-Steroids-Extension.zip`;
 }
 
 /**
@@ -38,7 +38,7 @@ export function extensionDownloadUrl(version = APP_VERSION): string {
  *     carries retiredWorker, /commands/ack answers 404 no_such_command when the caller names
  *     a client, and observations carry authoredTime, which now drives message ordering. None
  *     of those degrade gracefully, so the 426 gate has to be able to see the mismatch.
- * 7 — the app renamed itself to Chat On Steroids, and the `app` field every bridge response
+ * 7 — the app renamed itself to Gem Web Code, and the `app` field every bridge response
  *     is stamped with renamed along with it. A 6 extension reads that field to decide the
  *     reply came from this app at all, so against a 7 app it silently discards every answer
  *     and reports nothing — which looks exactly like a bridge that is down. The bump turns

@@ -7,7 +7,7 @@
  */
 var CLF_SETUP_PANEL = (() => {
   const ID = 'cos-setup-panel';
-  const TITLE = "Chat On Steroids is setting this up — please don't click or type in this tab until it says done";
+  const TITLE = "Gem Web Code is setting this up — please don't click or type in this tab until it says done";
   const DONE_MS = 8_000;
   const FAILED_MS = 60_000;
   const COLORS = { working: '#f5a524', done: '#2e9d57', failed: '#d93025' };

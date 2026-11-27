@@ -1121,12 +1121,12 @@ it('shows actionable localized hints only for exact known GNOME consent errors',
   expect(button.disabled).toBe(false);
 
   const cases = [
-    ['Activate the Chat On Steroids window before requesting screenshot permission.', 'Activate the Chat On Steroids window, then try again.'],
-    ['The Chat On Steroids window lost focus; no screenshot was requested.', 'Activate the Chat On Steroids window, then try again.'],
+    ['Activate the Gem Web Code window before requesting screenshot permission.', 'Activate the Gem Web Code window, then try again.'],
+    ['The Gem Web Code window lost focus; no screenshot was requested.', 'Activate the Gem Web Code window, then try again.'],
     ['Enable native Linux Desktop and Screen access first.', 'Enable native Linux Desktop access and Screen permission, then try again.'],
     ['Screen access was disabled before the screenshot request.', 'Enable native Linux Desktop access and Screen permission, then try again.'],
     ['Native Linux Desktop or Screen access was disabled during the screenshot request.', 'Enable native Linux Desktop access and Screen permission, then try again.'],
-    ['Screenshot permission can be requested only from the Chat On Steroids main window.', 'Screenshot permission can be requested only from the Chat On Steroids main window.'],
+    ['Screenshot permission can be requested only from the Gem Web Code main window.', 'Screenshot permission can be requested only from the Gem Web Code main window.'],
     ['A screenshot permission request is already running.', 'A screenshot permission request is already running.']
   ] as const;
   for (const [error, expected] of cases) {
@@ -1138,7 +1138,7 @@ it('shows actionable localized hints only for exact known GNOME consent errors',
 
   // A near-miss and an arbitrary backend detail must never reach the UI.
   for (const error of [
-    'Activate the Chat On Steroids window before requesting screenshot permission. PRIVATE_TITLE',
+    'Activate the Gem Web Code window before requesting screenshot permission. PRIVATE_TITLE',
     'Native Linux Desktop or Screen access was disabled during the request.',
     'SECRET_SCREEN_CONTENT'
   ]) {
@@ -1176,7 +1176,7 @@ it('does not steal focus if the user switches controls while the GNOME request i
 it('shows a waiting desktop question in the app without taking the focus, and answers it from there', async () => {
   let listener: ((pending: unknown) => void) | null = null;
   const answer = vi.fn(async () => ({ ok: true, data: true }));
-  const pending = { id: 'ask-1', title: 'Chat On Steroids wants to use your mouse and keyboard', step: 'Open notepad.exe', chat: 'Release notes' };
+  const pending = { id: 'ask-1', title: 'Gem Web Code wants to use your mouse and keyboard', step: 'Open notepad.exe', chat: 'Release notes' };
   const mounted = await mountChat({}, [], {
     desktopAskPending: async () => ({ ok: true, data: pending }),
     onDesktopAskPending: (fn: (pending: unknown) => void) => { listener = fn; return () => {}; },
@@ -1186,7 +1186,7 @@ it('shows a waiting desktop question in the app without taking the focus, and an
   const notice = doc.getElementById('desktopAskNotice')!;
   // Already waiting when the window opened: shown at once.
   await waitFor(() => expect(notice.hidden).toBe(false));
-  expect(notice.textContent).toContain('Chat On Steroids wants to use your mouse and keyboard');
+  expect(notice.textContent).toContain('Gem Web Code wants to use your mouse and keyboard');
   expect(notice.textContent).toContain('Open notepad.exe · Release notes');
   // It never takes the focus by itself: the message box keeps it.
   const box = doc.getElementById('chatInput') as HTMLTextAreaElement;
@@ -1467,13 +1467,13 @@ describe('settings backup dialogs', () => {
   });
 
   it('shows why a chosen file cannot be imported, and switches the language a backup brings', async () => {
-    const pick = vi.fn().mockResolvedValueOnce({ ok: false, error: 'This file is not a Chat On Steroids settings backup.' })
+    const pick = vi.fn().mockResolvedValueOnce({ ok: false, error: 'This file is not a Gem Web Code settings backup.' })
       .mockResolvedValueOnce({ ok: true, data: choice({ keyCount: 0, changed: ['language'] }) });
     const mounted = await mountChat({}, [], { pickSettingsBackup: pick,
       importSettingsBackup: async () => ({ ok: true, data: { state: { ...mounted.state, config: { ...mounted.state.config, ui: { ...mounted.state.config.ui, language: 'de' } } }, changedCount: 1, keyCount: 0 } }) });
     const doc = mounted.window.document;
     (doc.getElementById('importSettings') as HTMLButtonElement).click();
-    await waitFor(() => expect(doc.querySelector('.toast')?.textContent).toBe('This file is not a Chat On Steroids settings backup.'));
+    await waitFor(() => expect(doc.querySelector('.toast')?.textContent).toBe('This file is not a Gem Web Code settings backup.'));
     expect((doc.getElementById('importSettingsDialog') as HTMLDialogElement).open).toBe(false);
     (doc.getElementById('importSettings') as HTMLButtonElement).click();
     await waitFor(() => expect((doc.getElementById('importSettingsDialog') as HTMLDialogElement).open).toBe(true));

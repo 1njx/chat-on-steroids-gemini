@@ -1,4 +1,4 @@
-# Gemini in Chat On Steroids (Gemini edition)
+# Gemini in Gem Web Code (Gemini edition)
 
 This fork adds **Google Gemini** (gemini.google.com) as a second provider next to ChatGPT. It is
 an independent project. It is not affiliated with, endorsed by or approved by Google or OpenAI.
@@ -52,7 +52,7 @@ Open **Settings → Providers → Gemini**. **Set up Gemini** at the top of the 
 six steps, like ChatGPT's Setup: one step at a time, with pictures of Gemini's own pages, and
 each step turns green by itself when the app sees it done.
 
-1. **Browser** — the Chat On Steroids extension, the same one ChatGPT uses. "Install the
+1. **Browser** — the Gem Web Code extension, the same one ChatGPT uses. "Install the
    extension" opens Setup's browser step. Done when the extension is connected.
 2. **Sign in** — "Open Gemini" opens gemini.google.com in that browser. Lists Google's
    requirements (personal account, 18+, US, Gemini Apps Activity on, English). Done when the
@@ -69,10 +69,10 @@ each step turns green by itself when the app sees it done.
    Core address. "Keep the same address" runs your own Cloudflare tunnel instead of a quick one.
 5. **Add app** — "Add it in Gemini for me" uses the extension on your signed-in Gemini page. The
    step says first what it will click: it opens custom apps and finds every app already there
-   named **Chat On Steroids Core** (any case, `-` or `_` for spaces, or a duplicate's "(2)"), and
+   named **Gem Web Code Core** (any case, `-` or `_` for spaces, or a duplicate's "(2)"), and
    reads each one's address. One with this address is kept and nothing is added. Each with an old
    address, and each further copy, is deleted first: Gemini cannot edit an address, so it chooses
-   **More options → Delete**, then **Remove** in Gemini's "Remove Chat On Steroids Core?"
+   **More options → Delete**, then **Remove** in Gemini's "Remove Gem Web Code Core?"
    confirmation. A delete that does not take is tried again, 3 times in all. With none kept it then opens
    **Create custom app**, fills in the address, clicks **Next**, ticks Google's notice and clicks
    **Connect**, then, when Gemini asks under "Save your custom app", **Connect** again once it is
@@ -84,7 +84,7 @@ each step turns green by itself when the app sees it done.
    never the Core address). The extension takes the work there, or brings an already open custom
    apps tab to the front instead of opening a second one. If no page with the extension reports
    within 15 seconds, the extension opens custom apps in its own browser; if none ever takes it,
-   Settings → Gemini says "Open Gemini in the browser that has the Chat On Steroids extension."
+   Settings → Gemini says "Open Gemini in the browser that has the Gem Web Code extension."
    A panel on the page names each step until it says done or shows the error.
    **A new tunnel address is added again by itself:** a quick tunnel gets a new address at every
    start, so once the app was added, a new Core address queues this same step for that address
@@ -106,7 +106,7 @@ each step turns green by itself when the app sees it done.
    address → **Next** → tick Google's notice → **Connect**; then **Connect** again under
    "Save your custom app". Done when Gemini's MCP client reaches the app (in this run: a quick
    tunnel's address is new on every start, so add the app again after a restart).
-6. **Try it** — in a new Gemini chat type `@`, pick **Chat On Steroids Core** and ask for
+6. **Try it** — in a new Gemini chat type `@`, pick **Gem Web Code Core** and ask for
    something in your folder (a ready prompt can be copied). Gemini asks **Allow once** /
    **Always allow** before a tool that changes something. Done when Gemini calls one of the
    app's tools.
@@ -132,7 +132,7 @@ shown in Gemini: …" with its description. Gemini's own buttons are left out. I
 the menu lists only Gemini's models; in a ChatGPT chat only ChatGPT's. Gemini gets text only:
 files, plans and edits are refused with a message.
 
-**Which browser.** Gemini always runs in your own browser with the Chat On Steroids extension,
+**Which browser.** Gemini always runs in your own browser with the Gem Web Code extension,
 signed in to Google, even when chats use the app's built-in browser: Google does not allow signing
 in inside an embedded browser. Gemini pages in the built-in browser are ignored and none is opened
 there. A send that finds only a Gemini page without a composer (for example custom apps) opens a
@@ -145,7 +145,7 @@ last ones and how each went. It:
 
 - selects the model and thinking level you chose (or keeps Gemini's), **before** typing, because
   Gemini hides its model picker while a long draft is open;
-- starts the message with an @-mention of the app name you set; with none set, of **Chat On Steroids Core**
+- starts the message with an @-mention of the app name you set; with none set, of **Gem Web Code Core**
   once the app was added in Gemini (no mention before that). Without the mention Gemini answers without
   the app's tools, so it could not see your folders;
 - sends **at most once**. If the page was allowed to press Send but never confirmed, the message is
@@ -159,7 +159,7 @@ use exec command?" with Don't allow, Allow once and Always allow). The card is n
 answer. Without Full access the send waits: the chat says Gemini is waiting for your OK, the Gemini
 tab comes to the front, and the answer is recorded once you chose there. With **Settings → Gemini →
 Full access** on, the page presses **Always allow** by itself, but only on the card of this app (the
-name a send @-mentions, by default Chat On Steroids Core); another app's card is left to you. Always
+name a send @-mentions, by default Gem Web Code Core); another app's card is left to you. Always
 allow is Gemini's own setting: Gemini then runs this app's tools, commands included, without asking,
 also in chats you start yourself. Revoke it in Gemini's settings for the app.
 
@@ -301,7 +301,7 @@ Bugs found live and fixed (each has a regression test):
 
 **Neon + MCP** — Settings → Gemini shows the Core URL; add it in Gemini (Setup above). Put a file
 with a random token in an approved folder. In a new Gemini chat choose Deeper analysis (4 Neon),
-type `@`, pick Chat On Steroids Core and ask it to read the file and reply with the token. Pass
+type `@`, pick Gem Web Code Core and ask it to read the file and reply with the token. Pass
 when the token matches and Settings → Gemini says Gemini reached the server.
 
 **App → Gemini send** — Load the unpacked extension (Setup step 1), open gemini.google.com signed
@@ -311,6 +311,6 @@ Pass when its row under Recent Gemini messages reaches "Answered" and the chat a
 chat list with the answer.
 
 **Roblox Studio** — Add `StudioMCP.exe` as a plugin (above), open a place in Studio with the MCP
-server enabled, add the Plugins URL to Gemini, and ask Gemini via `@Chat On Steroids Plugins` to
+server enabled, add the Plugins URL to Gemini, and ask Gemini via `@Gem Web Code Plugins` to
 list the scripts in the place, read one with `script_read`, and change a value with `multi_edit`.
 Pass when Studio shows the change and the plugin call history in the app shows the calls.

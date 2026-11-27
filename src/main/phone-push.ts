@@ -88,10 +88,10 @@ export function createPhonePush(deps: PhonePushDeps) {
   const sentTimes: number[] = [];
 
   const message = (event: PhonePushEvent, details: boolean): { title: string; message: string; click?: string } => {
-    const title = details && event.chatTitle ? oneLine(event.chatTitle, 80) : 'Chat On Steroids';
+    const title = details && event.chatTitle ? oneLine(event.chatTitle, 80) : 'Gem Web Code';
     let text: string;
     if (event.kind === 'needs-you') text = mainText('A chat is waiting for you.');
-    else if (event.kind === 'failed') text = oneLine(event.detail ?? mainText('Something failed in Chat On Steroids.'), 240);
+    else if (event.kind === 'failed') text = oneLine(event.detail ?? mainText('Something failed in Gem Web Code.'), 240);
     else {
       // Under a minute says no length: "after 1 min" for 20 seconds would not be true.
       const minutes = event.workedMs === undefined || event.workedMs < 60_000 ? null : Math.round(event.workedMs / 60_000);
@@ -167,7 +167,7 @@ export function createPhonePush(deps: PhonePushDeps) {
         }
       })() : Promise.resolve(null);
       const viaTelegram = telegram ? (async () => {
-        const text = [shown.title === 'Chat On Steroids' ? '' : shown.title, shown.message, shown.click ?? ''].filter(Boolean).join('\n');
+        const text = [shown.title === 'Gem Web Code' ? '' : shown.title, shown.message, shown.click ?? ''].filter(Boolean).join('\n');
         // About which chat, so a reply acts on it; Deny under an approval (#1934, phase 2 2026-10-31).
         const approval = event.kind === 'needs-you' ? event.approval : undefined;
         const sessionId = approval?.sessionId ?? event.sessionId;
@@ -186,7 +186,7 @@ export function createPhonePush(deps: PhonePushDeps) {
       if (!isValidTopic(settings.topic)) throw new Error('Choose a topic of letters, digits, - and _ (up to 64).');
       let reply: { ok: boolean; status: number };
       try {
-        reply = await send(settings, { title: 'Chat On Steroids', message: mainText('This is a test from Chat On Steroids. Phone notifications work.'), priority: 3, tags: ['bell'] });
+        reply = await send(settings, { title: 'Gem Web Code', message: mainText('This is a test from Gem Web Code. Phone notifications work.'), priority: 3, tags: ['bell'] });
       } catch (error) {
         if (error instanceof SendRefused) {
           deps.log(`phone push: test not sent: ${error.message}${error.reason ? ` (${error.reason})` : ''}`);

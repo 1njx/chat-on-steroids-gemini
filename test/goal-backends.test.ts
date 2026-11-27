@@ -605,7 +605,7 @@ describe('Goal decision backends', () => {
   it('keeps the tool-call note builder and the marker check apart: the note text alone is not set aside (#1894, CodeRabbit)', () => {
     // A model can write that text itself; only the app knows when it added the note.
     expect(templateGoalDecision(`All done.\n[[COS_GOAL:COMPLETE]]\n\n${toolCallFootnote(1, 0)}`, 0).action).toBe('invalid');
-    expect(toolCallFootnote(2, 0)).toBe('[Chat On Steroids: 2 tool calls ran in this turn. Arguments and results are not shown.]');
+    expect(toolCallFootnote(2, 0)).toBe('[Gem Web Code: 2 tool calls ran in this turn. Arguments and results are not shown.]');
   });
   it('uses browser JSON decisions without an API key and refuses prose', async () => {
     await saveConfig({ ...defaultConfig(), goal: { ...defaultConfig().goal, backend: 'chatgpt' } });

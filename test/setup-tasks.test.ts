@@ -55,8 +55,8 @@ describe('setup tasks the extension does in the person\'s tabs', () => {
   });
 
   it('hands over the tunnel first, then a well-formed key, and only then finishes', () => {
-    const id = queued(requestOpenaiSetup({ tunnelName: 'Chat On Steroids', keyName: 'Chat On Steroids', knownTunnelId: 'junk' }));
-    expect(pendingSetupTasks()[0]).toMatchObject({ kind: 'openai-setup', tunnelName: 'Chat On Steroids', progress: null });
+    const id = queued(requestOpenaiSetup({ tunnelName: 'Gem Web Code', keyName: 'Gem Web Code', knownTunnelId: 'junk' }));
+    expect(pendingSetupTasks()[0]).toMatchObject({ kind: 'openai-setup', tunnelName: 'Gem Web Code', progress: null });
     expect(pendingSetupTasks()[0]!.knownTunnelId).toBeUndefined();
     reportSetupTask({ id, client: 'tab:7', action: 'claim' });
     expect(reportSetupTask({ id, client: 'tab:7', action: 'progress', progress: 'key', key: KEY })).toBeNull();
@@ -72,7 +72,7 @@ describe('setup tasks the extension does in the person\'s tabs', () => {
   });
 
   it('lets the extension fail a task nobody claimed (a sign-in page), and nothing else', () => {
-    const id = queued(requestOpenaiSetup({ tunnelName: 'Chat On Steroids', keyName: 'Chat On Steroids' }));
+    const id = queued(requestOpenaiSetup({ tunnelName: 'Gem Web Code', keyName: 'Gem Web Code' }));
     expect(reportSetupTask({ id, client: 'background', action: 'claim' })).toBeNull();
     expect(reportSetupTask({ id, client: 'background', action: 'fail', error: 'Sign in to platform.openai.com in this browser, then press the button again' })).toEqual([]);
     expect(setupTaskStatus('openai-setup')).toMatchObject({ state: 'failed', error: expect.stringContaining('Sign in') });

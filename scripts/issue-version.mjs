@@ -32,7 +32,7 @@ export function versionDecision(issue) {
 
 export const CLOSE_COMMENT = `Thanks for the report! The **App version** field needs the exact version number, for example \`2.1.32\`. "latest" or similar can't be used: it changes with every release, so we can't tell which build you ran, and many problems are already fixed in a newer one. We can only look into reports with a version number, so this issue is closed for now.
 
-You'll find the number in the app under **Settings → Activity** ("Up to date! Chat On Steroids 2.1.32"), or in the browser extension's popup. Please **edit this issue** and put it in the App version field: the issue reopens by itself once it has a version number. If you're not on the newest release, please update first and check whether the problem is still there.`;
+You'll find the number in the app under **Settings → Activity** ("Up to date! Gem Web Code 2.1.32"), or in the browser extension's popup. Please **edit this issue** and put it in the App version field: the issue reopens by itself once it has a version number. If you're not on the newest release, please update first and check whether the problem is still there.`;
 
 export const REOPEN_COMMENT = 'Thanks for adding the version number! The issue is open again.';
 
@@ -58,7 +58,7 @@ function formField(body, label) {
 export function hasDiagnostics(value) {
   const text = String(value ?? '');
   return /https:\/\/github\.com\/user-attachments\/files\/\d+\/[^\s)]+\.(?:txt|log|md)\b/i.test(text) ||
-    text.includes('# Chat On Steroids diagnostics report');
+    text.includes('# Gem Web Code diagnostics report');
 }
 
 const versionOf = value => /\bv?(\d+)\.(\d+)\.(\d+)\b/.exec(String(value ?? ''))?.slice(1).map(Number) ?? null;
@@ -106,7 +106,7 @@ export function freeFormBug(issue) {
 }
 
 /**
- * The app's version where the text names it ("CoS application: 2.1.40", "Chat On Steroids 2.1.40", "[Bug] 2.1.40:").
+ * The app's version where the text names it ("CoS application: 2.1.40", "Gem Web Code 2.1.40", "[Bug] 2.1.40:").
  * Never three parts of a longer number: "Edge 141.0.3537.71" holds no app version, not 0.3537.71.
  */
 export function freeFormVersion(issue) {

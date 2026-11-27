@@ -824,7 +824,7 @@ async function startCloudflared(opts: TunnelStartOptions): Promise<TunnelHandle>
   // at a config of our own that names no tunnel and no ingress.
   const workDir = await createTunnelWorkDir();
   const configFile = path.join(workDir, 'quick-tunnel.yml');
-  await fs.writeFile(configFile, '# Chat On Steroids quick tunnel: deliberately no named tunnel or ingress.\n', 'utf8');
+  await fs.writeFile(configFile, '# Gem Web Code quick tunnel: deliberately no named tunnel or ingress.\n', 'utf8');
 
   const named = opts.named ?? null;
   const args = named

@@ -287,7 +287,7 @@ function cleanOwnCoreApp(value) {
     ? { appId: value.appId, name: value.name } : null;
 }
 
-/** The app's names, or null for anything that is not three plain "Chat On Steroids …" strings. */
+/** The app's names, or null for anything that is not three plain "Chat On Steroids …" strings (the ChatGPT connector names kept from before 2.3.0). */
 function cleanConnectorNames(value) {
   if (!value || typeof value !== 'object') return null;
   const names = {};
@@ -2009,7 +2009,7 @@ async function storedBackgroundWindow() {
  * only trusted while the group still carries the app's title: group ids are per browser session,
  * onStartup drops the mirror, and a group the user renamed is theirs now.
  */
-const BACKGROUND_GROUP_TITLE = 'Chat On Steroids';
+const BACKGROUND_GROUP_TITLE = 'Gem Web Code';
 const BACKGROUND_GROUP_MIRROR = 'chatBackgroundGroupMirror';
 async function rememberBackgroundGroup(id) {
   await chrome.storage.session.set({ chatBackgroundGroup: id });
@@ -5020,7 +5020,7 @@ const HANDLERS = {
     await persist();
     return { ok: true };
   },
-  /** Ask every eligible ChatGPT tab to rebuild its Chat On Steroids activity stream now. */
+  /** Ask every eligible ChatGPT tab to rebuild its Gem Web Code activity stream now. */
   async overwriteNow() {
     await load();
     const known = Object.keys(tabConversations)

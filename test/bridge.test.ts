@@ -5980,7 +5980,7 @@ describe('delivering a bootstrap', () => {
           {
             kind: 'user_message',
             time: Date.now(),
-            text: 'Continue the previous Chat On Steroids session. Read the handoff below.',
+            text: 'Continue the previous Gem Web Code session. Read the handoff below.',
             messageId: 'boot-resume'
           }
         ]
@@ -11022,7 +11022,7 @@ describe('unattributed activity recovery', () => {
       {
         kind: 'user_message',
         time: Date.now(),
-        text: '[[CLF-RESUME:O8THi8gMTC6LvH9GLclDIQ]]\n\nContinuing a Chat On Steroids session that was compacted.',
+        text: '[[CLF-RESUME:O8THi8gMTC6LvH9GLclDIQ]]\n\nContinuing a Gem Web Code session that was compacted.',
         messageId: 'm-b-bootstrap'
       }
     ]);

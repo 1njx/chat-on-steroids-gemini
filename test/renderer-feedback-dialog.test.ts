@@ -70,7 +70,7 @@ it('takes only problem reports, and points new features to pull requests', async
   expect(document.querySelector('input[name="feedbackKind"]')).toBeNull();
   expect($('feedbackIdea')).toBeNull();
   const link = $('feedbackFeatures').querySelector('a')!;
-  expect(link.getAttribute('href')).toBe('https://github.com/totec448-spec/chat-on-steroids/blob/main/CONTRIBUTING.md#new-features');
+  expect(link.getAttribute('href')).toBe('https://github.com/1njx/gem-web-code/blob/main/CONTRIBUTING.md#new-features');
   expect(link.getAttribute('target')).toBe('_blank');
   expect(link.getAttribute('rel')).toContain('noopener');
 });

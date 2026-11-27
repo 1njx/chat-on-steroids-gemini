@@ -83,14 +83,14 @@ describe('crashes and restarts', () => {
 
 describe('install and system', () => {
   it('names how the app was installed without its folder', () => {
-    expect(facts.installKind('win32', 'C:\\Program Files\\Chat On Steroids\\Chat On Steroids.exe', { ProgramFiles: 'C:\\Program Files' })).toBe('Windows installer, for all users (Program Files)');
-    expect(facts.installKind('win32', 'C:\\Users\\jane\\AppData\\Local\\Programs\\chat-on-steroids\\Chat On Steroids.exe', { ProgramFiles: 'C:\\Program Files' })).toBe('Windows installer, for this user');
-    expect(facts.installKind('win32', 'D:\\chat on Steroids\\Chat On Steroids.exe', { ProgramFiles: 'C:\\Program Files' })).toBe('Windows installer, custom folder');
-    expect(facts.installKind('darwin', '/Applications/Chat On Steroids.app/Contents/MacOS/Chat On Steroids', {})).toBe('macOS app in /Applications');
-    expect(facts.installKind('darwin', '/private/var/folders/x/AppTranslocation/1/d/Chat On Steroids.app/Contents/MacOS/Chat On Steroids', {})).toBe('macOS app run from a translocated copy (not moved to Applications)');
-    expect(facts.installKind('darwin', '/Users/jane/Downloads/Chat On Steroids.app/Contents/MacOS/Chat On Steroids', {})).toBe('macOS app outside /Applications');
+    expect(facts.installKind('win32', 'C:\\Program Files\\Gem Web Code\\Gem Web Code.exe', { ProgramFiles: 'C:\\Program Files' })).toBe('Windows installer, for all users (Program Files)');
+    expect(facts.installKind('win32', 'C:\\Users\\jane\\AppData\\Local\\Programs\\chat-on-steroids\\Gem Web Code.exe', { ProgramFiles: 'C:\\Program Files' })).toBe('Windows installer, for this user');
+    expect(facts.installKind('win32', 'D:\\chat on Steroids\\Gem Web Code.exe', { ProgramFiles: 'C:\\Program Files' })).toBe('Windows installer, custom folder');
+    expect(facts.installKind('darwin', '/Applications/Gem Web Code.app/Contents/MacOS/Gem Web Code', {})).toBe('macOS app in /Applications');
+    expect(facts.installKind('darwin', '/private/var/folders/x/AppTranslocation/1/d/Gem Web Code.app/Contents/MacOS/Gem Web Code', {})).toBe('macOS app run from a translocated copy (not moved to Applications)');
+    expect(facts.installKind('darwin', '/Users/jane/Downloads/Gem Web Code.app/Contents/MacOS/Gem Web Code', {})).toBe('macOS app outside /Applications');
     expect(facts.installKind('linux', '/tmp/.mount_x/chat-on-steroids', { APPIMAGE: '/home/jane/Apps/cos.AppImage' })).toBe('Linux AppImage');
-    expect(facts.installKind('linux', '/opt/Chat On Steroids/chat-on-steroids', {})).toBe('Linux package (/opt)');
+    expect(facts.installKind('linux', '/opt/Gem Web Code/chat-on-steroids', {})).toBe('Linux package (/opt)');
     for (const line of [facts.installKind('win32', 'C:\\Users\\jane\\x.exe', {}), facts.installKind('darwin', '/Users/jane/Downloads/x', {})]) {
       expect(line).not.toContain('jane');
     }

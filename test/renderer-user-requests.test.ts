@@ -40,7 +40,7 @@ it('shows the exact command, folder, purpose and expected files, with no verdict
   const small = userRequestCard(request({ found: [{ path: 'build/flash.log', state: 'found', size: 9, modifiedAt: 1 }, { path: '../secret', state: 'unchecked' }] }), { answer, readOnly: () => false });
   expect(small.querySelector('.user-request-file-state')!.textContent).toMatch(/^found, 9 bytes, /);
   // It says the app neither runs nor checks it, and nothing reads as "safe".
-  expect(card.querySelector('.user-request-note')!.textContent).toBe('Run it yourself, in your own terminal: Chat On Steroids does not run or check it.');
+  expect(card.querySelector('.user-request-note')!.textContent).toBe('Run it yourself, in your own terminal: Gem Web Code does not run or check it.');
   // Two expected files and a note fold into one line; the folder stays in view (Haz on #2049).
   const more = card.querySelector<HTMLDetailsElement>('details.user-request-more')!;
   expect(more.open).toBe(false);

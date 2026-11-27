@@ -198,7 +198,7 @@ function createWindow(): void {
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hidden' as const, titleBarOverlay: true } : {}),
     // Painted before the renderer loads, so a dark window never flashes white.
     backgroundColor: windowBackgroundForTheme(shownTheme(getConfig().ui.theme), getConfig().ui.appearance),
-    title: 'Chat On Steroids',
+    title: 'Gem Web Code',
     webPreferences: {
       zoomFactor: UI_BASE_ZOOM,
       preload: path.join(__dirname, '../preload/index.js'),
@@ -302,7 +302,7 @@ const phoneNeedsYou = (sessionId: string): void => {
     // An approval card that waits, unanswered: Telegram offers Deny under the message (#1934).
     const card = summary?.conversationId ? approvalCardView(summary.conversationId) : null;
     return pushToPhone({ kind: 'needs-you', sessionId,
-      chatTitle: summary?.title || 'Chat On Steroids', conversationId: summary?.conversationId ?? null,
+      chatTitle: summary?.title || 'Gem Web Code', conversationId: summary?.conversationId ?? null,
       ...(card && !card.answer ? { approval: { sessionId, cardId: card.id } } : {}) });
   });
 };
@@ -409,7 +409,7 @@ function refreshTray(): void {
   const label = mainText(connected ? 'Connected' : offline ? (getStatus().offlineCause === 'service' ? 'OpenAI outage' : 'No internet') : 'Not connected');
   tray.setImage(trayIcon(running));
   // Not lowercased: that would break translated nouns ("Keine Internetverbindung").
-  tray.setToolTip(`Chat On Steroids — ${label}`);
+  tray.setToolTip(`Gem Web Code — ${label}`);
   const cosBrowser = loadedCosBrowser();
   tray.setContextMenu(
     Menu.buildFromTemplate([

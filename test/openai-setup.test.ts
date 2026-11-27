@@ -69,20 +69,20 @@ describe('platform.openai.com Tunnels page', () => {
     tunnels(['47672693-160b-4bb2-bd37-8db4ecf01aa2']);
     const openai = api();
     expect(openai.tunnelRows()).toEqual([{ name: 'chat on steriods', id: OLD }]);
-    expect(openai.findTunnel({ knownTunnelId: OLD, tunnelName: 'Chat On Steroids' })).toBe(OLD);
+    expect(openai.findTunnel({ knownTunnelId: OLD, tunnelName: 'Gem Web Code' })).toBe(OLD);
     expect(openai.findTunnel({ tunnelName: 'Chat On Steriods' })).toBe(OLD);
-    expect(openai.findTunnel({ tunnelName: 'Chat On Steroids' })).toBeNull();
+    expect(openai.findTunnel({ tunnelName: 'Gem Web Code' })).toBeNull();
   });
 
   it('creates one in the only ChatGPT workspace and reads its new ID', async () => {
     const created = tunnels(['47672693-160b-4bb2-bd37-8db4ecf01aa2']);
-    expect(await api().createTunnel({ tunnelName: 'Chat On Steroids', tunnelDescription: 'Chat On Steroids on this computer' })).toEqual({ tunnelId: NEW });
-    expect(created).toEqual(['Chat On Steroids']);
+    expect(await api().createTunnel({ tunnelName: 'Gem Web Code', tunnelDescription: 'Gem Web Code on this computer' })).toEqual({ tunnelId: NEW });
+    expect(created).toEqual(['Gem Web Code']);
   });
 
   it('creates nothing when there are several workspaces to choose from', async () => {
     const created = tunnels(['ws-a', 'ws-b']);
-    expect((await api().createTunnel({ tunnelName: 'Chat On Steroids', tunnelDescription: 'x' })).error).toMatch(/several ChatGPT workspaces/);
+    expect((await api().createTunnel({ tunnelName: 'Gem Web Code', tunnelDescription: 'x' })).error).toMatch(/several ChatGPT workspaces/);
     expect(created).toEqual([]);
   });
 });
@@ -121,8 +121,8 @@ describe('platform.openai.com API keys page', () => {
 
   it('creates a Restricted key with Tunnels Read and Use in the default project, and reads it once', async () => {
     const submitted = keys();
-    expect(await api().createKey({ keyName: 'Chat On Steroids' })).toEqual({ key: KEY });
-    expect(submitted).toEqual(['Chat On Steroids']);
+    expect(await api().createKey({ keyName: 'Gem Web Code' })).toEqual({ key: KEY });
+    expect(submitted).toEqual(['Gem Web Code']);
   });
 
   it('names each key step in the status panel and never shows the key', async () => {
@@ -130,7 +130,7 @@ describe('platform.openai.com API keys page', () => {
     page.window.eval(readFileSync(new URL('../extension/setup-panel.js', import.meta.url), 'utf8'));
     const panel = (page.window as unknown as { CLF_SETUP_PANEL: { start(first: string): void; read(): { steps: string[] } | null } }).CLF_SETUP_PANEL;
     panel.start('Tunnel ready');
-    expect(await api().createKey({ keyName: 'Chat On Steroids' })).toEqual({ key: KEY });
+    expect(await api().createKey({ keyName: 'Gem Web Code' })).toEqual({ key: KEY });
     expect(panel.read()!.steps).toEqual(['Tunnel ready', 'Opening Create new secret key', 'Choosing the project',
       'Setting Restricted with Tunnels: Read and Use', 'Creating the key']);
     expect(page.window.document.getElementById('cos-setup-panel')!.textContent).not.toContain('sk-proj');
@@ -138,7 +138,7 @@ describe('platform.openai.com API keys page', () => {
 
   it('creates nothing when the form does not look as observed', async () => {
     const submitted = keys({ restricted: false });
-    expect((await api().createKey({ keyName: 'Chat On Steroids' })).error).toMatch(/did not look as expected/);
+    expect((await api().createKey({ keyName: 'Gem Web Code' })).error).toMatch(/did not look as expected/);
     expect(submitted).toEqual([]);
   });
 });

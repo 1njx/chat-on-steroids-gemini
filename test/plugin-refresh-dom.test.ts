@@ -194,7 +194,7 @@ it('finds installed rows on the plugins settings page', () => {
   main.innerHTML = '<button><div><span>Chat On Steroids Core</span></div><span>Custom</span></button><button><span>Chat On Steroids Desktop</span></button>';
   const api = (dom.window as any).CLF_DOM;
   expect(api.pluginInstalledButtons('Chat On Steroids Core')).toHaveLength(1);
-  expect(api.pluginInstalledButtons('Chat On Steroids')).toBeNull();
+  expect(api.pluginInstalledButtons('Gem Web Code')).toBeNull();
 });
 it('discovers native installed links by their exact connector name across languages', () => {
   settingsPage('/settings/plugins-settings');
@@ -202,7 +202,7 @@ it('discovers native installed links by their exact connector name across langua
   main.innerHTML = '<h1>プラグイン</h1><a href="/settings/plugins-settings/plugin_asdk_app_synthetic"><span>Chat On Steroids Core</span><span>説明</span></a><span>すべてを許可</span>';
   const api = (dom.window as any).CLF_DOM;
   expect(api.pluginInstalledButtons('Chat On Steroids Core')).toEqual([main.querySelector('a')]);
-  expect(api.pluginInstalledButtons('Chat On Steroids')).toBeNull();
+  expect(api.pluginInstalledButtons('Gem Web Code')).toBeNull();
   main.insertAdjacentHTML('beforeend', '<a href="/settings/plugins-settings/plugin_asdk_app_other"><span>Chat On Steroids Core</span></a>');
   expect(api.pluginInstalledButtons('Chat On Steroids Core')).toHaveLength(2);
 });

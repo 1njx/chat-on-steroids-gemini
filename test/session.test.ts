@@ -3509,7 +3509,7 @@ describe('naming the chats this app opened', () => {
       {
         kind: 'user_message',
         time: Date.now(),
-        text: 'Continue the previous Chat On Steroids session. Read the handoff below.',
+        text: 'Continue the previous Gem Web Code session. Read the handoff below.',
         messageId: 'boot-1'
       }
     ]);
@@ -3525,7 +3525,7 @@ describe('naming the chats this app opened', () => {
       {
         kind: 'user_message',
         time: Date.now(),
-        text: 'You are worker agent "worker-1" in a Chat On Steroids run.',
+        text: 'You are worker agent "worker-1" in a Gem Web Code run.',
         messageId: 'boot-2'
       }
     ]);

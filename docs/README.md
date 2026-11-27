@@ -1,4 +1,4 @@
-# Chat On Steroids documentation
+# Gem Web Code documentation
 
 Start with **[Setup and reference](setup.md)**. It covers installing, connecting ChatGPT, the browser bridge, the Local control API, permissions, notifications and troubleshooting.
 

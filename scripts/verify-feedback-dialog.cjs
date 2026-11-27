@@ -115,10 +115,10 @@ app.whenReady().then(async () => {
     await js(`document.getElementById('feedbackUpdate').hidden=true`);
     assert.equal(await topGap(),0,'No extra space above the first field');
     await js(`document.getElementById('feedbackUpdate').hidden=false`);
-    assert.equal(await js(`document.querySelector('#feedbackFeatures a').href`),'https://github.com/totec448-spec/chat-on-steroids/blob/main/CONTRIBUTING.md#new-features');
+    assert.equal(await js(`document.querySelector('#feedbackFeatures a').href`),'https://github.com/1njx/gem-web-code/blob/main/CONTRIBUTING.md#new-features');
     // The window denies new windows: the click goes through the app's link API, in the person's browser.
     await js(`window.links=[];document.querySelector('#feedbackFeatures a').click()`);
-    assert.deepEqual(await js('window.links'),[['https://github.com/totec448-spec/chat-on-steroids/blob/main/CONTRIBUTING.md#new-features',{external:true}]]);
+    assert.deepEqual(await js('window.links'),[['https://github.com/1njx/gem-web-code/blob/main/CONTRIBUTING.md#new-features',{external:true}]]);
     assert.equal(await js(`${dialog}.open`),true,'Following the guide link keeps the draft open');
     // A middle-click (auxclick) takes the same way, instead of being denied by the window (CodeRabbit on #2011).
     await js(`window.links=[];document.querySelector('#feedbackFeatures a').dispatchEvent(new MouseEvent('auxclick',{button:1,bubbles:true,cancelable:true}))`);

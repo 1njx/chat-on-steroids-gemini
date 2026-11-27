@@ -698,7 +698,7 @@ describe('native Project entry readiness', () => {
   it('clears a brief restored in the Project home even after three clears were spent in the source chat', async () => {
     const { resumeBootstrapText } = await import('../src/main/session/handoff.js');
     const brief = resumeBootstrapText('# TASK — the original goal\n\nShip the mail service.', 'pTYR0VjLJ5Xtz2FHFqajqA');
-    const request = '[[CLF-HANDOFF:9cY6SN6A7R4hDbXp7mNVCg]]\n\nChat On Steroids is compacting this conversation. Write the handoff as one reply.';
+    const request = '[[CLF-HANDOFF:9cY6SN6A7R4hDbXp7mNVCg]]\n\nGem Web Code is compacting this conversation. Write the handoff as one reply.';
     document.execCommand = (command: string, _ui?: boolean, value?: string) => {
       const selection = document.getSelection();
       const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
@@ -749,7 +749,7 @@ describe('native Project entry readiness', () => {
     ['that request with a person\'s words added', 'edited', false],
     ['a handoff request this app never typed', 'foreign', false]
   ] as const)('before the click, empties a source composer that holds %s only when it is the app\'s own', async (_name, kind, cleared) => {
-    const typed = '[[CLF-HANDOFF:9cY6SN6A7R4hDbXp7mNVCg]]\n\nChat On Steroids is compacting this conversation. Write the handoff as one reply.';
+    const typed = '[[CLF-HANDOFF:9cY6SN6A7R4hDbXp7mNVCg]]\n\nGem Web Code is compacting this conversation. Write the handoff as one reply.';
     document.execCommand = (command: string, _ui?: boolean, value?: string) => {
       const selection = document.getSelection();
       const range = selection?.rangeCount ? selection.getRangeAt(0) : null;

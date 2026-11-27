@@ -102,14 +102,14 @@ describe('Gemini provider', () => {
 
   it('delivers a send at most once: one tab, authorized once, recorded as a Gemini session', async () => {
     await loadModes();
-    const queued = queueGeminiSend({ prompt: 'List the files in my project', modeId: 'e6fa609c3fa255c0', connector: 'Chat On Steroids Core' });
+    const queued = queueGeminiSend({ prompt: 'List the files in my project', modeId: 'e6fa609c3fa255c0', connector: 'Gem Web Code Core' });
     expect(queued.ok).toBe(true);
     const id = (queued as { id: string }).id;
     // A signed-out page and a busy page are not offered it.
     expect(observeGeminiPage({ tab: 2, snapshot: page({ signIn: 'signed-out' }) }).commands).toEqual([]);
     expect(observeGeminiPage({ tab: 3, snapshot: page({ generating: true }) }).commands).toEqual([]);
     const handed = observeGeminiPage({ tab: 1, snapshot: page() }).commands;
-    expect(handed).toEqual([expect.objectContaining({ id, kind: 'send', modeId: 'e6fa609c3fa255c0', connector: 'Chat On Steroids Core', conversationId: null })]);
+    expect(handed).toEqual([expect.objectContaining({ id, kind: 'send', modeId: 'e6fa609c3fa255c0', connector: 'Gem Web Code Core', conversationId: null })]);
     // No other tab can take it, and the owner gets it again only while it is still unsent.
     expect(observeGeminiPage({ tab: 4, snapshot: page() }).commands).toEqual([]);
     expect(await completeGeminiCommand({ id, tab: 4, stage: 'sending' })).toEqual({ ok: false });
@@ -272,24 +272,24 @@ describe('Gemini provider', () => {
   it('applies saved defaults (connector, mode) and persists them; explicit null means no mention', async () => {
     const pushes: number[] = [];
     configureGemini({ changed: () => pushes.push(1) });
-    expect(saveGeminiSettings({ connectorName: 'Chat On Steroids Core', defaultModeId: 'e6fa609c3fa255c0' })).toEqual({ ok: true });
+    expect(saveGeminiSettings({ connectorName: 'Gem Web Code Core', defaultModeId: 'e6fa609c3fa255c0' })).toEqual({ ok: true });
     expect(saveGeminiSettings({ defaultModeId: 'bad id!' })).toEqual({ ok: false, error: 'invalid-settings' });
     queueGeminiSend({ prompt: 'a' });
     queueGeminiSend({ prompt: 'b', connector: null, modeId: null });
     const handed = observeGeminiPage({ tab: 1, snapshot: page() }).commands;
-    expect(handed[0]).toMatchObject({ connector: 'Chat On Steroids Core', modeId: 'e6fa609c3fa255c0' });
+    expect(handed[0]).toMatchObject({ connector: 'Gem Web Code Core', modeId: 'e6fa609c3fa255c0' });
     expect(pushes.length).toBeGreaterThan(0);
     await flushDurable();
-    expect(await readDurable<{ settings: { connectorName: string } }>('gemini')).toMatchObject({ settings: { connectorName: 'Chat On Steroids Core' } });
+    expect(await readDurable<{ settings: { connectorName: string } }>('gemini')).toMatchObject({ settings: { connectorName: 'Gem Web Code Core' } });
   });
 
-  it('mentions Chat On Steroids Core by default once the app was added in Gemini, and nothing before that', () => {
+  it('mentions Gem Web Code Core by default once the app was added in Gemini, and nothing before that', () => {
     queueGeminiSend({ prompt: 'before' });
     expect(observeGeminiPage({ tab: 1, snapshot: page() }).commands[0]).toMatchObject({ prompt: 'before', connector: null });
     expect(saveGeminiSettings({ givenUrlHash: geminiUrlFingerprint(`https://x.trycloudflare.com/mcp/core/${'a'.repeat(43)}`) })).toEqual({ ok: true });
     queueGeminiSend({ prompt: 'after' });
     queueGeminiSend({ prompt: 'none', connector: null });
-    expect(observeGeminiPage({ tab: 2, snapshot: page() }).commands[0]).toMatchObject({ prompt: 'after', connector: 'Chat On Steroids Core' });
+    expect(observeGeminiPage({ tab: 2, snapshot: page() }).commands[0]).toMatchObject({ prompt: 'after', connector: 'Gem Web Code Core' });
     expect(observeGeminiPage({ tab: 3, snapshot: page() }).commands[0]).toMatchObject({ prompt: 'none', connector: null });
   });
 

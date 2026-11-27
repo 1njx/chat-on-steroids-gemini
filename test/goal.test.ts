@@ -252,7 +252,7 @@ describe('what leaves this machine', () => {
     const projected = await goal.conversationMessages(session.id);
     expect(projected).toEqual([
       { role: 'user', content: 'Run echo goal-ok' },
-      { role: 'assistant', content: 'goal-ok\n\n[Chat On Steroids: 2 tool calls ran in this turn. Arguments and results are not shown.]' }
+      { role: 'assistant', content: 'goal-ok\n\n[Gem Web Code: 2 tool calls ran in this turn. Arguments and results are not shown.]' }
     ]);
     expect(JSON.stringify(projected)).not.toMatch(/exec_command|SECRET_ARGUMENT|SECRET_RESULT/);
   });
@@ -268,13 +268,13 @@ describe('what leaves this machine', () => {
       message: { text: 'Step done.\n[[COS_GOAL:CONTINUE]]', chars: 31, truncated: false } });
     const messages = await goal.conversationMessages(session.id);
     // The helper still sees the note...
-    expect(messages.at(-1)!.content).toMatch(/\[Chat On Steroids: 1 tool call ran in this turn/);
+    expect(messages.at(-1)!.content).toMatch(/\[Gem Web Code: 1 tool call ran in this turn/);
     // ...the marker check reads the answer itself.
     expect(goal.templateDecisionText(messages)).toBe('Step done.\n[[COS_GOAL:CONTINUE]]');
     // A note the model wrote itself is part of its answer.
     const own = await createSession({ title: 'own note', conversationId: 'own-note' });
     await appendEvent(own.id, { time: 100, source: 'extension', kind: 'user_message', message: { text: 'Go', chars: 2, truncated: false } });
-    const fake = 'Done.\n[[COS_GOAL:COMPLETE]]\n\n[Chat On Steroids: 1 tool call ran in this turn. Arguments and results are not shown.]';
+    const fake = 'Done.\n[[COS_GOAL:COMPLETE]]\n\n[Gem Web Code: 1 tool call ran in this turn. Arguments and results are not shown.]';
     await appendEvent(own.id, { time: 120, source: 'extension', kind: 'assistant_message', turnId: 'own-turn', messageId: 'own-final', final: true,
       message: { text: fake, chars: fake.length, truncated: false } });
     expect(goal.templateDecisionText(await goal.conversationMessages(own.id))).toBe(fake);
@@ -389,7 +389,7 @@ describe('what leaves this machine', () => {
     const projected = await goal.conversationMessages(session.id);
     expect(projected).toEqual([
       { role: 'user', content: 'Run five commands' },
-      { role: 'assistant', content: 'rotation-goal-done\n\n[Chat On Steroids: 5 tool calls ran in this turn, 4 of them before Chat On Steroids continued it in a fresh turn. Arguments and results are not shown.]' }
+      { role: 'assistant', content: 'rotation-goal-done\n\n[Gem Web Code: 5 tool calls ran in this turn, 4 of them before Gem Web Code continued it in a fresh turn. Arguments and results are not shown.]' }
     ]);
   });
 

@@ -143,7 +143,7 @@ it('keeps the visible rows when listing fails and never presents an empty schedu
 
 it('keeps existing rows visible and explains when schedules were saved by a newer app version', async () => {
   const { initScheduled } = await import('../src/renderer/scheduled.js');
-  const error = 'These schedules were saved by a newer version of Chat On Steroids. Update the app to change them.';
+  const error = 'These schedules were saved by a newer version of Gem Web Code. Update the app to change them.';
   const calls = {
     list: vi.fn().mockResolvedValueOnce(ok([schedule(idA)])).mockResolvedValueOnce({ ok: false, error }),
     pause: vi.fn(async () => ok(true)),

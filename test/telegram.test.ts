@@ -107,7 +107,7 @@ describe('linking', () => {
     expect(telegram.bot.view()).toMatchObject({ state: 'linked', userName: '@me' });
     expect(telegram.sent()).toEqual([
       { chat_id: STRANGER, text: expect.stringContaining('This code is not valid any more') },
-      { chat_id: ME, text: 'Connected to Chat On Steroids. Its notifications arrive here.' }
+      { chat_id: ME, text: 'Connected to Gem Web Code. Its notifications arrive here.' }
     ]);
     expect(telegram.logs).toContain('telegram: linked to the Telegram account that sent the code');
     // The token never reaches a log line.
@@ -123,7 +123,7 @@ describe('linking', () => {
     await telegram.settled();
     expect(telegram.link).toBeNull();
     expect(telegram.sent()).toEqual([
-      { chat_id: ME, text: 'Send /start with the code shown in Chat On Steroids: Settings → Phone notifications → Telegram.' }
+      { chat_id: ME, text: 'Send /start with the code shown in Gem Web Code: Settings → Phone notifications → Telegram.' }
     ]);
     telegram.queue(telegram.message(ME, '/start abcdefgh'));
     await telegram.settled();
@@ -170,7 +170,7 @@ describe('a linked bot', () => {
     await telegram.settled();
     expect(telegram.sent()).toEqual([
       { chat_id: ME, text: 'status counts' },
-      { chat_id: ME, text: 'Chat On Steroids notifications arrive here. Commands: /status, /stop, /pause, /resume. Reply to a notification to send that chat a message.' },
+      { chat_id: ME, text: 'Gem Web Code notifications arrive here. Commands: /status, /stop, /pause, /resume. Reply to a notification to send that chat a message.' },
       { chat_id: ME, text: 'I know /status, /stop, /pause, /resume and /help. Reply to a notification to send that chat a message.' }
     ]);
     // A stranger is ignored and said once a minute, not per message.
@@ -317,7 +317,7 @@ describe('acting on chats', () => {
     expect(answered(telegram)).toBe(`Several chats could be meant. Reply to that chat's notification with ${command}.`);
   });
 
-  it.each([['done', 'Paused. /resume starts it again.'], ['nothing', 'Goal and Loop are not on there.'], ['failed', 'Could not do that. Open the chat in Chat On Steroids.']] as const)(
+  it.each([['done', 'Paused. /resume starts it again.'], ['nothing', 'Goal and Loop are not on there.'], ['failed', 'Could not do that. Open the chat in Gem Web Code.']] as const)(
     'says what /pause did: %s', async (result, said) => {
       const telegram = current = fakeTelegram({ link: linked() });
       telegram.bot.start();
@@ -329,8 +329,8 @@ describe('acting on chats', () => {
     });
 
   it.each([['sent', 'On its way to the chat.'], ['queued', 'Queued: it goes to the chat after its current answer.'],
-    ['off', 'Sending messages to chats from Telegram is off. Turn it on in Chat On Steroids: Settings → Phone notifications → Telegram.'],
-    ['refused', 'That chat cannot take messages from here.'], ['failed', 'Could not do that. Open the chat in Chat On Steroids.']] as const)(
+    ['off', 'Sending messages to chats from Telegram is off. Turn it on in Gem Web Code: Settings → Phone notifications → Telegram.'],
+    ['refused', 'That chat cannot take messages from here.'], ['failed', 'Could not do that. Open the chat in Gem Web Code.']] as const)(
     'sends a reply to a notification to that chat, and says how it went: %s', async (result, said) => {
       const telegram = current = fakeTelegram({ link: linked() });
       telegram.bot.start();
@@ -388,7 +388,7 @@ describe('acting on chats', () => {
     telegram.bot.start();
     telegram.queue(telegram.message(ME, '/help'), telegram.message(ME, 'hello'));
     await telegram.settled();
-    expect(telegram.sent().at(-2)?.text).toBe('Chat On Steroids notifications arrive here. Commands: /status, /stop, /pause, /resume. Reply to a notification to send that chat a message.');
+    expect(telegram.sent().at(-2)?.text).toBe('Gem Web Code notifications arrive here. Commands: /status, /stop, /pause, /resume. Reply to a notification to send that chat a message.');
     expect(answered(telegram)).toBe('I know /status, /stop, /pause, /resume and /help. Reply to a notification to send that chat a message.');
   });
 });

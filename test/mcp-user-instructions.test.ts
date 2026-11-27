@@ -103,13 +103,13 @@ describe('the user’s own connector instructions', () => {
   });
   it('starts with the coding guidance and explains connectors once beside the local tools without a setup link', () => {
     const text = serverInstructions(ctx, 'core', 'win32');
-    expect(text.startsWith('You are a coding agent working with the user through Chat On Steroids.')).toBe(true);
+    expect(text.startsWith('You are a coding agent working with the user through Gem Web Code.')).toBe(true);
     const intro = text.split('\n').find(line => line.startsWith('Use the connected tools as needed:'))!;
     expect(intro).toContain('Chat On Steroids Core for files');
     expect(intro).toContain('Chat On Steroids Desktop for background browser tabs');
     expect(intro).toContain('Chat On Steroids Plugins for enabled external apps');
     expect(text.indexOf(intro)).toBeGreaterThan(text.indexOf('# Local tools'));
-    expect(text).not.toMatch(/This is Chat On Steroids|https:\/\/chatgpt.com\/#settings\/Plugins/);
+    expect(text).not.toMatch(/This is Gem Web Code|https:\/\/chatgpt.com\/#settings\/Plugins/);
     expect(serverInstructions(ctx, 'core', 'linux')).toContain('Chat On Steroids Desktop');
   });
   it('routes Linux browser users to Core for files without advertising native desktop tools', () => {

@@ -1,5 +1,5 @@
 /**
- * Whether a newer Chat On Steroids has been published, and the file that becomes it.
+ * Whether a newer Gem Web Code has been published, and the file that becomes it.
  *
  * This is the whole updater: one pass, run at startup and repeated on a slow timer, that asks
  * GitHub for the latest release, stages the artifact this installation can actually apply, and
@@ -51,7 +51,7 @@ import { APP_VERSION } from './version.js';
 import { isNewer, type UpdateStatus } from '../shared/types.js';
 
 // This fork updates from its own releases, never from upstream's (which lack the Gemini provider).
-const REPO = '1njx/chat-on-steroids-gemini';
+const REPO = '1njx/gem-web-code';
 const LATEST_RELEASE_API = `https://api.github.com/repos/${REPO}/releases/latest`;
 
 const CHECK_TIMEOUT_MS = 15_000;

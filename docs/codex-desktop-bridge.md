@@ -13,12 +13,12 @@ automation.
 That materially shrinks the original blocker: background **send to a known existing Desktop thread**
 is now proven through a supported Codex surface. The remaining integration question is narrower:
 which supported list/read/wait primitives provide bounded identity and transcript/status evidence
-for those same Desktop threads, and what host-instance guarantees should Chat On Steroids require
+for those same Desktop threads, and what host-instance guarantees should Gem Web Code require
 before it exposes them to the model.
 
 ## Problem
 
-Chat On Steroids can inspect local recordings and can control the desktop, but neither is the right
+Gem Web Code can inspect local recordings and can control the desktop, but neither is the right
 default for supervising an existing Codex Desktop task:
 
 - GUI automation steals focus and competes with the user's foreground work;

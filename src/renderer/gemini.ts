@@ -235,7 +235,7 @@ export function paintGeminiSetup(now = Date.now()): void {
   const fill = [...(status?.commands ?? [])].reverse().find(c => c.kind === 'fill-app');
   byId('geminiFillPill').hidden = !fill;
   if (fill) pill('geminiFillPill', ...fillPill(fill, url));
-  const name = status?.settings.connectorName || 'Chat On Steroids Core';
+  const name = status?.settings.connectorName || 'Gem Web Code Core';
   byId('geminiTryPrompt').textContent = t('@{0} list the files in my shared folder', [name]);
   pill('geminiTryPill', done.has('try') ? 'ok' : 'off', status?.toolCallSeenAt ? t("Gemini ran one of the app's tools {0}", [ago(status.toolCallSeenAt, now)])
     : t("Waiting for Gemini to run one of the app's tools…"));
@@ -282,7 +282,7 @@ export function addChecks(status: GeminiStatus | null, url: string | null): Arra
   const hash = url ? geminiUrlFingerprint(url) : null;
   const since = hash && status?.address?.urlHash === hash ? status.address.since : null;
   const reach = hash && status?.reach?.urlHash === hash ? status.reach : null;
-  const name = status?.settings.connectorName || 'Chat On Steroids Core';
+  const name = status?.settings.connectorName || 'Gem Web Code Core';
   const after = (at: number | null | undefined) => since !== null && typeof at === 'number' && at >= since;
   return [
     { label: t('The address answers through the tunnel'), ok: !!reach?.ok,
@@ -297,7 +297,7 @@ export function addChecks(status: GeminiStatus | null, url: string | null): Arra
 }
 
 /** Said when no page with the extension took "Add it in Gemini for me" (the default browser may have none). */
-export const UNCLAIMED = 'Open Gemini in the browser that has the Chat On Steroids extension.';
+export const UNCLAIMED = 'Open Gemini in the browser that has the Gem Web Code extension.';
 const unclaimed = (): string => t(UNCLAIMED);
 const unclaimedHint = (): string => t('If nothing happens there: {0}', [unclaimed()]);
 
@@ -314,7 +314,7 @@ export function fillWaitText(status: GeminiStatus): string {
 export function autoFillText(status: GeminiStatus, now = Date.now()): string {
   const fill = status.autoFill ? status.commands.find(c => c.id === status.autoFill!.id) : null;
   if (!fill) return '';
-  const name = status.settings.connectorName || 'Chat On Steroids Core';
+  const name = status.settings.connectorName || 'Gem Web Code Core';
   const when = ago(status.autoFill!.at, now);
   const error = fill.error === 'gemini-page-not-connected' ? unclaimed() : geminiErrorText(fill.error);
   if (fill.stage === 'completed') return t('Your tunnel address changed {0}, so the app added {1} in Gemini again with the new address.', [when, name]);

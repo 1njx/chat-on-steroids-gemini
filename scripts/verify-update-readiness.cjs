@@ -286,7 +286,7 @@ app.whenReady().then(async () => {
         if(lang==='en'){await pause(200);await shot(present?'older-browser-extension-en.png':'missing-browser-extension-en.png');}
       }
       await js(`window.fixturePush(window.fixtureMacState)`);
-      assert.ok(await js(`document.querySelector('[data-update-part="app"]').textContent.includes(${JSON.stringify(copy('Finish active work and fully quit Chat On Steroids. Replace the app in /Applications, then open the updated app from there.'))})`),lang+' manual replacement instructions');
+      assert.ok(await js(`document.querySelector('[data-update-part="app"]').textContent.includes(${JSON.stringify(copy('Finish active work and fully quit Gem Web Code. Replace the app in /Applications, then open the updated app from there.'))})`),lang+' manual replacement instructions');
       assert.ok(await js(`document.querySelector('[data-update-part="desktop"]').textContent.includes(${JSON.stringify(copy('Choose Review setup to check macOS permissions, then fully quit and reopen the app.'))})`),lang+' permission instructions');
       assert.equal(await js(`document.querySelector('[data-update-part="desktop"]').classList.contains('is-bad')`),true);
       await js(`document.getElementById('updateReviewSetup').scrollIntoView({block:'nearest'})`);

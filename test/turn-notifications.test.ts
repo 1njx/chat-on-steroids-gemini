@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { createTurnNotifier, noticeText } from '../src/main/turn-notifications.js';
 import type { SessionSummary } from '../src/shared/session.js';
 
-// Codex notifies when a turn completes. Chat On Steroids only did for Session finish and stuck
+// Codex notifies when a turn completes. Gem Web Code only did for Session finish and stuck
 // chats, so a finished answer went unnoticed while the window was in the background.
 
 const chat = (id: string, extra: Partial<SessionSummary> = {}) => ({

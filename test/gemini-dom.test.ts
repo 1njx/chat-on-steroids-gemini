@@ -346,7 +346,7 @@ describe('Gemini page adapter', () => {
     let armed = false;
     const showMenu = () => {
       document.getElementById('overlay')!.innerHTML = ['Avatar, Add a likeness', 'Skills, Reusable instructions', 'Styles, Saved aesthetics',
-        'Gemini Notebook, Notebooks', 'Verify AI, provenance', 'Chat On Steroids Core', 'View all connectors, Get smarter help']
+        'Gemini Notebook, Notebooks', 'Verify AI, provenance', 'Gem Web Code Core', 'View all connectors, Get smarter help']
         .map(label => `<button role="menuitem" aria-label="${label}">${label}</button>`).join('');
       for (const option of document.querySelectorAll('#overlay button')) option.addEventListener('click', () => {
         const box = document.querySelector('rich-textarea .ql-editor')!;
@@ -363,21 +363,21 @@ describe('Gemini page adapter', () => {
 
     it('picks the exact connector from the opened menu after synthetic keys once the page is armed', async () => {
       armed = true;
-      expect(await api.mentionConnector('Chat On Steroids Core')).toBe(true);
-      expect(document.querySelector('rich-textarea [data-chip-raw-text]')!.getAttribute('data-chip-raw-text')).toBe('@Chat On Steroids Core');
+      expect(await api.mentionConnector('Gem Web Code Core')).toBe(true);
+      expect(document.querySelector('rich-textarea [data-chip-raw-text]')!.getAttribute('data-chip-raw-text')).toBe('@Gem Web Code Core');
     });
 
     it('asks for one trusted "@" when synthetic keys do not open the menu, and never guesses a name', async () => {
       let asked = 0;
       const openMenu = async () => { asked += 1; showMenu(); return true; };
-      expect(await api.mentionConnector('Chat On Steroids Core', () => true, openMenu)).toBe(true);
+      expect(await api.mentionConnector('Gem Web Code Core', () => true, openMenu)).toBe(true);
       expect(asked).toBe(1);
-      expect(await api.mentionConnector('Chat On Steroids', () => true, openMenu)).toBe(false);
+      expect(await api.mentionConnector('Gem Web Code', () => true, openMenu)).toBe(false);
       expect(api.composerText()).toBe('');
     });
 
     it('fails without a trusted fallback instead of sending a plain-text mention', async () => {
-      expect(await api.mentionConnector('Chat On Steroids Core')).toBe(false);
+      expect(await api.mentionConnector('Gem Web Code Core')).toBe(false);
       expect(api.composerText()).toBe('');
     });
   });
@@ -406,8 +406,8 @@ const APPS = `
 <a aria-label="Google Account: Pat (pat@example.com)" href="#"></a>
 <button aria-label="Create custom app">Custom</button>
 <section class="category-section"><h2>Custom apps</h2><div class="apps-grid">
-  <customize-card><button class="card-primary-action" aria-label="Chat On Steroids Core"></button>
-  <div class="content">Chat On Steroids Core</div><div class="card-action-container"><button aria-label="More options"></button></div></customize-card>
+  <customize-card><button class="card-primary-action" aria-label="Gem Web Code Core"></button>
+  <div class="content">Gem Web Code Core</div><div class="card-action-container"><button aria-label="More options"></button></div></customize-card>
 </div></section>
 <div id="details"></div><div id="dialogs"></div>`;
 
@@ -421,9 +421,9 @@ describe('Gemini custom apps page', () => {
     document.documentElement.lang = 'en';
     Object.defineProperty(dom.window.HTMLElement.prototype, 'getClientRects', { value() { return this.hidden ? [] : [{ width: 10, height: 10 }]; } });
     document.querySelector('.card-primary-action')!.addEventListener('click', () => {
-      document.getElementById('details')!.innerHTML = `<div class="details-content-column" role="region"><h1>Chat On Steroids Core</h1>
+      document.getElementById('details')!.innerHTML = `<div class="details-content-column" role="region"><h1>Gem Web Code Core</h1>
         <button aria-label="More options"></button><dl class="info-list">
-        <div class="info-row"><dt>Handle</dt><dd>@Chat On Steroids Core</dd></div>
+        <div class="info-row"><dt>Handle</dt><dd>@Gem Web Code Core</dd></div>
         <div class="info-row"><dt>MCP URL</dt><dd>https://old-name.trycloudflare.com/mcp/core/${'b'.repeat(43)}</dd></div></dl></div>`;
     });
     document.querySelector('button[aria-label="Create custom app"]')!.addEventListener('click', () => {
@@ -440,9 +440,9 @@ describe('Gemini custom apps page', () => {
   });
 
   it('reads the address an existing custom app has', async () => {
-    expect(api.customAppCard('Chat On Steroids Core')).not.toBeNull();
+    expect(api.customAppCard('Gem Web Code Core')).not.toBeNull();
     expect(api.customAppCard('Someone else')).toBeNull();
-    expect(await api.readCustomAppUrl('Chat On Steroids Core', 3000)).toBe(`https://old-name.trycloudflare.com/mcp/core/${'b'.repeat(43)}`);
+    expect(await api.readCustomAppUrl('Gem Web Code Core', 3000)).toBe(`https://old-name.trycloudflare.com/mcp/core/${'b'.repeat(43)}`);
   });
 
   it('fills only the address, leaves the optional fields empty and returns Next without pressing it', async () => {
@@ -466,13 +466,13 @@ describe('Gemini custom apps page', () => {
     });
     expect(await api.fillCreateForm(url, 300)).toBeNull();
     expect(document.querySelector<HTMLInputElement>('input[name="link"]')!.value).toBe('');
-    expect(await api.readCustomAppUrl('Chat On Steroids Core', 0)).toBeNull();
+    expect(await api.readCustomAppUrl('Gem Web Code Core', 0)).toBeNull();
   });
 
   // More options on the details page offers Use now and Delete (live, 2026-11-22).
   it('deletes the app with the old address through More options → Delete, and confirms only a Delete', async () => {
     const doc = document;
-    expect(await api.readCustomAppUrl('Chat On Steroids Core', 3000)).toMatch(/old-name/);
+    expect(await api.readCustomAppUrl('Gem Web Code Core', 3000)).toMatch(/old-name/);
     const pressed: string[] = [];
     doc.querySelector('#details button[aria-label="More options"]')!.addEventListener('click', () => {
       doc.body.insertAdjacentHTML('beforeend', '<div role="menu"><button role="menuitem">Use now</button><button role="menuitem" id="del">Delete</button></div>');
@@ -486,15 +486,15 @@ describe('Gemini custom apps page', () => {
         });
       });
     });
-    expect(await api.deleteCustomApp('Chat On Steroids Core', 2000)).toBe(true);
+    expect(await api.deleteCustomApp('Gem Web Code Core', 2000)).toBe(true);
     expect(pressed).toEqual(['Delete', 'confirm']);
-    expect(api.customAppCard('Chat On Steroids Core')).toBeNull();
+    expect(api.customAppCard('Gem Web Code Core')).toBeNull();
   });
 
   it('gives up without a Delete item, deleting nothing', async () => {
-    await api.readCustomAppUrl('Chat On Steroids Core', 500);
-    expect(await api.deleteCustomApp('Chat On Steroids Core', 300)).toBe(false);
-    expect(api.customAppCard('Chat On Steroids Core')).not.toBeNull();
+    await api.readCustomAppUrl('Gem Web Code Core', 500);
+    expect(await api.deleteCustomApp('Gem Web Code Core', 300)).toBe(false);
+    expect(api.customAppCard('Gem Web Code Core')).not.toBeNull();
   });
 
   // After Next: "Connect this MCP server" with Google's notice (a mat-checkbox) and Connect (live, 2026-11-22).

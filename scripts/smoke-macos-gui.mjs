@@ -12,10 +12,10 @@ const unpackedDir = arch === 'arm64' ? 'mac-arm64' : 'mac';
 const executable = path.resolve(
   'release',
   unpackedDir,
-  'Chat On Steroids.app',
+  'Gem Web Code.app',
   'Contents',
   'MacOS',
-  'Chat On Steroids'
+  'Gem Web Code'
 );
 if (!existsSync(executable)) throw new Error(`Could not find unpacked macOS ${arch} app executable`);
 

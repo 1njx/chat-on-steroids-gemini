@@ -486,7 +486,7 @@ it('drops a new manual intent when enqueue rejects and a fresh outbox read confi
 });
 
 it('does not log local paths or chat ids when a manual enqueue fails', async () => {
-  const privatePath = '/Users/private/Library/Application Support/Chat On Steroids/state/scheduled-runs.json';
+  const privatePath = '/Users/private/Library/Application Support/Gem Web Code/state/scheduled-runs.json';
   const { runs, deps } = await setup({ enqueue: vi.fn(async () => { throw new Error(privatePath); }) });
   await runs.saveSchedule({ sessionId: SESSION, text: 'Hourly check', repeat: { kind: 'hours', every: 1 }, until: null }, local('2026-10-24T10:00:00'));
   await expect(runs.runScheduleNow(SESSION, local('2026-10-24T10:30:00'), deps)).rejects.toThrow(privatePath);
@@ -1287,7 +1287,7 @@ it('reports a future schedule version through both list paths and never overwrit
   const durable = await import('../src/main/durable.js');
   const future = { version: 2, schedules: 'future-format' };
   await durable.writeDurableNow('scheduled-runs', future);
-  const message = 'These schedules were saved by a newer version of Chat On Steroids. Update the app to change them.';
+  const message = 'These schedules were saved by a newer version of Gem Web Code. Update the app to change them.';
   await expect(runs.listSchedules()).rejects.toThrow(message);
   await expect(runs.listScheduleItems(local('2026-10-24T09:00:00'), {
     session: async id => ({ id, title: 'Schedule' }), inputs: async () => [], log: vi.fn()

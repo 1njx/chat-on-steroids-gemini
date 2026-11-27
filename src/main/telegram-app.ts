@@ -202,7 +202,7 @@ export function telegramDestination(): { send(text: string, about?: { sessionId?
 /** A test message to the linked account; throws a sentence when it did not arrive. */
 export async function testTelegram(): Promise<void> {
   if (!bot || !link || !appDeps) throw new Error('Link a Telegram bot first.');
-  if (!await bot.send(appDeps.mainText('This is a test from Chat On Steroids. Telegram notifications work.'))) {
+  if (!await bot.send(appDeps.mainText('This is a test from Gem Web Code. Telegram notifications work.'))) {
     throw new Error('Telegram did not take the message. Check the connection, or link the bot again.');
   }
   appDeps.log('telegram: test sent');

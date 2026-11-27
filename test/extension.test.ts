@@ -2411,7 +2411,7 @@ describe('active agent tab discard protection', () => {
 
   describe('keep-awake in the app tab group (#128)', () => {
     type GroupTab = { id: number; windowId: number; groupId: number; url: string; status: string; active: boolean; frozen: boolean };
-    const GROUP = { id: 50, windowId: 7, title: 'Chat On Steroids', collapsed: true };
+    const GROUP = { id: 50, windowId: 7, title: 'Gem Web Code', collapsed: true };
     const groupWorker = (tabs: GroupTab[], placement: () => string = () => 'group', groups = [GROUP]) => loadWorker({
       local: new FakeStorageArea({ ...paired, backgroundPlacement: 'group' }),
       session: new FakeStorageArea({ chatBackgroundGroup: 50 }),
@@ -6698,7 +6698,7 @@ describe('this install\'s connector names', () => {
     expect((await restarted.send({ type: 'status' }) as any).connectorNames).toEqual(windows);
 
     for (const foreign of [
-      { ...windows, core: 'Chat On Steroids Backup' },
+      { ...windows, core: 'Gem Web Code Backup' },
       { ...windows, core: 'Chat On Steroids Desktop (Windows)' },
       { ...windows, plugins: 'Chat On Steroids Plugins (Win/VM)' },
       'Chat On Steroids Core'

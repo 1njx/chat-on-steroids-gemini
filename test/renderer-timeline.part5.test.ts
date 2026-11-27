@@ -1662,7 +1662,7 @@ describe('prompt recall in the composer', () => {
   });
 
   it.each([
-    ['a fresh-turn continue', 'Continue the task from where you are. (Chat On Steroids starts a fresh turn so the reply is not cut off.)'],
+    ['a fresh-turn continue', 'Continue the task from where you are. (Gem Web Code starts a fresh turn so the reply is not cut off.)'],
     ['a Goal continue', 'Continue with the next step of the Goal.']
   ])('skips %s whose row the outbox no longer keeps', async (_, value) => {
     // The recorder keeps the input id and the sent text on the message, whoever wrote it.

@@ -50,6 +50,9 @@
   const result = (command, fields) => message({ type: 'gemini_result', id: command.id, ...fields });
 
   /** Gemini's apps compared loosely, as on the custom apps page. */
+  // Gemini's custom app was named "Chat On Steroids Core" before 2.3.0. An account that still has it keeps
+  // working: it is mentioned when the new name is not offered, and "Add it in Gemini for me" deletes it.
+  const CORE = 'Gem Web Code Core', LEGACY_CORE = 'Chat On Steroids Core';
   const sameApp = (a, b) => String(a || '').toLowerCase().replace(/[-_\s]+/g, ' ').trim() === String(b || '').toLowerCase().replace(/[-_\s]+/g, ' ').trim();
 
   async function waitForAnswer(command, before) {
@@ -123,9 +126,12 @@
     }
     if (command.connector) {
       const trustedAt = async () => !!(await message({ type: 'gemini_type_at' }))?.ok;
-      if (!(await dom.mentionConnector(command.connector, () => true, trustedAt))) {
-        return result(command, { stage: 'failed', error: 'connector-not-offered', connector: command.connector });
+      let mentioned = await dom.mentionConnector(command.connector, () => true, trustedAt);
+      if (!mentioned && sameApp(command.connector, CORE) && (mentioned = await dom.mentionConnector(LEGACY_CORE, () => true, trustedAt))) {
+        // Full access then answers the old app's approval cards, which carry its old name.
+        if (sameApp(command.alwaysAllow, CORE)) command.alwaysAllow = LEGACY_CORE;
       }
+      if (!mentioned) return result(command, { stage: 'failed', error: 'connector-not-offered', connector: command.connector });
       if (!dom.appendPrompt(` ${command.prompt}`)) return result(command, { stage: 'failed', error: 'composer-unavailable' });
     } else if (!dom.insertPrompt(command.prompt)) {
       return result(command, { stage: 'failed', error: 'composer-unavailable' });
@@ -174,7 +180,8 @@
     }
     panel?.start('Opening custom apps');
     if (!(await dom.waitFor(dom.visibleCreate))) return failed('custom-apps-layout-unknown');
-    const name = command.connector || 'Chat On Steroids Core';
+    const name = command.connector || CORE;
+    const names = sameApp(name, CORE) ? [name, LEGACY_CORE] : [name];
     const toList = async () => { dom.backToList(); return !!(await dom.waitFor(dom.visibleCreate)) && (await dom.settledList(), true); };
     panel?.step('Checking existing apps');
     await dom.settledList();
@@ -184,26 +191,26 @@
     let kept = null, failures = 0;
     for (let pass = 0; ; pass += 1) {
       kept = null;
-      for (let index = 0, rounds = 0; rounds < 15; rounds += 1) {
-        const cards = dom.customAppCards(name);
+      for (const each of names) for (let index = 0, rounds = 0; rounds < 15; rounds += 1) {
+        const cards = dom.customAppCards(each);
         if (index >= cards.length) break;
         const existing = await dom.readCustomAppUrl(cards[index]);
         if (!existing) { dom.backToList(); return failed('custom-apps-layout-unknown'); }
-        if (existing === command.url && !kept) {
+        if (each === name && existing === command.url && !kept) {
           kept = existing;
           index += 1;
           if (!(await toList())) return failed('custom-apps-layout-unknown');
           continue;
         }
         panel?.step(`Deleting the old app (try ${failures + 1} of 3)`);
-        if (await dom.deleteCustomApp(name, 8000, cards.length)) { failures = 0; await dom.settledList(); continue; }
+        if (await dom.deleteCustomApp(each, 8000, cards.length)) { failures = 0; await dom.settledList(); continue; }
         // A delete that did not take is tried again from the list (3 tries), which also finds it done late.
         if ((failures += 1) >= 3) return failed('delete-failed');
         if (!(await toList())) return failed('custom-apps-layout-unknown');
       }
       // Checked once more on a settled list: nothing is added while an app with this name is left.
       if (!(await toList())) return failed('custom-apps-layout-unknown');
-      if (dom.customAppCards(name).length === (kept ? 1 : 0)) break;
+      if (names.every(each => dom.customAppCards(each).length === (each === name && kept ? 1 : 0))) break;
       if (pass >= 2) return failed('delete-failed');
     }
     if (kept) {

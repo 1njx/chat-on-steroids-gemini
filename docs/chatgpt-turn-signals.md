@@ -198,7 +198,7 @@ same filters the extension does, so what it prints is what the app would record:
 `CLF_DOM.errors()` gives the same answer directly, but **it is not reachable from an ordinary
 ChatGPT DevTools console**: `chatgpt-dom.js` and `content.js` run in the extension's *isolated*
 world (only `fiber.js` is `world: "MAIN"`, per `extension/manifest.json`). To call it, switch the
-console's execution context from the page to the Chat On Steroids content script first; otherwise
+console's execution context from the page to the Gem Web Code content script first; otherwise
 use the standalone snippets above, which depend on nothing but the DOM.
 
 ### 4d. After the fact, from the app

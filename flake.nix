@@ -1,5 +1,5 @@
 {
-  description = "Chat On Steroids development environment";
+  description = "Gem Web Code development environment";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 

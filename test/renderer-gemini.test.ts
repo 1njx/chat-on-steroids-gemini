@@ -8,7 +8,7 @@ let dom: JSDOM;
 
 const status = (fields: Partial<GeminiStatus> = {}): GeminiStatus => ({
   pages: 1, signIn: 'signed-in', account: { name: 'Pat', plan: 'Pro' }, selectedMode: 'Hydrogen', localized: false,
-  errors: [], quotaLimited: false, settings: { connectorName: 'Chat On Steroids Core', defaultModeId: 'e6fa609c3fa255c0', defaultThinkingLevel: null },
+  errors: [], quotaLimited: false, settings: { connectorName: 'Gem Web Code Core', defaultModeId: 'e6fa609c3fa255c0', defaultThinkingLevel: null },
   catalog: { observedAt: Date.now(), thinkingLevels: [{ label: 'Low', selected: true, available: true }, { label: 'High', selected: false, available: true }], modes: [
     { id: '56fdd199312815e2', title: 'Everyday help', model: 'Gemini 4 Hydrogen', available: true, selected: true, reason: null },
     { id: 'e6fa609c3fa255c0', title: 'Deeper analysis', model: 'Gemini 4 Neon', available: true, selected: false, reason: null },
@@ -42,7 +42,7 @@ describe('Settings → Gemini', () => {
     const select = doc.getElementById('geminiDefaultMode') as HTMLSelectElement;
     expect([...select.options].map(o => o.value)).toEqual(['', '56fdd199312815e2', 'e6fa609c3fa255c0']);
     expect(select.value).toBe('e6fa609c3fa255c0');
-    expect((doc.getElementById('geminiConnectorName') as HTMLInputElement).value).toBe('Chat On Steroids Core');
+    expect((doc.getElementById('geminiConnectorName') as HTMLInputElement).value).toBe('Gem Web Code Core');
     expect(doc.getElementById('geminiWarnings')!.hidden).toBe(true);
   });
 
@@ -144,7 +144,7 @@ describe('Settings → Gemini', () => {
     expect(doc.querySelectorAll('#geminiAddChecks .is-passed')).toHaveLength(0);
     const xHash = geminiUrlFingerprint('https://x.trycloudflare.com/mcp/core/t');
     const working = (extra: Partial<GeminiStatus> = {}) => status({
-      settings: { connectorName: 'Chat On Steroids Core', defaultModeId: null, defaultThinkingLevel: null, verifiedUrlHash: xHash },
+      settings: { connectorName: 'Gem Web Code Core', defaultModeId: null, defaultThinkingLevel: null, verifiedUrlHash: xHash },
       address: { urlHash: xHash, since: Date.now() - 60_000 }, reach: { urlHash: xHash, ok: true, at: Date.now() },
       connectorSeenAt: Date.now(), toolsListedAt: Date.now(), ...extra,
     });
@@ -153,7 +153,7 @@ describe('Settings → Gemini', () => {
     expect(doc.querySelectorAll('#geminiAddChecks .is-passed')).toHaveLength(4);
     doc.querySelector<HTMLElement>('[data-gemini-rail="try"]')!.click();
     expect(open()).toBe('try');
-    expect(doc.getElementById('geminiTryPrompt')!.textContent).toContain('@Chat On Steroids Core');
+    expect(doc.getElementById('geminiTryPrompt')!.textContent).toContain('@Gem Web Code Core');
     expect(doc.getElementById('geminiSetupUrl')!.textContent).toBe('https://x.trycloudflare.com/mcp/core/t');
 
     push(working({ toolCallSeenAt: Date.now() }));
@@ -251,21 +251,21 @@ describe('Gemini custom app address', () => {
     const withFill = (stage: 'queued' | 'completed' | 'failed', error: string | null = null) =>
       status({ autoFill: { id: 'auto', at: now - 120_000 }, commands: [{ ...base, stage, error }] });
     expect(autoFillText(status(), now)).toBe('');
-    expect(autoFillText(withFill('queued'), now)).toMatch(/^Your tunnel address changed .*, so the app is adding Chat On Steroids Core in Gemini again with the new address, in your browser\.$/);
-    expect(autoFillText(withFill('completed'), now)).toContain('so the app added Chat On Steroids Core in Gemini again with the new address.');
+    expect(autoFillText(withFill('queued'), now)).toMatch(/^Your tunnel address changed .*, so the app is adding Gem Web Code Core in Gemini again with the new address, in your browser\.$/);
+    expect(autoFillText(withFill('completed'), now)).toContain('so the app added Gem Web Code Core in Gemini again with the new address.');
     expect(autoFillText(withFill('failed', 'delete-failed'), now)).toContain('which failed: Gemini did not delete the app with the old address after 3 tries.');
     const retrying = (retryAt: number) => status({ autoFill: { id: 'auto', at: now - 120_000, retryAt }, commands: [{ ...base, stage: 'failed', error: 'gemini-page-not-connected' }] });
-    expect(autoFillText(retrying(now + 90_000), now)).toMatch(/which did not finish: Open Gemini in the browser that has the Chat On Steroids extension\. It tries again by itself in 2 min\.$/);
+    expect(autoFillText(retrying(now + 90_000), now)).toMatch(/which did not finish: Open Gemini in the browser that has the Gem Web Code extension\. It tries again by itself in 2 min\.$/);
     expect(autoFillText(retrying(now - 1), now)).toMatch(/It tries again by itself now\.$/);
     paintGemini(withFill('queued'), now);
-    expect(dom.window.document.getElementById('geminiConnectorStatus')!.textContent).toContain('so the app is adding Chat On Steroids Core in Gemini again');
+    expect(dom.window.document.getElementById('geminiConnectorStatus')!.textContent).toContain('so the app is adding Gem Web Code Core in Gemini again');
     // The address itself is never shown there.
     expect(dom.window.document.getElementById('geminiConnectorStatus')!.textContent).not.toContain('trycloudflare');
   });
 
   it('says to open Gemini in the browser with the extension when no page takes "Add it in Gemini for me"', async () => {
     const { fillPill, fillWaitText, paintGemini, UNCLAIMED } = await import('../src/renderer/gemini.js');
-    expect(UNCLAIMED).toBe('Open Gemini in the browser that has the Chat On Steroids extension.');
+    expect(UNCLAIMED).toBe('Open Gemini in the browser that has the Gem Web Code extension.');
     const base = { id: 'fill', kind: 'fill-app', createdAt: 1, updatedAt: 1, conversation: null, sessionId: null, modeId: null, promptPreview: null, answerChars: null, outcome: null } as const;
     const unclaimed = { ...base, stage: 'failed', error: 'gemini-page-not-connected' } as const;
     expect(fillPill(unclaimed, url)).toEqual(['bad', UNCLAIMED]);

@@ -137,7 +137,7 @@ const WINDOW_CONTROLS = process.platform === 'darwin' ? { left: 78, right: 8 } :
 
 /** Chromium's own user agent: some sign-in providers refuse one that names an embedder. */
 function chromiumUserAgent(agent: string): string {
-  return agent.replace(/\s(?:Electron|chat-on-steroids|Chat On Steroids)\/\S+/gi, '');
+  return agent.replace(/\s(?:Electron|chat-on-steroids|Gem Web Code)\/\S+/gi, '');
 }
 
 /**
@@ -420,7 +420,7 @@ export class CosBrowser {
   private createFrame(id: number): Frame {
     const tokens = barTokens();
     const base = new BaseWindow({
-      width: 1180, height: 820, minWidth: 480, minHeight: 360, show: false, title: 'Chat On Steroids browser',
+      width: 1180, height: 820, minWidth: 480, minHeight: 360, show: false, title: 'Gem Web Code browser',
       backgroundColor: tokens['--page'],
       // The tab strip is the title bar, as in the app's own window: no native title row above it.
       titleBarStyle: 'hidden',
@@ -576,7 +576,7 @@ export class CosBrowser {
     frame.toolbar.webContents.send('cos-browser:state', state);
     if (frame.base.isDestroyed()) return;
     const active = tabs.find(tab => tab.active);
-    frame.base.setTitle(active ? `${active.title} — Chat On Steroids browser` : 'Chat On Steroids browser');
+    frame.base.setTitle(active ? `${active.title} — Gem Web Code browser` : 'Gem Web Code browser');
     if (process.platform !== 'darwin' && frame.overlay !== tokens['--page']) {
       frame.overlay = tokens['--page']!;
       frame.base.setTitleBarOverlay({ color: tokens['--page']!, symbolColor: tokens['--ink']!, height: TOOLBAR_HEIGHT });

@@ -9,6 +9,8 @@
  * One ChatGPT account used on two computers needs two connectors per surface, and they cannot
  * share a name: a suffix names this computer's set, e.g. "Chat On Steroids Core (Windows)".
  */
+// The app's old name. ChatGPT connectors people already added carry it, and the extension matches
+// exact names, so it stays; only Gemini's custom app moved to "Gem Web Code Core" (2.3.0).
 export const CONNECTOR_BRAND = 'Chat On Steroids';
 export const CONNECTOR_SUFFIX_MAX = 32;
 /** Letters, digits, spaces, dots, dashes and underscores; the app adds the parentheses. */

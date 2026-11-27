@@ -143,18 +143,18 @@ jobs:
           }
           trap cleanup EXIT
           hdiutil attach -readonly -nobrowse -mountpoint "$mount_dir" "$dmg" >/dev/null
-          test -d "$mount_dir/Chat On Steroids.app"
+          test -d "$mount_dir/Gem Web Code.app"
           test -L "$mount_dir/Applications"
           test "$(readlink "$mount_dir/Applications")" = /Applications
-          test -x "$mount_dir/Chat On Steroids.app/Contents/MacOS/Chat On Steroids"
-          test -f "$mount_dir/Chat On Steroids.app/Contents/Info.plist"
-          node scripts/smoke-macos-bundle.mjs '${{ matrix.arch }}' "$mount_dir/Chat On Steroids.app"
+          test -x "$mount_dir/Gem Web Code.app/Contents/MacOS/Gem Web Code"
+          test -f "$mount_dir/Gem Web Code.app/Contents/Info.plist"
+          node scripts/smoke-macos-bundle.mjs '${{ matrix.arch }}' "$mount_dir/Gem Web Code.app"
           # ditto is the macOS-native ZIP extractor and preserves executable modes/metadata.
           ditto -x -k "$zip" "$zip_dir"
-          test -d "$zip_dir/Chat On Steroids.app"
-          test -x "$zip_dir/Chat On Steroids.app/Contents/MacOS/Chat On Steroids"
-          test -f "$zip_dir/Chat On Steroids.app/Contents/Info.plist"
-          node scripts/smoke-macos-bundle.mjs '${{ matrix.arch }}' "$zip_dir/Chat On Steroids.app"
+          test -d "$zip_dir/Gem Web Code.app"
+          test -x "$zip_dir/Gem Web Code.app/Contents/MacOS/Gem Web Code"
+          test -f "$zip_dir/Gem Web Code.app/Contents/Info.plist"
+          node scripts/smoke-macos-bundle.mjs '${{ matrix.arch }}' "$zip_dir/Gem Web Code.app"
 
       - name: Launch packaged macOS app normally
         if: matrix.platform == 'darwin'
@@ -183,7 +183,7 @@ jobs:
           dpkg-query -W -f='${Status}\n' chat-on-steroids | grep -Fxq 'install ok installed'
           desktop=/usr/share/applications/com.chatonsteroids.app.desktop
           test -f "$desktop"
-          grep -Fxq 'Name=Chat On Steroids' "$desktop"
+          grep -Fxq 'Name=Gem Web Code' "$desktop"
           grep -Fxq 'Icon=chat-on-steroids' "$desktop"
           grep -Fxq 'StartupWMClass=com.chatonsteroids.app' "$desktop"
           # electron-builder's DEB postinstall registers /usr/bin through update-alternatives.

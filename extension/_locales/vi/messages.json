@@ -6,7 +6,7 @@
     "message": "ứng dụng không phản hồi"
   },
   "content_app_not_running": {
-    "message": "Chat On Steroids không chạy trên PC này."
+    "message": "Gem Web Code không chạy trên PC này."
   },
   "content_auto_compaction": {
     "message": "Tự động thu gọn"
@@ -84,7 +84,7 @@
     "message": "trang được mở cho nội dung này đang hiển thị một cuộc trò chuyện khác"
   },
   "content_browser_disconnected": {
-    "message": "Kết nối trình duyệt đã bị ngắt trong Chat On Steroids."
+    "message": "Kết nối trình duyệt đã bị ngắt trong Gem Web Code."
   },
   "content_cancel": {
     "message": "Hủy"
@@ -93,7 +93,7 @@
     "message": "Cuộc trò chuyện bị chặn"
   },
   "content_chat_blocked_tip": {
-    "message": "Cuộc trò chuyện này bị chặn trong ứng dụng Chat On Steroids: các lệnh gọi công cụ bị từ chối, còn Goal, Loop và tự động thu gọn đều tắt. Để bỏ chặn, mở menu ⋯ của cuộc trò chuyện này ở thanh bên của ứng dụng và chọn “Bỏ chặn”."
+    "message": "Cuộc trò chuyện này bị chặn trong ứng dụng Gem Web Code: các lệnh gọi công cụ bị từ chối, còn Goal, Loop và tự động thu gọn đều tắt. Để bỏ chặn, mở menu ⋯ của cuộc trò chuyện này ở thanh bên của ứng dụng và chọn “Bỏ chặn”."
   },
   "content_chat_still_opening": {
     "message": "cuộc trò chuyện này vẫn đang mở — hãy thử lại"
@@ -603,7 +603,7 @@
     "message": "Đang lưu…"
   },
   "content_settings_aria": {
-    "message": "Cài đặt Chat On Steroids"
+    "message": "Cài đặt Gem Web Code"
   },
   "content_stage_handoff_attention": {
     "message": "Phản hồi bàn giao cần được chú ý"
@@ -750,13 +750,13 @@
     "message": "Đang viết…"
   },
   "extension_action_title": {
-    "message": "Chat On Steroids"
+    "message": "Gem Web Code"
   },
   "extension_description": {
-    "message": "Kết nối ChatGPT với Chat On Steroids và điều khiển các tab trình duyệt ở chế độ nền bằng DOM, ảnh chụp màn hình và công cụ dành cho nhà phát triển."
+    "message": "Kết nối ChatGPT với Gem Web Code và điều khiển các tab trình duyệt ở chế độ nền bằng DOM, ảnh chụp màn hình và công cụ dành cho nhà phát triển."
   },
   "extension_name": {
-    "message": "Tiện ích trình duyệt Chat On Steroids"
+    "message": "Tiện ích trình duyệt Gem Web Code"
   },
   "popup_advanced": {
     "message": "Nâng cao"
@@ -960,7 +960,7 @@
     "message": "Ghi phiên"
   },
   "popup_secure_storage_unavailable": {
-    "message": "Không có kho lưu trữ thông tin xác thực an toàn. Hãy mở Chat On Steroids để xem hướng dẫn thiết lập."
+    "message": "Không có kho lưu trữ thông tin xác thực an toàn. Hãy mở Gem Web Code để xem hướng dẫn thiết lập."
   },
   "popup_sent_to_app": {
     "message": "Đã gửi tới ứng dụng"
@@ -1050,7 +1050,7 @@
     "message": "Thử lại"
   },
   "popup_version_mismatch_help": {
-    "message": "Ứng dụng v$1 (giao thức $2); tiện ích v$3 (giao thức $4). Mở trang Tiện ích mở rộng của trình duyệt, bật Chế độ dành cho nhà phát triển, rồi Cập nhật / Tải lại tiện ích này. Nếu vẫn không khớp, dùng Mở thư mục tiện ích mở rộng trong Chat On Steroids và tải thư mục đó. Tải lại các tab ChatGPT khi công việc đang chạy của chúng đã hoàn tất."
+    "message": "Ứng dụng v$1 (giao thức $2); tiện ích v$3 (giao thức $4). Mở trang Tiện ích mở rộng của trình duyệt, bật Chế độ dành cho nhà phát triển, rồi Cập nhật / Tải lại tiện ích này. Nếu vẫn không khớp, dùng Mở thư mục tiện ích mở rộng trong Gem Web Code và tải thư mục đó. Tải lại các tab ChatGPT khi công việc đang chạy của chúng đã hoàn tất."
   },
   "popup_yes": {
     "message": "có"
@@ -1089,7 +1089,7 @@
     "message": "Endpoint tiếp tục tùy chỉnh không hợp lệ. Hãy kiểm tra URL trong Cài đặt; dùng HTTPS hoặc endpoint HTTP cục bộ."
   },
   "content_history_rate_limited": {
-    "message": "ChatGPT tạm thời giới hạn quyền truy cập lịch sử cuộc trò chuyện này. Chat On Steroids tạm dừng khôi phục tự động cho đến khi hết thời gian chờ."
+    "message": "ChatGPT tạm thời giới hạn quyền truy cập lịch sử cuộc trò chuyện này. Gem Web Code tạm dừng khôi phục tự động cho đến khi hết thời gian chờ."
   },
   "content_goal_error_rate_limited": {
     "message": "Nhà cung cấp tiếp tục đang giới hạn tần suất yêu cầu. Hãy chờ lần thử lại được hiển thị hoặc chọn mô hình tiếp tục khác."
@@ -1182,7 +1182,7 @@
     "message": "Thất bại. Bắt đầu đăng nhập lại từ CoS."
   },
   "popup_app_not_running_help": {
-    "message": "Hãy chắc rằng Chat On Steroids đang mở trên máy tính này. Tiện ích sẽ tự kết nối."
+    "message": "Hãy chắc rằng Gem Web Code đang mở trên máy tính này. Tiện ích sẽ tự kết nối."
   },
   "content_workers_finished": {
     "message": "$1 đã hoàn tất"
@@ -1221,7 +1221,7 @@
     "message": "đang chờ ứng dụng"
   },
   "content_task_waiting_app": {
-    "message": "Đang chờ Chat On Steroids phản hồi."
+    "message": "Đang chờ Gem Web Code phản hồi."
   },
   "content_revival_draft_appeared": {
     "message": "Có nội dung được nhập vào cuộc trò chuyện trong lúc chuẩn bị đánh thức worker, nên lệnh đánh thức không thay thế nó."

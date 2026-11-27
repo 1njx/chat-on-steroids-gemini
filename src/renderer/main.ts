@@ -623,15 +623,15 @@ let linuxScreenshotConsentBusy = false;
 /** Only translate known, fixed main-process errors; never display arbitrary backend text. */
 function linuxScreenshotConsentErrorText(error: unknown): string {
   switch (error) {
-    case 'Activate the Chat On Steroids window before requesting screenshot permission.':
-    case 'The Chat On Steroids window lost focus; no screenshot was requested.':
-      return t('Activate the Chat On Steroids window, then try again.');
+    case 'Activate the Gem Web Code window before requesting screenshot permission.':
+    case 'The Gem Web Code window lost focus; no screenshot was requested.':
+      return t('Activate the Gem Web Code window, then try again.');
     case 'Enable native Linux Desktop and Screen access first.':
     case 'Screen access was disabled before the screenshot request.':
     case 'Native Linux Desktop or Screen access was disabled during the screenshot request.':
       return t('Enable native Linux Desktop access and Screen permission, then try again.');
-    case 'Screenshot permission can be requested only from the Chat On Steroids main window.':
-      return t('Screenshot permission can be requested only from the Chat On Steroids main window.');
+    case 'Screenshot permission can be requested only from the Gem Web Code main window.':
+      return t('Screenshot permission can be requested only from the Gem Web Code main window.');
     case 'A screenshot permission request is already running.':
       return t('A screenshot permission request is already running.');
     default:
@@ -643,7 +643,7 @@ function linuxScreenshotConsentRow(): HTMLElement {
   const body = el('span');
   body.append(
     el('strong', '', () => t('Test GNOME screenshot permission')),
-    el('em', '', () => t('Click while the Chat On Steroids window is active. If GNOME asks, choose Allow. The screenshot is discarded.'))
+    el('em', '', () => t('Click while the Gem Web Code window is active. If GNOME asks, choose Allow. The screenshot is discarded.'))
   );
   const button = document.createElement('button');
   button.type = 'button';
@@ -838,9 +838,9 @@ function paintDesktopAccess(next: AppState): void {
   // earlier grant is remembered; the first version that remembers grants knows of none.
   const repairable = problem?.missing === true;
   ui($('desktopAccessTitle'), 'textContent', () => t("Desktop access needs attention"));
-  ui($('desktopAccessDetail'), 'textContent', () => t("{0}. These are live verdicts from the native backend executing inside Chat On Steroids. ", [missing.join(' · ')]) +
+  ui($('desktopAccessDetail'), 'textContent', () => t("{0}. These are live verdicts from the native backend executing inside Gem Web Code. ", [missing.join(' · ')]) +
     (stale
-      ? t("macOS still shows Chat On Steroids as allowed, but that permission belongs to an earlier version: without a developer signature, every update is a new app to macOS. Choose Repair permissions, allow it when macOS asks, then fully quit and reopen the app.")
+      ? t("macOS still shows Gem Web Code as allowed, but that permission belongs to an earlier version: without a developer signature, every update is a new app to macOS. Choose Repair permissions, allow it when macOS asks, then fully quit and reopen the app.")
       : repairable
         ? t("Choose Repair permissions and allow it when macOS asks, then fully quit and reopen the app. Repair also fixes a permission that System Settings shows as allowed but that no longer applies after an update.")
         : t("Grant the missing macOS permission, then fully quit and reopen the app.")));
@@ -1464,7 +1464,7 @@ function updateSummary({ bridge, update, config, status }: AppState): { text: st
   let tone: UpdateTone = 'work';
   // #1490: an installer that stopped silently left this start on the old version.
   if (update.notInstalled) {
-    lines.push(t("Chat On Steroids {0} did not install; this is still {1}. Choose Install to try again; Windows may ask for permission.", [update.notInstalled, update.current]));
+    lines.push(t("Gem Web Code {0} did not install; this is still {1}. Choose Install to try again; Windows may ask for permission.", [update.notInstalled, update.current]));
     tone = 'bad';
   }
   if (update.latest && !(update.notInstalled === update.latest && update.stage === 'ready')) {
@@ -1475,12 +1475,12 @@ function updateSummary({ bridge, update, config, status }: AppState): { text: st
       update.stage === 'checking'
         ? t("Checking for the latest update…")
         : update.stage === 'ready'
-        ? t("Chat On Steroids {0} is downloaded and ready. Install it now, or it installs the next time you quit.", [update.latest])
+        ? t("Gem Web Code {0} is downloaded and ready. Install it now, or it installs the next time you quit.", [update.latest])
         : update.stage === 'downloading'
-          ? t("Chat On Steroids {0} is downloading. Keep working; you can install it when it lands.", [update.latest])
+          ? t("Gem Web Code {0} is downloading. Keep working; you can install it when it lands.", [update.latest])
           : update.stage === 'failed'
-            ? t("Chat On Steroids {0} could not be downloaded: {1}.", [update.latest, update.error ? updateErrorText(update.error) : t("the download stopped")])
-            : t("Chat On Steroids {0} is out. This installation has to be updated by hand.", [update.latest])
+            ? t("Gem Web Code {0} could not be downloaded: {1}.", [update.latest, update.error ? updateErrorText(update.error) : t("the download stopped")])
+            : t("Gem Web Code {0} is out. This installation has to be updated by hand.", [update.latest])
     );
     if (update.stage === 'failed' || update.notInstalled) tone = 'bad';
   } else if (update.stage === 'failed') {
@@ -1490,7 +1490,7 @@ function updateSummary({ bridge, update, config, status }: AppState): { text: st
     lines.push(t("Checking for a newer version…"));
   } else if (!stale && !missing && !update.notInstalled) {
     const extension = bridge.present && bridge.extensionVersion ? t(" · extension {0}", [bridge.extensionVersion]) : '';
-    lines.push(t("Up to date! Chat On Steroids {0}{1}", [update.current, extension]));
+    lines.push(t("Up to date! Gem Web Code {0}{1}", [update.current, extension]));
     tone = 'ok';
   }
   if (stale) {
@@ -2995,7 +2995,7 @@ function confirmUpdateRestart(version: string): Promise<boolean> {
     const title = document.createElement('h2'); title.id = 'updateRestartTitle';
     ui(title, 'textContent', () => t('Restart to install the update?'));
     const lead = document.createElement('p'); lead.className = 'whats-new-lead'; lead.id = 'updateRestartLead';
-    ui(lead, 'textContent', () => t('Chat On Steroids will close and restart. Running chats, agents and commands may be interrupted.'));
+    ui(lead, 'textContent', () => t('Gem Web Code will close and restart. Running chats, agents and commands may be interrupted.'));
     dialog.setAttribute('aria-labelledby', title.id); dialog.setAttribute('aria-describedby', lead.id);
     head.append(hero, named, title, lead);
     const actions = document.createElement('footer'); actions.className = 'whats-new-actions';
@@ -3031,7 +3031,7 @@ updateAllButton.addEventListener('click', async () => {
     if (!reply.ok) { updateAllError = reply.error; toast(updateErrorText(reply.error)); return; }
     const result = reply.data;
     if (result === 'manual') toast(t('Download link opened. Install the app to continue; your settings are kept.'));
-    else if (result === 'restarting') toast(t('Installing the update. Chat On Steroids closes and starts again as the new version.'));
+    else if (result === 'restarting') toast(t('Installing the update. Gem Web Code closes and starts again as the new version.'));
     else if (result === 'checking-connectors') toast(document.getElementById('updateReadinessCard') ? t('Plugin checks requested. Any remaining steps are shown in Update status.') : t('Checking…'));
     else if (result === 'confirm') toast(t('Update postponed. You can keep working.'));
   } catch (error) {
@@ -3052,7 +3052,7 @@ updateAllButton.addEventListener('click', async () => {
  * click looking like a crash. Both buttons are the same action; either can be the one pressed.
  */
 function installUpdate(): void {
-  toast(t("Installing the update. Chat On Steroids closes and starts again as the new version."));
+  toast(t("Installing the update. Gem Web Code closes and starts again as the new version."));
   void run(api.installUpdate());
 }
 

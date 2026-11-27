@@ -72,15 +72,15 @@ export type ChatAction = 'stop' | 'pause' | 'resume';
 
 /** The texts the bot writes, translated by the app's main-text catalogs. */
 export type TelegramText =
-  | 'Connected to Chat On Steroids. Its notifications arrive here.'
-  | 'This code is not valid any more. Get a new one in Chat On Steroids: Settings → Phone notifications → Telegram.'
-  | 'Send /start with the code shown in Chat On Steroids: Settings → Phone notifications → Telegram.'
-  | 'Chat On Steroids notifications arrive here. Commands: /status, /stop, /pause, /resume. Reply to a notification to send that chat a message.'
+  | 'Connected to Gem Web Code. Its notifications arrive here.'
+  | 'This code is not valid any more. Get a new one in Gem Web Code: Settings → Phone notifications → Telegram.'
+  | 'Send /start with the code shown in Gem Web Code: Settings → Phone notifications → Telegram.'
+  | 'Gem Web Code notifications arrive here. Commands: /status, /stop, /pause, /resume. Reply to a notification to send that chat a message.'
   | 'I know /status, /stop, /pause, /resume and /help. Reply to a notification to send that chat a message.'
   | 'Deny'
   | 'Denied from Telegram at {0}.'
   | 'Already answered.'
-  | 'Could not deny it. Open the chat in Chat On Steroids.'
+  | 'Could not deny it. Open the chat in Gem Web Code.'
   | 'Stopped.'
   | 'Nothing is running there.'
   | 'Nothing is running.'
@@ -90,11 +90,11 @@ export type TelegramText =
   | 'Resumed.'
   | 'It was not paused from here.'
   | 'No chat was paused from here.'
-  | 'Could not do that. Open the chat in Chat On Steroids.'
+  | 'Could not do that. Open the chat in Gem Web Code.'
   | "Several chats could be meant. Reply to that chat's notification with {0}."
   | 'On its way to the chat.'
   | 'Queued: it goes to the chat after its current answer.'
-  | 'Sending messages to chats from Telegram is off. Turn it on in Chat On Steroids: Settings → Phone notifications → Telegram.'
+  | 'Sending messages to chats from Telegram is off. Turn it on in Gem Web Code: Settings → Phone notifications → Telegram.'
   | 'That chat cannot take messages from here.'
   | 'That notification is too old to answer. Send /status to see your chats.';
 
@@ -107,9 +107,9 @@ const ACTION_TEXTS: Record<ChatAction, { done: TelegramText; nothing: TelegramTe
 const STEER_TEXTS: Record<'sent' | 'queued' | 'off' | 'refused' | 'failed', TelegramText> = {
   sent: 'On its way to the chat.',
   queued: 'Queued: it goes to the chat after its current answer.',
-  off: 'Sending messages to chats from Telegram is off. Turn it on in Chat On Steroids: Settings → Phone notifications → Telegram.',
+  off: 'Sending messages to chats from Telegram is off. Turn it on in Gem Web Code: Settings → Phone notifications → Telegram.',
   refused: 'That chat cannot take messages from here.',
-  failed: 'Could not do that. Open the chat in Chat On Steroids.'
+  failed: 'Could not do that. Open the chat in Gem Web Code.'
 };
 
 const POLL_SECONDS = 50;
@@ -183,12 +183,12 @@ export function createTelegram(deps: TelegramDeps) {
         // A plain /start (Telegram's Start button, or typed) carries no code: say how to link (live test, 2026-11-07).
         if (!argument) {
           deps.log('telegram: a /start came without a code');
-          await reply(message.chat.id, deps.text('Send /start with the code shown in Chat On Steroids: Settings → Phone notifications → Telegram.'));
+          await reply(message.chat.id, deps.text('Send /start with the code shown in Gem Web Code: Settings → Phone notifications → Telegram.'));
           return;
         }
         if (argument.toUpperCase() !== pairing.code || deps.now() > pairing.until) {
           deps.log('telegram: a /start came with a code that is not the one on screen, or came too late');
-          await reply(message.chat.id, deps.text('This code is not valid any more. Get a new one in Chat On Steroids: Settings → Phone notifications → Telegram.'));
+          await reply(message.chat.id, deps.text('This code is not valid any more. Get a new one in Gem Web Code: Settings → Phone notifications → Telegram.'));
           return;
         }
         const linked: TelegramLink = { userId: from.id, chatId: message.chat.id, userName: from.username ? `@${from.username}` : (from.first_name ?? '').slice(0, 64),
@@ -197,7 +197,7 @@ export function createTelegram(deps: TelegramDeps) {
         pairing = null;
         deps.log('telegram: linked to the Telegram account that sent the code');
         setState('linked');
-        await reply(message.chat.id, deps.text('Connected to Chat On Steroids. Its notifications arrive here.'));
+        await reply(message.chat.id, deps.text('Connected to Gem Web Code. Its notifications arrive here.'));
         return;
       }
       if (deps.now() - strangersLoggedAt >= 60_000) {
@@ -218,7 +218,7 @@ export function createTelegram(deps: TelegramDeps) {
       await reply(message.chat.id, await deps.status(deps.details()));
     } else if (name === '/help' || name === '/start') {
       deps.log(`telegram: answered ${name}`);
-      await reply(message.chat.id, deps.text('Chat On Steroids notifications arrive here. Commands: /status, /stop, /pause, /resume. Reply to a notification to send that chat a message.'));
+      await reply(message.chat.id, deps.text('Gem Web Code notifications arrive here. Commands: /status, /stop, /pause, /resume. Reply to a notification to send that chat a message.'));
     } else if (repliedTo !== undefined && !about && (action || !name.startsWith('/'))) {
       deps.log(`telegram: ${action ? name : 'a reply'} answered a message it does not know (older than the last ${MAX_NOTICES} notifications, or not a notification); nothing was done`);
       await reply(message.chat.id, deps.text('That notification is too old to answer. Send /status to see your chats.'));
@@ -250,7 +250,7 @@ export function createTelegram(deps: TelegramDeps) {
     }
     const result = await deps.act(action, sessionId).catch(() => 'failed' as const);
     deps.log(`telegram: ${name} for chat ${sessionId}: ${result}`);
-    await reply(chatId, deps.text(result === 'failed' ? 'Could not do that. Open the chat in Chat On Steroids.'
+    await reply(chatId, deps.text(result === 'failed' ? 'Could not do that. Open the chat in Gem Web Code.'
       : result === 'refused' ? 'That chat cannot take messages from here.' : ACTION_TEXTS[action][result]));
   }
 
@@ -271,7 +271,7 @@ export function createTelegram(deps: TelegramDeps) {
     buttons.delete(query.data!.slice(5));
     deps.log(`telegram: Deny pressed for an approval in chat ${target.sessionId}: ${result}`);
     const said = result === 'denied' ? deps.text('Denied from Telegram at {0}.', [clock(deps.now())])
-      : result === 'already' ? deps.text('Already answered.') : deps.text('Could not deny it. Open the chat in Chat On Steroids.');
+      : result === 'already' ? deps.text('Already answered.') : deps.text('Could not deny it. Open the chat in Gem Web Code.');
     await answer(said);
     if (query.message) {
       await call('editMessageText', { chat_id: query.message.chat.id, message_id: query.message.message_id,

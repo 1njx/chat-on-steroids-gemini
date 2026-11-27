@@ -102,7 +102,7 @@ const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
  */
 const ATTRIBUTION_HEADERS: Record<string, string> = {
   'HTTP-Referer': 'https://github.com/chat-on-steroids',
-  'X-Title': 'Chat On Steroids'
+  'X-Title': 'Gem Web Code'
 };
 
 /** Which LLM endpoint the Goal/Loop second model runs on, resolved per call from config. */

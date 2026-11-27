@@ -2493,7 +2493,7 @@ describe('desktop input delivery and helper ownership', () => {
   it('keeps the plain names for a status reply that carries foreign or malformed names', async () => {
     live = await harness(`https://chatgpt.com/c/${chatA}`, {
       status: () => ({ connected: true, paired: true, port: 8765, pending: 0, connectorNames: {
-        core: 'Chat On Steroids Backup', desktop: 'Chat On Steroids Desktop (Windows)', plugins: 'Chat On Steroids Plugins (Windows)' } })
+        core: 'Gem Web Code Backup', desktop: 'Chat On Steroids Desktop (Windows)', plugins: 'Chat On Steroids Plugins (Windows)' } })
     });
     await settle();
     expect((live.window as any).CLF_DOM.connectorNames()).toEqual(['Chat On Steroids Core', 'Chat On Steroids Desktop', 'Chat On Steroids Plugins']);
@@ -8001,7 +8001,7 @@ describe('the app-owned chronological stream', () => {
 
   it.each([
     ['Chat On Steroids Plugins', true],
-    ['Chat On Steroids Backup', false]
+    ['Gem Web Code Backup', false]
   ] as const)('suppresses only an answered exact supported connector block (%s)', async (app, hidden) => {
     live = await harness(undefined, { activity: () => ({ ok: true, data: {
       entries: [], userAnchors: [{ seq: 0, time: 50, messageId: 'm-exact-block-owner' }], stream: [
@@ -15414,7 +15414,7 @@ describe('content-script localization', () => {
 
   it('uses the page-local catalog for settings, accessibility and progress labels', async () => {
     live = await harness(undefined, {}, localized({
-      content_settings_aria: 'Chat On Steroids ayarları',
+      content_settings_aria: 'Gem Web Code ayarları',
       content_mode_off: 'Kapalı',
       content_mode_goal: 'Hedef',
       content_mode_loop: 'Döngü',
@@ -15431,8 +15431,8 @@ describe('content-script localization', () => {
     expect(control.querySelector('svg circle')?.getAttribute('r')).toBe('3.1');
     expect(control.querySelector('svg path')?.getAttribute('d')?.startsWith('M19.4 15a1.65')).toBe(true);
     const menu = live.document.querySelector('.clf-menu') as HTMLElement;
-    expect(control.getAttribute('aria-label')).toBe('Chat On Steroids ayarları');
-    expect(menu.getAttribute('aria-label')).toBe('Chat On Steroids ayarları');
+    expect(control.getAttribute('aria-label')).toBe('Gem Web Code ayarları');
+    expect(menu.getAttribute('aria-label')).toBe('Gem Web Code ayarları');
     expect(menu.querySelector('.clf-menu-mode-track')?.getAttribute('aria-label')).toBe('Hedef modu');
     expect([...menu.querySelectorAll('.clf-menu-mode-option')].map(node => node.textContent)).toEqual([
       'Kapalı',
@@ -15947,7 +15947,7 @@ describe('the Compact & resume control', () => {
     expect(state({})).toMatchObject({ mode: 'idle', label: 'Compact', action: 'start' });
     expect(state({ disconnected: true })).toMatchObject({
       mode: 'off',
-      hint: 'Browser connection is disconnected in Chat On Steroids.',
+      hint: 'Browser connection is disconnected in Gem Web Code.',
       action: 'none'
     });
     expect(state({ pressedAt: 900 })).toMatchObject({ mode: 'busy', label: 'Starting…', action: 'none' });
@@ -16614,7 +16614,7 @@ describe('the Compact & resume control', () => {
     live.hook.injectControl();
     const stale =
       '[[CLF-HANDOFF:fedcba9876543210fedcba9876543210]]\n\n' +
-      'Chat On Steroids is compacting this conversation so a fresh chat can continue the work. Stop whatever you were doing and do only this.\n\n' +
+      'Gem Web Code is compacting this conversation so a fresh chat can continue the work. Stop whatever you were doing and do only this.\n\n' +
       'stale rejected handoff prompt';
     live.document.querySelector('#prompt-textarea')!.textContent = stale;
 
@@ -18721,7 +18721,7 @@ describe('the fresh chat the app opened', () => {
             type: 'worker',
             text: `${task}
 
-(You are a worker agent in a Chat On Steroids multi-agent run.)`,
+(You are a worker agent in a Gem Web Code multi-agent run.)`,
             agent: 'worker-1'
           }
         }),
@@ -18731,7 +18731,7 @@ describe('the fresh chat the app opened', () => {
         document.querySelector('[data-testid="send-button"]')!.addEventListener('click', () => {
           submitted = composerText(document);
           dom.reconfigure({ url: 'https://chatgpt.com/c/22222222-3333-4444-5555-666666666666' });
-          userTurn(document, 'accepted-short-worker', `${task}\n\n(You are a worker agent in a Chat On Steroids multi-agent run.)`, { sent: false });
+          userTurn(document, 'accepted-short-worker', `${task}\n\n(You are a worker agent in a Gem Web Code multi-agent run.)`, { sent: false });
         });
       }
     );
@@ -19197,7 +19197,7 @@ describe('the fresh chat the app opened', () => {
     // tab opens again. The wake waited for an empty editor until its deadline, every time.
     const chat = reclaim ? '25252525-3636-4747-8888-818181818181' : '26262626-3737-4848-8989-828282828282';
     const draft = reclaim
-      ? 'Old instruction.\n\n(Chat On Steroids: you are still worker-1 in the same run, and this is the prime agent talking to you again in the chat you already know. Pick up from what you did here before rather than starting over. Report with agents action=message to="prime" as you go and action=finish when this piece is done.)'
+      ? 'Old instruction.\n\n(Gem Web Code: you are still worker-1 in the same run, and this is the prime agent talking to you again in the chat you already know. Pick up from what you did here before rather than starting over. Report with agents action=message to="prime" as you go and action=finish when this piece is done.)'
       : 'My own note for this worker';
     let redeemCalls = 0;
     let sends = 0;
@@ -24598,7 +24598,7 @@ describe('the goal loop', () => {
       expect(view.mode).toMatchObject({ value: '', note: 'waiting for the app', warn: false, disabled: true });
       expect(view.rows[0]).toMatchObject({ key: 'autoCompact', note: 'waiting for the app', disabled: true });
       expect(view.tip).toBe('Auto-compaction: waiting for the app\nGoal and Loop: waiting for the app');
-      expect(view.objective).toMatchObject({ available: false, unavailable: 'Waiting for Chat On Steroids to answer.' });
+      expect(view.objective).toMatchObject({ available: false, unavailable: 'Waiting for Gem Web Code to answer.' });
       expect(JSON.stringify(view)).not.toMatch(/OpenRouter|API key/);
     });
 
@@ -25736,9 +25736,9 @@ describe('ordinary Continue native recovery', () => {
     live = await harness(`https://chatgpt.com/c/${chat}`);
     await settle();
     const composer = live.document.getElementById('prompt-textarea')!;
-    composer.textContent = '[[CLF-HANDOFF:IRpyIega8lPGQZNCPaB0tQ]]Chat On Steroids is compacting this conversation';
+    composer.textContent = '[[CLF-HANDOFF:IRpyIega8lPGQZNCPaB0tQ]]Gem Web Code is compacting this conversation';
     expect(await live.runtimeMessage({ type: 'clf-repair-check', conversationId: chat })).not.toMatchObject({ why: 'draft' });
-    composer.textContent = 'Chat On Steroids is compacting this conversation';
+    composer.textContent = 'Gem Web Code is compacting this conversation';
     expect(await live.runtimeMessage({ type: 'clf-repair-check', conversationId: chat })).toMatchObject({ safe: false, why: 'draft' });
   });
 

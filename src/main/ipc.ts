@@ -722,7 +722,7 @@ const SCHEDULE_SAFE_ERRORS = new Set([
   'The session exists but its metadata could not be read.',
   'Could not read scheduled-runs state',
   'The saved manual run id belongs to a different scheduled message.',
-  'These schedules were saved by a newer version of Chat On Steroids. Update the app to change them.',
+  'These schedules were saved by a newer version of Gem Web Code. Update the app to change them.',
   'This chat is not connected to a ChatGPT conversation yet.',
   'Write the message to send.',
   'Choose a schedule that runs at least once an hour apart.',
@@ -1580,7 +1580,7 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
   handle('roots:rename', async (payload) => {
     const { name, newName } = renameRoot.parse(payload);
     if (RESERVED_ROOT_NAMES.has(newName)) {
-      throw new SandboxError(`/${newName} is reserved by Chat On Steroids and cannot be used as a folder name`);
+      throw new SandboxError(`/${newName} is reserved by Gem Web Code and cannot be used as a folder name`);
     }
     await updateConfig((config) => {
       if (!config.roots.some((root) => root.name === name)) throw new Error(`/${name} is not an approved folder`);
@@ -1928,7 +1928,7 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
     const window = getWindow();
     if (!window || window.isDestroyed() || event.sender !== window.webContents) {
       logInfo('linux screenshot consent: refused because the request was not from the main window');
-      throw new Error('Screenshot permission can be requested only from the Chat On Steroids main window.');
+      throw new Error('Screenshot permission can be requested only from the Gem Web Code main window.');
     }
     if (linuxScreenshotConsentPending) {
       logInfo('linux screenshot consent: refused because another request is already running');
@@ -2226,7 +2226,7 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
     return queued;
   });
   handle('setup:openai', async () => {
-    const queued = requestOpenaiSetup({ tunnelName: 'Chat On Steroids', keyName: 'Chat On Steroids', knownTunnelId: getConfig().tunnel.tunnelId || undefined });
+    const queued = requestOpenaiSetup({ tunnelName: 'Gem Web Code', keyName: 'Gem Web Code', knownTunnelId: getConfig().tunnel.tunnelId || undefined });
     if (queued.ok) void startBridge().then(() => wakeBrowserWork()).catch(() => undefined);
     return queued;
   });

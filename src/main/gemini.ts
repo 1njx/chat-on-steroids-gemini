@@ -456,7 +456,7 @@ const sendSchema = z.object({
 });
 
 /** The app's name in Gemini when none is set (the name "Add it in Gemini for me" looks for). */
-export const GEMINI_CORE_NAME = 'Chat On Steroids Core';
+export const GEMINI_CORE_NAME = 'Gem Web Code Core';
 
 /**
  * The app a send @-mentions by default: the set name, else the Core once it was added in Gemini.

@@ -125,7 +125,7 @@ export function userRequestCard(request: UserRequestView, actions: UserRequestAc
   }
 
   if (request.state === 'open') {
-    card.append(el('p', 'user-request-note', () => t('Run it yourself, in your own terminal: Chat On Steroids does not run or check it.')));
+    card.append(el('p', 'user-request-note', () => t('Run it yourself, in your own terminal: Gem Web Code does not run or check it.')));
     if (actions.readOnly()) card.append(el('p', 'user-request-note', () => t('Read-only is on in the app. This step runs in your own terminal, outside it.')));
     const buttons = el('div', 'user-request-actions');
     const done = el('button', 'btn btn-solid', () => t('Mark as done')) as HTMLButtonElement;

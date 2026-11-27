@@ -27,7 +27,7 @@ it('shows each step live, marks the earlier ones done, and takes no clicks', () 
   expect([...node.querySelectorAll('li')].map(item => [item.textContent, item.dataset.step]))
     .toEqual([['✓ Looking for the tunnel', 'done'], ['… Creating the tunnel', 'current']]);
   expect(panel.read()).toMatchObject({ state: 'working', ending: null,
-    title: "Chat On Steroids is setting this up — please don't click or type in this tab until it says done" });
+    title: "Gem Web Code is setting this up — please don't click or type in this tab until it says done" });
 });
 
 it('ends green and leaves after about 8 s', () => {

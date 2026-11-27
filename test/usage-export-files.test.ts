@@ -35,14 +35,14 @@ it.each([0, 1])('requires confirmation for a file created after the initial dest
   expect(electron.dialog.showMessageBox).toHaveBeenCalledOnce();
   const content = await fs.readFile(target, 'utf8');
   if (response === 0) expect(content).toBe('Created by another writer\n');
-  else expect(content).toMatch(/^﻿Chat On Steroids usage export,/);
+  else expect(content).toMatch(/^﻿Gem Web Code usage export,/);
   expect(await fs.readdir(directory)).toEqual(['usage.csv']);
 });
 
 it('publishes a new CSV without a replacement question or a leftover temporary file', async () => {
   await expect(exportUsageCsv(2, null)).resolves.toMatchObject({ saved: true });
   expect(electron.dialog.showMessageBox).not.toHaveBeenCalled();
-  expect(await fs.readFile(target, 'utf8')).toMatch(/^﻿Chat On Steroids usage export,/);
+  expect(await fs.readFile(target, 'utf8')).toMatch(/^﻿Gem Web Code usage export,/);
   expect(await fs.readdir(directory)).toEqual(['usage.csv']);
 });
 
@@ -68,6 +68,6 @@ it('avoids interruptible copying and still saves on a volume without hard links 
   electron.dialog.showMessageBox.mockResolvedValue({ response: 1 });
   await expect(exportUsageCsv(2, null)).resolves.toMatchObject({ saved: true });
   expect(copy).not.toHaveBeenCalled();
-  expect(await fs.readFile(target, 'utf8')).toMatch(/^﻿Chat On Steroids usage export,/);
+  expect(await fs.readFile(target, 'utf8')).toMatch(/^﻿Gem Web Code usage export,/);
   expect(await fs.readdir(directory)).toEqual(['usage.csv']);
 });

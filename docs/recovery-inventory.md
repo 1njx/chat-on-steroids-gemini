@@ -1,6 +1,6 @@
 # Recovery inventory
 
-Every way Chat On Steroids tries to get a stuck chat working again, in one place (#1402). It describes the code as of 2.1.37 and changes nothing. AGENTS.md §14 holds the full contracts; this page is the overview: what starts each path, its clock, its budget, who owns it and how the paths interact.
+Every way Gem Web Code tries to get a stuck chat working again, in one place (#1402). It describes the code as of 2.1.37 and changes nothing. AGENTS.md §14 holds the full contracts; this page is the overview: what starts each path, its clock, its budget, who owns it and how the paths interact.
 
 All browser-side repairs go through one function, `queueBrowserRecovery` in `src/main/bridge.ts`. It refuses every reason for a chat the user blocked, a chat with a pending Stop, a chat known to have no page, and a worker whose recovery is not allowed. It also keeps at most one repair per chat in flight (`repairsInFlight`). The browser extension carries out the repair (a reload, a reopen, or leaving the page as it is) and confirms what it did.
 
