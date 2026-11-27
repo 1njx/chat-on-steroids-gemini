@@ -181,7 +181,10 @@
     panel?.start('Opening custom apps');
     if (!(await dom.waitFor(dom.visibleCreate))) return failed('custom-apps-layout-unknown');
     const name = command.connector || CORE;
+    // Gemini names an app from the server's own name (chat-on-steroids-core → "Chat On Steroids Core"),
+    // not from ours, so every name of this app counts as the same app when keeping and checking.
     const names = sameApp(name, CORE) ? [name, LEGACY_CORE] : [name];
+    const cardsOf = () => names.flatMap(each => dom.customAppCards(each));
     const toList = async () => { dom.backToList(); return !!(await dom.waitFor(dom.visibleCreate)) && (await dom.settledList(), true); };
     panel?.step('Checking existing apps');
     await dom.settledList();
@@ -196,7 +199,7 @@
         if (index >= cards.length) break;
         const existing = await dom.readCustomAppUrl(cards[index]);
         if (!existing) { dom.backToList(); return failed('custom-apps-layout-unknown'); }
-        if (each === name && existing === command.url && !kept) {
+        if (existing === command.url && !kept) {
           kept = existing;
           index += 1;
           if (!(await toList())) return failed('custom-apps-layout-unknown');
@@ -210,7 +213,7 @@
       }
       // Checked once more on a settled list: nothing is added while an app with this name is left.
       if (!(await toList())) return failed('custom-apps-layout-unknown');
-      if (names.every(each => dom.customAppCards(each).length === (each === name && kept ? 1 : 0))) break;
+      if (cardsOf().length === (kept ? 1 : 0)) break;
       if (pass >= 2) return failed('delete-failed');
     }
     if (kept) {
@@ -244,7 +247,7 @@
     // Verified on the list: exactly one app with this name, and it has the new address.
     panel?.step('Checking the app in Gemini');
     if (!(await toList())) return failed('verify-failed');
-    const added = dom.customAppCards(name);
+    const added = cardsOf();
     if (added.length !== 1) return failed('verify-failed');
     const shown = await dom.readCustomAppUrl(added[0]);
     dom.backToList();

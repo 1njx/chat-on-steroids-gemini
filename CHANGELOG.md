@@ -9,6 +9,23 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.3.1] — Plugins follow you into Gemini, and no more false "did not show exactly one app"
+
+### Fixed
+
+- **Re-adding Core in Gemini no longer fails with `verify-failed`.** Gemini names a custom app after
+  the server's own name, so Core shows as "Chat On Steroids Core", while the check looked for "Gem
+  Web Code Core". Every add was reported as failed, and each retry deleted the working app and added
+  it again. Both names now count as the same Core app: one with the current address is kept, and
+  the check after adding accepts either name.
+
+### Added
+
+- **The Plugins connector is added in Gemini by itself.** While your plugins publish tools and
+  Gemini has Core, the app adds "Chat On Steroids Plugins" in Gemini's custom apps, and again
+  whenever its tunnel address changes, with the same 3 tries as Core. It never runs while another
+  add is running, so after a restart Core goes first. An app already there with the address is kept.
+
 ## [2.3.0] — Chat On Steroids is now Gem Web Code
 
 ### Changed

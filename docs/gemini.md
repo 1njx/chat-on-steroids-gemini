@@ -90,6 +90,12 @@ each step turns green by itself when the app sees it done.
    start, so once the app was added, a new Core address queues this same step for that address
    (never while one is running). One that fails is tried again 2 minutes later, 3 tries in all per
    address; one you cancel is not. Settings → Gemini says so and how it went.
+   **Plugins follow too:** while your plugins publish tools and Gemini has Core, the app adds the
+   Plugins connector the same way, as **Chat On Steroids Plugins** (Gemini names an app after the
+   server's own name), and again whenever its address changes; an app already there with the
+   address is kept. It waits while another add runs, so after a restart Core goes first.
+   **Either name is the same Core app:** Gemini shows Core as "Chat On Steroids Core" (from the
+   server name), so the step keeps and checks an app under that name or "Gem Web Code Core".
    **Old copies always go first:** two apps cannot share a name, so the list is read only once it
    stops changing, each app is matched by its title (a card's label is "Name, description"), an
    app's address is read only once Gemini synced its details (Gemini first shows them from a cache
@@ -112,7 +118,7 @@ each step turns green by itself when the app sees it done.
    app's tools.
 
 **Ready** lists every check, with a way back to any step that is not done. Optional: add the
-Desktop and Plugins URLs the same way (Plugins page and Setup show them).
+Desktop URL the same way (Setup shows it); Plugins is added by itself once you have plugins.
 
 ### Sending from the app
 

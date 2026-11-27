@@ -30,7 +30,7 @@ import { wakeBrowserWork } from './browser-wake.js';
 import { requestOpenaiSetup, requestPluginAdd, setupTaskStatus } from './setup-tasks.js';
 import { refreshKeepAwake } from './keep-awake.js';
 import { getChatModels, startChatModelDiscovery, configureChatModelDiscovery } from './chat-models.js';
-import { GEMINI_CUSTOM_APPS_URL, cancelGeminiCommand, configureGemini, followGeminiAddress, geminiNamedTunnelHost, geminiStatus, geminiWantsHttpsTunnel, queueGeminiFill, queueGeminiSend, requestGeminiModes, saveGeminiSettings, stopGemini } from './gemini.js';
+import { GEMINI_CUSTOM_APPS_URL, cancelGeminiCommand, configureGemini, followGeminiAddress, followGeminiPluginsAddress, geminiNamedTunnelHost, geminiStatus, geminiWantsHttpsTunnel, queueGeminiFill, queueGeminiSend, requestGeminiModes, saveGeminiSettings, stopGemini } from './gemini.js';
 import { releaseSessionFinish, requestSessionFinishGoal } from './session/finish.js';
 import { GOAL_MARKER_INSTRUCTION } from '../shared/goal-templates.js';
 import { validateInputImages } from './session/input-images.js';
@@ -57,6 +57,7 @@ import { sendDesktopInput, cancelDesktopInput, retryQueuedInputBrowser, retireDe
 import { isSessionRemoving, withSessionRemoval } from './session/removal.js';
 import { wakeBrowserUrl } from './browser-startup.js';
 import { registerPluginIpc } from './plugins-ipc.js';
+import { pluginManager } from './plugins/manager.js';
 import { deletePet, importPet, loadPetAsset, petLibraryState, setPetEnabled, setPetFavorite } from './pet-library.js';
 import { assignChatGroup, chatGroupsState, createChatGroup, deleteChatGroup, forgetChatGroupMember, renameChatGroup } from './chat-groups.js';
 import { petOverlayControlState, refreshPetOverlayActivities, refreshPetOverlayAppearance, setPetOverlayVisible } from './pet-overlay.js';
@@ -2953,11 +2954,23 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
   });
   configureGeminiTunnel(geminiWantsHttpsTunnel, geminiNamedTunnelHost);
   // A quick tunnel's new address leaves Gemini's custom app stale: it is added again once (gemini.ts).
-  onStatusChange(() => {
+  // The Plugins connector follows too, while plugins publish tools: on Gemini's own tunnel it is the
+  // same host with the Plugins path.
+  const followGeminiApps = (): void => {
     const live = getStatus();
-    followGeminiAddress(live.geminiTunnel ? (live.geminiTunnel.state === 'connected' ? live.geminiTunnel.url : null)
-      : live.surfaces.find(surface => surface.id === 'core' && surface.state === 'live')?.publicUrl ?? null);
-  });
+    const surface = (id: string) => live.surfaces.find(each => each.id === id && each.state === 'live');
+    const core = live.geminiTunnel ? (live.geminiTunnel.state === 'connected' ? live.geminiTunnel.url : null) : surface('core')?.publicUrl ?? null;
+    followGeminiAddress(core);
+    const plugins = surface('plugins');
+    let pluginsUrl: string | null = null;
+    if (pluginManager.tools().length && plugins) {
+      if (!live.geminiTunnel) pluginsUrl = plugins.publicUrl ?? null;
+      else if (core && plugins.localUrl) pluginsUrl = new URL(new URL(plugins.localUrl).pathname, core).toString();
+    }
+    followGeminiPluginsAddress(pluginsUrl);
+  };
+  onStatusChange(followGeminiApps);
+  pluginManager.onChanged(followGeminiApps);
   configureChatModelDiscovery({ changed: () => push('chatModels:changed', getChatModels()), wake: async (nonce, allowOpen) => {
     if (!await startBridge()) throw new Error('The browser bridge could not start');
     if (allowOpen) {

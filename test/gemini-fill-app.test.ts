@@ -19,7 +19,7 @@ interface App { name: string; url: string }
  * MCP URL and More options → Delete, and Create custom app → Next → Google's notice → Connect,
  * then (`saveStep`, seen live 2026-11-24) "Save your custom app" → Connect, enabled once its actions loaded.
  */
-async function addInGemini(apps: App[], { flakyMenus = 0, lateMs = 0, duplicateOnAdd = false, staleDetails = false, saveStep = false } = {}) {
+async function addInGemini(apps: App[], { flakyMenus = 0, lateMs = 0, duplicateOnAdd = false, staleDetails = false, saveStep = false, addedName = 'Gem Web Code Core' } = {}) {
   dom = new JSDOM(`<a aria-label="Google Account: Pat (pat@example.com)" href="#"></a>
     <button aria-label="Create custom app">Custom</button><section><h2>Custom apps</h2><div id="grid"></div></section>
     <div id="details"></div><div id="menus"></div><div id="dialogs"></div>`,
@@ -87,7 +87,7 @@ async function addInGemini(apps: App[], { flakyMenus = 0, lateMs = 0, duplicateO
       const box = dialogs.querySelector('input')!;
       const add = () => {
         pressed.push(`add ${input.value}`);
-        apps.push({ name: 'Gem Web Code Core', url: input.value });
+        apps.push({ name: addedName, url: input.value });
         // A Gemini that kept a second copy: the list then shows two apps with the name.
         if (duplicateOnAdd) apps.push({ name: 'Gem Web Code Core (2)', url: input.value });
         dialogs.innerHTML = '';
@@ -143,14 +143,25 @@ it('deletes every old and duplicate Core app first, keeps the one with this addr
   expect(apps.map(app => [app.name, app.url])).toEqual([['Other app', address('someone-else')], ['gem-web-code core (2)', NEW]]);
 }, 30_000);
 
-it('deletes the app under its pre-2.3.0 name "Chat On Steroids Core" too, even at this address, then adds "Gem Web Code Core"', async () => {
-  const { final, pressed, apps } = await addInGemini([
+it('keeps the Core app Gemini named "Chat On Steroids Core" when it has this address, and deletes it with an old one', async () => {
+  const current = await addInGemini([
     { name: 'Chat On Steroids Core', url: NEW },
     { name: 'Other app', url: address('someone-else') },
   ]);
+  expect(current.final).toMatchObject({ stage: 'completed', outcome: 'current', existingUrl: NEW, verified: true });
+  expect(current.pressed).toEqual([]);
+  dom!.window.close(); dom = null;
+  const old = await addInGemini([{ name: 'Chat On Steroids Core', url: address('old-one') }]);
+  expect(old.final).toMatchObject({ stage: 'completed', outcome: 'connected', verified: true });
+  expect(old.pressed).toEqual([`delete ${address('old-one')}`, `add ${NEW}`]);
+}, 60_000);
+
+// Seen live 2026-11-27: Gemini names the added app from the server name chat-on-steroids-core.
+it('verifies the added app when Gemini names it "Chat On Steroids Core", without deleting it again', async () => {
+  const { final, pressed, apps } = await addInGemini([{ name: 'Gem Web Code Core', url: address('old-one') }], { addedName: 'Chat On Steroids Core' });
   expect(final).toMatchObject({ stage: 'completed', outcome: 'connected', verified: true });
-  expect(pressed).toEqual([`delete ${NEW}`, `add ${NEW}`]);
-  expect(apps).toEqual([{ name: 'Other app', url: address('someone-else') }, { name: 'Gem Web Code Core', url: NEW }]);
+  expect(pressed).toEqual([`delete ${address('old-one')}`, `add ${NEW}`]);
+  expect(apps).toEqual([{ name: 'Chat On Steroids Core', url: NEW }]);
 }, 30_000);
 
 it('tries a delete that did not take again, and gives up after three tries without adding', async () => {

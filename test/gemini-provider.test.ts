@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultConfig, initConfigPath, saveConfig } from '../src/main/config.js';
 import { flushDurable, initDurableStore, readDurable, resetDurableForTests, writeDurableSoon } from '../src/main/durable.js';
 import {
-  AUTO_FILL_RETRY_MS, AUTO_FILL_TRIES, BUSY_OPEN_MS, FILL_OPEN_FALLBACK_MS, REACH_OK_MS, REACH_RETRY_MS, cancelGeminiCommand, completeGeminiCommand, configureGemini, followGeminiAddress, geminiPagesToOpen, geminiStatus, observeGeminiPage,
+  AUTO_FILL_RETRY_MS, AUTO_FILL_TRIES, BUSY_OPEN_MS, FILL_OPEN_FALLBACK_MS, GEMINI_PLUGINS_NAME, followGeminiPluginsAddress, REACH_OK_MS, REACH_RETRY_MS, cancelGeminiCommand, completeGeminiCommand, configureGemini, followGeminiAddress, geminiPagesToOpen, geminiStatus, observeGeminiPage,
   queueGeminiFill, queueGeminiSend, requestGeminiModes, resetGeminiForTests, restoreGemini, saveGeminiSettings, sweep,
 } from '../src/main/gemini.js';
 import { geminiUrlFingerprint } from '../src/shared/gemini.js';
@@ -588,6 +588,33 @@ describe('Gemini app added again when the tunnel address changes', () => {
     expect(geminiStatus().autoFill?.retryAt).toBeNull();
     expect(followGeminiAddress(address('new-name'), Date.now() + AUTO_FILL_RETRY_MS)).toBe(false);
     expect(fills()).toHaveLength(1);
+  });
+
+  it('adds the Plugins connector under its own name and address once Core is in Gemini, and again when its address changes', async () => {
+    const plugins = (host: string) => `https://${host}.trycloudflare.com/mcp/plugins/${'b'.repeat(43)}`;
+    // Not before Core was added in Gemini.
+    expect(followGeminiPluginsAddress(plugins('one'))).toBe(false);
+    expect(saveGeminiSettings({ givenUrlHash: geminiUrlFingerprint(address('one')) })).toEqual({ ok: true });
+    expect(followGeminiPluginsAddress(null)).toBe(false);
+    expect(followGeminiPluginsAddress(plugins('one'))).toBe(true);
+    const [first] = fills();
+    expect(first).toMatchObject({ stage: 'queued', app: 'plugins' });
+    expect(geminiStatus().pluginsAutoFill?.id).toBe(first!.id);
+    expect(geminiStatus().autoFill).toBeNull();
+    const handed = observeGeminiPage({ tab: 2, snapshot: page({ url: 'https://gemini.google.com/customize/connectors', composerReady: false }) }).commands;
+    expect(handed).toEqual([expect.objectContaining({ id: first!.id, kind: 'fill-app', url: plugins('one'), connector: GEMINI_PLUGINS_NAME })]);
+    // Gemini already had it at this address: kept, and Core's addresses stay as they were.
+    expect(await completeGeminiCommand({ id: first!.id, tab: 2, stage: 'completed', outcome: 'current', existingUrl: plugins('one'), verified: true })).toEqual({ ok: true });
+    expect(geminiStatus().settings).toMatchObject({ givenPluginsUrlHash: geminiUrlFingerprint(plugins('one')), givenUrlHash: geminiUrlFingerprint(address('one')), verifiedUrlHash: null });
+    expect(followGeminiPluginsAddress(plugins('one'))).toBe(false);
+    // A new tunnel address: Core goes first, Plugins waits for it, then follows.
+    expect(followGeminiAddress(address('two'))).toBe(true);
+    expect(followGeminiPluginsAddress(plugins('two'))).toBe(false);
+    const core = fills().at(-1)!;
+    observeGeminiPage({ tab: 2, snapshot: page({ url: 'https://gemini.google.com/customize/connectors', composerReady: false }) });
+    expect(await completeGeminiCommand({ id: core.id, tab: 2, stage: 'completed', outcome: 'connected', verified: true })).toEqual({ ok: true });
+    expect(followGeminiPluginsAddress(plugins('two'))).toBe(true);
+    expect(fills().at(-1)).toMatchObject({ stage: 'queued', app: 'plugins' });
   });
 
   it('waits for a fill the person started, and does nothing before the app was ever added', () => {

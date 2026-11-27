@@ -232,7 +232,8 @@ export function paintGeminiSetup(now = Date.now()): void {
     row.append(icon(check.ok ? 'i-check-circle' : 'i-warning'), el('span', '', check.ok ? check.label : `${check.label}: ${check.hint}`));
     return row;
   }));
-  const fill = [...(status?.commands ?? [])].reverse().find(c => c.kind === 'fill-app');
+  // Core's setup shows Core's adds only; the Plugins connector is added by itself (gemini.ts).
+  const fill = [...(status?.commands ?? [])].reverse().find(c => c.kind === 'fill-app' && c.app !== 'plugins');
   byId('geminiFillPill').hidden = !fill;
   if (fill) pill('geminiFillPill', ...fillPill(fill, url));
   const name = status?.settings.connectorName || 'Gem Web Code Core';
@@ -303,7 +304,7 @@ const unclaimedHint = (): string => t('If nothing happens there: {0}', [unclaime
 
 /** The last "Add it in Gemini for me" for Settings → Gemini, while it waits for a page or when none took it; '' otherwise. */
 export function fillWaitText(status: GeminiStatus): string {
-  const fill = [...status.commands].reverse().find(c => c.kind === 'fill-app');
+  const fill = [...status.commands].reverse().find(c => c.kind === 'fill-app' && c.app !== 'plugins');
   if (!fill || fill.id === status.autoFill?.id) return '';
   if (fill.stage === 'queued') return t('"Add it in Gemini for me" is opening Gemini custom apps in your default browser. {0}', [unclaimedHint()]);
   if (fill.stage === 'failed' && fill.error === 'gemini-page-not-connected') return t('"Add it in Gemini for me" found no Gemini page with the extension. {0}', [unclaimed()]);

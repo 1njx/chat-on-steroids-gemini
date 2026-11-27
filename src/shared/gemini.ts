@@ -34,6 +34,8 @@ export interface GeminiCommandSummary {
   outcome?: string | null;
   /** send: the tool approval Gemini waits on in its tab, while it waits. */
   approval?: string;
+  /** fill-app: set when it adds the Plugins connector instead of Core. */
+  app?: 'plugins';
 }
 
 export interface GeminiStatus {
@@ -67,6 +69,8 @@ export interface GeminiStatus {
   toolCallSeenAt?: number | null;
   /** The fill-app the app queued by itself because the Core address changed (quick tunnel), this run. */
   autoFill?: { id: string; at: number; retryAt?: number | null } | null;
+  /** The same for the Plugins connector, this run. */
+  pluginsAutoFill?: { id: string; at: number; retryAt?: number | null } | null;
   /** When Gemini last listed this app's tools in this run (null: never). */
   toolsListedAt?: number | null;
   /** Gemini's current Core address (fingerprint) and since when, this run. */

@@ -46,6 +46,8 @@ const NOT_A_READ_FAILURE = ['gemini-page-not-connected', 'no-ready-gemini-page']
 
 type Stage = 'queued' | 'claimed' | 'sending' | 'sent' | 'completed' | 'failed' | 'cancelled' | 'unknown';
 type Kind = 'send' | 'inspect-modes' | 'stop' | 'fill-app';
+/** Which of this app's connectors a fill adds in Gemini: Core, or Plugins (external MCP plugins). */
+type GeminiApp = 'core' | 'plugins';
 
 interface Command {
   id: string;
@@ -67,6 +69,8 @@ interface Command {
   answerChars: number | null;
   /** fill-app: the https address to fill in Gemini's custom app form. */
   url: string | null;
+  /** fill-app: the connector it adds (Core unless it is the Plugins one). */
+  app: GeminiApp;
   outcome: string | null;
   /** Whether the extension may open a Gemini page for this command when none reports. */
   openPage: boolean;
@@ -111,6 +115,8 @@ const settingsSchema = z.object({
   givenUrlHash: FINGERPRINT.nullable().catch(null),
   // The address Gemini's list showed exactly once under the connector's name after "Add it in Gemini for me".
   verifiedUrlHash: FINGERPRINT.nullable().catch(null),
+  // The Plugins connector's address Gemini has (fingerprint), once it was added there.
+  givenPluginsUrlHash: FINGERPRINT.nullable().catch(null),
   namedTunnelHost: HOSTNAME.nullable().catch(null),
   // Full access: the page presses Gemini's "Always allow" on this app's tool approvals by itself.
   fullAccess: z.boolean().catch(false),
@@ -122,7 +128,7 @@ let commands: Command[] = [];
 let catalog: { modes: GeminiMode[]; thinkingLevels: GeminiThinkingLevel[]; observedAt: number } | null = null;
 /** The last failed read of Gemini's model picker; cleared by a successful read. */
 let modesFailure: { error: string; at: number } | null = null;
-const NO_SETTINGS: GeminiSettings = { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, httpsTunnel: false, givenUrlHash: null, verifiedUrlHash: null, namedTunnelHost: null, fullAccess: false };
+const NO_SETTINGS: GeminiSettings = { connectorName: null, defaultModeId: null, defaultThinkingLevel: null, httpsTunnel: false, givenUrlHash: null, verifiedUrlHash: null, givenPluginsUrlHash: null, namedTunnelHost: null, fullAccess: false };
 let settings: GeminiSettings = { ...NO_SETTINGS };
 let changed = (): void => {};
 /** Opens the custom apps page in the default browser (ipc.ts: Electron's shell.openExternal). */
@@ -135,7 +141,7 @@ export function configureGemini(options: { changed: () => void; openCustomApps?:
   changed = options.changed;
   if (options.openCustomApps) openCustomApps = options.openCustomApps;
   if (options.probeAddress) probeAddress = options.probeAddress;
-  if (!sweepTimer) { sweepTimer = setInterval(() => { if (sweep()) changed(); followGeminiAddress(followedUrl); }, 10_000); sweepTimer.unref?.(); }
+  if (!sweepTimer) { sweepTimer = setInterval(() => { if (sweep()) changed(); followGeminiAddress(followedUrl); followGeminiPluginsAddress(followedPluginsUrl); }, 10_000); sweepTimer.unref?.(); }
 }
 
 export async function restoreGemini(): Promise<void> {
@@ -382,6 +388,14 @@ export async function completeGeminiCommand(body: unknown, now = Date.now()): Pr
     command.outcome = result.outcome;
     // Remember which address Gemini has (read on its page) or was given (filled in), never the address itself.
     const given = result.outcome === 'filled' || result.outcome === 'connected' ? command.url : HTTPS_URL.safeParse(result.existingUrl).data;
+    if (command.app === 'plugins') {
+      // The Plugins app has its own address; Core's given and verified addresses stay as they are.
+      if (given) settings.givenPluginsUrlHash = geminiUrlFingerprint(given);
+      persist();
+      finish(command, 'completed');
+      changed();
+      return { ok: true };
+    }
     if (given) settings.givenUrlHash = geminiUrlFingerprint(given);
     // Verified: the page saw exactly one app with the name afterwards, holding this command's address.
     settings.verifiedUrlHash = result.verified && command.url && given === command.url ? geminiUrlFingerprint(command.url) : null;
@@ -457,6 +471,8 @@ const sendSchema = z.object({
 
 /** The app's name in Gemini when none is set (the name "Add it in Gemini for me" looks for). */
 export const GEMINI_CORE_NAME = 'Gem Web Code Core';
+/** Gemini names a custom app after the server's own name: chat-on-steroids-plugins (surfaces.ts). */
+export const GEMINI_PLUGINS_NAME = 'Chat On Steroids Plugins';
 
 /**
  * The app a send @-mentions by default: the set name, else the Core once it was added in Gemini.
@@ -525,11 +541,11 @@ export function stopGemini(conversation: string): { ok: boolean; error?: string 
  * there under the connector's name with an old address (and duplicates), then adds and connects
  * the new one (gemini-content.js).
  */
-export function queueGeminiFill(url: unknown): { ok: true; id: string } | { ok: false; error: string } {
+export function queueGeminiFill(url: unknown, app: GeminiApp = 'core'): { ok: true; id: string } | { ok: false; error: string } {
   const parsed = HTTPS_URL.safeParse(url);
   if (!parsed.success) return { ok: false, error: 'invalid-url' };
-  for (const old of commands.filter(c => c.kind === 'fill-app' && !settled(c))) finish(old, 'cancelled');
-  const id = newCommand('fill-app', { url: parsed.data, connector: settings.connectorName }).id;
+  for (const old of commands.filter(c => c.kind === 'fill-app' && c.app === app && !settled(c))) finish(old, 'cancelled');
+  const id = newCommand('fill-app', { url: parsed.data, app, connector: app === 'plugins' ? GEMINI_PLUGINS_NAME : settings.connectorName }).id;
   // The default browser opens the custom apps page in front; the page there takes the command.
   // Only that fixed page is opened, never the Core address (it ends in a secret token).
   try { void Promise.resolve(openCustomApps()).catch(() => undefined); } catch { /* the extension's own fallback still opens it */ }
@@ -540,10 +556,12 @@ export function queueGeminiFill(url: unknown): { ok: true; id: string } | { ok: 
 export const AUTO_FILL_TRIES = 3;
 export const AUTO_FILL_RETRY_MS = 2 * 60_000;
 
-/** The automatic re-add queued last: its command, the fingerprint of the address it was for, and the tries so far. */
-let autoFill: { id: string; urlHash: string; at: number; tries: number } | null = null;
-/** Gemini's Core address as last reported (ipc.ts); the sweep follows it too, so a retry needs no status change. */
+type AutoFill = { id: string; urlHash: string; at: number; tries: number };
+/** Per connector, the automatic re-add queued last: its command, the fingerprint of the address it was for, and the tries so far. */
+const autoFills: Record<GeminiApp, AutoFill | null> = { core: null, plugins: null };
+/** Gemini's Core and Plugins addresses as last reported (ipc.ts); the sweep follows them too, so a retry needs no status change. */
 let followedUrl: string | null = null;
+let followedPluginsUrl: string | null = null;
 /** The current address (fingerprint) and since when; Gemini's requests count for it only after that. */
 let address: { urlHash: string; since: number } | null = null;
 /** The last check that the address answers from outside, through the tunnel. */
@@ -570,7 +588,7 @@ function checkReach(url: string, urlHash: string, now: number): void {
 }
 
 /** When a failed or unobserved automatic re-add is tried again, or null when it is not. */
-function autoFillRetryAt(fill: NonNullable<typeof autoFill>): number | null {
+function autoFillRetryAt(fill: AutoFill): number | null {
   const last = commands.find(c => c.id === fill.id);
   // Cancelled means the person stopped it or pressed the button themselves: theirs to redo.
   if (!last || !['failed', 'unknown'].includes(last.stage) || fill.tries >= AUTO_FILL_TRIES) return null;
@@ -592,17 +610,37 @@ export function followGeminiAddress(url: string | null, now = Date.now()): boole
   checkReach(url, urlHash, now);
   if (!settings.givenUrlHash) return false;
   if (urlHash === settings.givenUrlHash) return false;
+  return autoAdd('core', url, urlHash, now);
+}
+
+/**
+ * The Plugins connector follows its address like Core, once Gemini has Core (ipc.ts reports a
+ * Plugins address only while plugins publish tools). Its first address is added too, so installing
+ * a plugin is enough; an app already there with that address is only kept.
+ */
+export function followGeminiPluginsAddress(url: string | null, now = Date.now()): boolean {
+  followedPluginsUrl = url;
+  if (!url || !HTTPS_URL.safeParse(url).success || !settings.givenUrlHash) return false;
+  const urlHash = geminiUrlFingerprint(url);
+  if (urlHash === settings.givenPluginsUrlHash) return false;
+  return autoAdd('plugins', url, urlHash, now);
+}
+
+/** Queues the automatic add of one connector for this address: never while any fill is pending, AUTO_FILL_TRIES per address. */
+function autoAdd(app: GeminiApp, url: string, urlHash: string, now: number): boolean {
+  const last = autoFills[app];
   let tries = 1;
-  if (urlHash === autoFill?.urlHash) {
-    const retryAt = autoFillRetryAt(autoFill);
+  if (urlHash === last?.urlHash) {
+    const retryAt = autoFillRetryAt(last);
     if (retryAt === null || now < retryAt) return false;
-    tries = autoFill.tries + 1;
+    tries = last.tries + 1;
   }
+  // One page fills one app at a time: a pending fill (the other connector's too) goes first.
   if (commands.some(c => c.kind === 'fill-app' && !settled(c))) return false;
-  const queued = queueGeminiFill(url);
+  const queued = queueGeminiFill(url, app);
   if (!queued.ok) return false;
-  autoFill = { id: queued.id, urlHash, at: now, tries };
-  logInfo(`gemini app address changed; re-adding it in Gemini (try ${tries} of ${AUTO_FILL_TRIES})`);
+  autoFills[app] = { id: queued.id, urlHash, at: now, tries };
+  logInfo(`gemini ${app === 'plugins' ? 'Plugins app' : 'app'} address changed; re-adding it in Gemini (try ${tries} of ${AUTO_FILL_TRIES})`);
   changed();
   return true;
 }
@@ -621,7 +659,7 @@ function newCommand(kind: Kind, fields: Partial<Command>, now = Date.now()): Com
   const command: Command = {
     id: randomUUID(), kind, stage: 'queued', prompt: null, modeId: null, thinkingLevel: null, connector: null,
     conversationId: null, tab: null, navigations: 0, createdAt: now, updatedAt: now, sentAt: null, error: null,
-    sessionId: null, answerChars: null, url: null, outcome: null, openPage: true, ...fields,
+    sessionId: null, answerChars: null, url: null, app: 'core', outcome: null, openPage: true, ...fields,
   };
   commands.push(command);
   sweep(now);
@@ -683,6 +721,7 @@ export function geminiStatus(now = Date.now()): GeminiStatus {
     conversation: c.conversationId ? `gemini:${c.conversationId}` : null, sessionId: c.sessionId,
     modeId: c.modeId, promptPreview: c.prompt ? c.prompt.slice(0, 120) : null, answerChars: c.answerChars, outcome: c.outcome,
     ...(c.approval && !settled(c) ? { approval: c.approval } : {}),
+    ...(c.app === 'plugins' ? { app: 'plugins' as const } : {}),
   });
   return {
     pages: live.length,
@@ -696,14 +735,15 @@ export function geminiStatus(now = Date.now()): GeminiStatus {
     modesFailure: modesFailure ? { ...modesFailure, retryAt: modesFailure.at + MODES_BACKOFF_MS } : null,
     settings: { ...settings },
     commands: commands.slice(-20).map(summary),
-    autoFill: autoFill ? { id: autoFill.id, at: autoFill.at, retryAt: autoFillRetryAt(autoFill) } : null,
+    autoFill: autoFills.core ? { id: autoFills.core.id, at: autoFills.core.at, retryAt: autoFillRetryAt(autoFills.core) } : null,
+    pluginsAutoFill: autoFills.plugins ? { id: autoFills.plugins.id, at: autoFills.plugins.at, retryAt: autoFillRetryAt(autoFills.plugins) } : null,
     address: address ? { ...address } : null,
     reach: reach ? { ...reach } : null,
   };
 }
 
 export function resetGeminiForTests(): void {
-  pages.clear(); commands = []; catalog = null; modesFailure = null; autoFill = null; followedUrl = null; address = null; reach = null; probing = false;
+  pages.clear(); commands = []; catalog = null; modesFailure = null; autoFills.core = null; autoFills.plugins = null; followedUrl = null; followedPluginsUrl = null; address = null; reach = null; probing = false;
   probeAddress = () => false;
   settings = { ...NO_SETTINGS };
   changed = () => {};
