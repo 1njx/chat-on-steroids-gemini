@@ -30,7 +30,7 @@ import { wakeBrowserWork } from './browser-wake.js';
 import { requestOpenaiSetup, requestPluginAdd, setupTaskStatus } from './setup-tasks.js';
 import { refreshKeepAwake } from './keep-awake.js';
 import { getChatModels, startChatModelDiscovery, configureChatModelDiscovery } from './chat-models.js';
-import { GEMINI_CUSTOM_APPS_URL, cancelGeminiCommand, configureGemini, followGeminiAddress, followGeminiPluginsAddress, geminiNamedTunnelHost, geminiStatus, geminiWantsHttpsTunnel, queueGeminiFill, queueGeminiSend, requestGeminiModes, saveGeminiSettings, stopGemini } from './gemini.js';
+import { GEMINI_CUSTOM_APPS_URL, answerGeminiApproval, cancelGeminiCommand, configureGemini, followGeminiAddress, followGeminiPluginsAddress, geminiNamedTunnelHost, geminiStatus, geminiWantsHttpsTunnel, queueGeminiFill, queueGeminiSend, requestGeminiModes, saveGeminiSettings, stopGemini } from './gemini.js';
 import { releaseSessionFinish, requestSessionFinishGoal } from './session/finish.js';
 import { GOAL_MARKER_INSTRUCTION } from '../shared/goal-templates.js';
 import { validateInputImages } from './session/input-images.js';
@@ -2196,6 +2196,10 @@ export function registerIpc(getWindow: () => BrowserWindow | null, quitToInstall
   });
   handle('gemini:stop', async (payload) => stopGemini(z.object({ conversation: z.string().max(80) }).parse(payload).conversation));
   handle('gemini:cancel', async (payload) => cancelGeminiCommand(z.object({ id: z.string().uuid() }).parse(payload).id));
+  handle('gemini:answerApproval', async (payload) => {
+    const { id, choice } = z.object({ id: z.string().uuid(), choice: z.enum(['once', 'deny']) }).parse(payload);
+    return answerGeminiApproval(id, choice);
+  });
   handle('gemini:settings', async (payload) => {
     const saved = saveGeminiSettings(payload);
     if (saved.ok && payload && typeof payload === 'object' && ('httpsTunnel' in payload || 'namedTunnelHost' in payload)) await applyGeminiTunnel();

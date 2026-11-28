@@ -76,7 +76,15 @@ interface Command {
   openPage: boolean;
   /** send: the tool approval Gemini waits on in its tab ("App: Let Gemini use …?"), until the answer. */
   approval?: string | null;
+  /** send: the person's answer to that approval, from the app, until the page takes it. */
+  approvalChoice?: { ask: string; choice: GeminiApprovalChoice } | null;
+  /** send: Gemini's thinking headlines while it works ("Calculating …"), newest last. */
+  thoughts?: string[];
 }
+
+/** An answer to Gemini's tool approval card, pressed by the page: Allow once or Don't allow. */
+export type GeminiApprovalChoice = 'once' | 'deny';
+const MAX_THOUGHTS = 40;
 
 const snapshotSchema = z.object({
   url: z.string().max(400).catch(''),
@@ -299,8 +307,9 @@ export function observeGeminiPage(body: unknown, now = Date.now()): { ok: boolea
 const resultSchema = z.object({
   id: z.string().uuid(),
   tab: z.number().int().nonnegative(),
-  stage: z.enum(['navigating', 'sending', 'sent', 'approval', 'completed', 'failed']),
+  stage: z.enum(['navigating', 'sending', 'sent', 'approval', 'thinking', 'completed', 'failed']),
   approval: z.string().max(300).optional(),
+  thinking: z.string().max(300).optional(),
   // Why a step failed, for the log only ("mode picker", "mode missing", …).
   detail: z.string().max(200).optional(),
   conversationId: z.string().regex(GEMINI_NATIVE_ID).nullable().optional(),
@@ -319,7 +328,7 @@ const resultSchema = z.object({
 });
 
 /** A page's progress on a command it was handed. Only the tab holding the command may report it. */
-export async function completeGeminiCommand(body: unknown, now = Date.now()): Promise<{ ok: boolean; authorized?: boolean }> {
+export async function completeGeminiCommand(body: unknown, now = Date.now()): Promise<{ ok: boolean; authorized?: boolean; choice?: GeminiApprovalChoice }> {
   const parsed = resultSchema.safeParse(body);
   if (!parsed.success) return { ok: false };
   const result = parsed.data;
@@ -349,8 +358,21 @@ export async function completeGeminiCommand(body: unknown, now = Date.now()): Pr
   if (result.stage === 'approval') {
     // An empty one: the person answered it in Gemini.
     if (command.stage !== 'sent' || result.approval === undefined) return { ok: false };
-    command.approval = result.approval || null;
-    changed();
+    // The page repeats a waiting card every few seconds: its reply carries the person's answer from the app.
+    const approval = result.approval || null;
+    if (approval !== (command.approval ?? null)) { command.approval = approval; command.approvalChoice = null; changed(); }
+    const choice = approval && command.approvalChoice?.ask === approval ? command.approvalChoice.choice : undefined;
+    if (choice) command.approvalChoice = null;
+    return { ok: true, ...(choice ? { choice } : {}) };
+  }
+  if (result.stage === 'thinking') {
+    if (command.stage !== 'sent' || !result.thinking) return { ok: false };
+    const thoughts = command.thoughts ??= [];
+    if (thoughts.at(-1) !== result.thinking) {
+      thoughts.push(result.thinking);
+      if (thoughts.length > MAX_THOUGHTS) thoughts.shift();
+      changed();
+    }
     return { ok: true };
   }
   if (result.stage === 'failed') {
@@ -645,6 +667,14 @@ function autoAdd(app: GeminiApp, url: string, urlHash: string, now: number): boo
   return true;
 }
 
+/** The person answered, in the app, the tool approval a send waits on; the page presses it on its next report. */
+export function answerGeminiApproval(id: string, choice: GeminiApprovalChoice): { ok: boolean; error?: string } {
+  const command = commands.find(c => c.id === id);
+  if (!command || command.kind !== 'send' || settled(command) || !command.approval) return { ok: false, error: 'no-approval' };
+  command.approvalChoice = { ask: command.approval, choice };
+  return { ok: true };
+}
+
 /** Withdraw a command that no page has been authorized to send. */
 export function cancelGeminiCommand(id: string): { ok: boolean; error?: string } {
   const command = commands.find(c => c.id === id);
@@ -721,6 +751,7 @@ export function geminiStatus(now = Date.now()): GeminiStatus {
     conversation: c.conversationId ? `gemini:${c.conversationId}` : null, sessionId: c.sessionId,
     modeId: c.modeId, promptPreview: c.prompt ? c.prompt.slice(0, 120) : null, answerChars: c.answerChars, outcome: c.outcome,
     ...(c.approval && !settled(c) ? { approval: c.approval } : {}),
+    ...(c.thoughts?.length && !settled(c) ? { thinking: [...c.thoughts] } : {}),
     ...(c.app === 'plugins' ? { app: 'plugins' as const } : {}),
   });
   return {

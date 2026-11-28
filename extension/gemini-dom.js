@@ -483,15 +483,17 @@ var CLF_GEMINI_DOM = (() => {
     }
     return blocks.filter(Boolean).join('\n\n');
   }
-  /** A card in this answer still waiting for a choice: its app, its question and its Always allow button. */
+  /** A card in this answer still waiting for a choice: its app, its question and its buttons. */
   function pendingApproval(answer) {
     return safe(() => {
       for (const card of answer?.querySelectorAll('remy-confirmation-card-v2') ?? []) {
         const buttons = [...card.querySelectorAll('button')].filter(enabled);
         const always = buttons.find(b => text(b) === 'Always allow');
-        if (!always && !buttons.some(b => text(b) === 'Allow once')) continue;
+        const once = buttons.find(b => text(b) === 'Allow once');
+        if (!always && !once) continue;
         const ask = text(card.querySelector('.v2-body-content .body-text') || card.querySelector('.body-text'));
-        return { card, app: text(card.querySelector('.header-text')), ask, always: always || null };
+        const deny = buttons.find(b => /^Don.t allow$/.test(text(b)));
+        return { card, app: text(card.querySelector('.header-text')), ask, always: always || null, once: once || null, deny: deny || null };
       }
       return null;
     }, null);
@@ -513,6 +515,9 @@ var CLF_GEMINI_DOM = (() => {
           answer: markdown(shown),
           answerHtml: clean ? clean.innerHTML : '',
           approval: pendingApproval(answer),
+          // While Gemini works it shows a changing headline of its thinking here (live 2026-11-27:
+          // "Calculating prime numbers …", then "Evaluating …"); it is empty once the answer is done.
+          thinking: answer ? text(answer.querySelector('thinking-overlay .animated-thinking-content') || answer.querySelector('thinking-overlay')).slice(0, 300) : '',
           // Gemini keeps `processing-state-visible` on finished answers too (live, 2026-11-20), so it
           // proves nothing; only a busy marker does. The page-level Stop button is the real signal,
           // which snapshot() and the content script combine with this.

@@ -418,6 +418,7 @@ const api = {
   requestGeminiModes: (options?: { openPage?: boolean }) => call<{ ok: true; id: string }>('gemini:requestModes', options),
   stopGemini: (conversation: string) => call<{ ok: boolean; error?: string }>('gemini:stop', { conversation }),
   cancelGeminiCommand: (id: string) => call<{ ok: boolean; error?: string }>('gemini:cancel', { id }),
+  answerGeminiApproval: (id: string, choice: 'once' | 'deny') => call<{ ok: boolean; error?: string }>('gemini:answerApproval', { id, choice }),
   saveGeminiSettings: (patch: Partial<GeminiStatus['settings']>) => call<{ ok: boolean; error?: string }>('gemini:settings', patch),
   saveGeminiNamedTunnel: (tunnel: { host: string | null; token?: string }) => call<{ ok: boolean; error?: string }>('gemini:namedTunnel', tunnel),
   addChatgptPlugin: (request: { surface: 'core' | 'desktop'; name: string; description: string; tunnelId?: string; url?: string }) =>

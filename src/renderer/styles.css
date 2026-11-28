@@ -4183,6 +4183,8 @@ nav button:hover, nav button.is-sel { background: var(--hover); color: var(--ink
 .app[data-screen='library'] .panel.is-active,
 .app[data-screen='settings'] [data-view='settings']:not([hidden]) { animation: surface-in 160ms ease-out; }
 .pending-message.is-entering { animation: message-in 160ms ease-out; }
+.gemini-thinking { display: grid; gap: 2px; margin: 0 0 8px; color: var(--soft); font-size: calc(13px * var(--text-scale, 1)); overflow-wrap: anywhere; }
+.gemini-thought.is-current { color: var(--ink); }
 .typing-bubble { display: flex; gap: 5px; width: fit-content; margin: 0 0 26px; padding: 14px 16px; border-radius: 20px; background: var(--hover); animation: message-in 160ms ease-out; }
 .typing-bubble > span { width: 7px; height: 7px; border-radius: 50%; background: var(--soft); animation: typing-dot 1.2s ease-in-out infinite; }
 .typing-bubble > span:nth-child(2) { animation-delay: .15s; }

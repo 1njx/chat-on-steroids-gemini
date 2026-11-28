@@ -34,6 +34,8 @@ export interface GeminiCommandSummary {
   outcome?: string | null;
   /** send: the tool approval Gemini waits on in its tab, while it waits. */
   approval?: string;
+  /** send: Gemini's thinking headlines so far, newest last, while it works. */
+  thinking?: string[];
   /** fill-app: set when it adds the Plugins connector instead of Core. */
   app?: 'plugins';
 }

@@ -9477,7 +9477,7 @@ function paintPendingInputs(): void {
   // A row whose status changed is rebuilt; a control of it that had keyboard focus keeps it (CodeRabbit on #2054).
   const active = document.activeElement instanceof HTMLElement && host.contains(document.activeElement) ? document.activeElement : null;
   const focused = active ? { id: active.closest<HTMLElement>('.pending-message')?.dataset.inputId, label: active.getAttribute('aria-label'), cls: active.className } : null;
-  const previous = new Map([...host.querySelectorAll<HTMLElement>(':scope > .pending-message, :scope > .typing-bubble')].map(row => [row.dataset.inputId, row]));
+  const previous = new Map([...host.querySelectorAll<HTMLElement>(':scope > .pending-message, :scope > .typing-bubble, :scope > .gemini-live')].map(row => [row.dataset.inputId, row]));
   const next = rows.filter(entry => !historicalAutomaticInput(entry)).map(entry => {
     const sig = JSON.stringify([entry.text, entry.state, entry.error, entry.dueAt, entry.scheduled, notice(entry), routeHeld(entry), queuedWaitReason(entry), entry.sendCheck, entry.stagesApplied,
       entry.stages, entry.attachments?.map(file => file.id), entry.images?.map(image => [image.name, image.dataUrl.length]),
@@ -9972,7 +9972,7 @@ async function sendComposer(delivery?: 'finish' | 'auto' | 'after-turn', plan?: 
 }
 
 /** Gemini sends from the composer, until main reports how they ended. */
-const geminiSends = new Map<string, { sessionId: string | null; generation: number; text: string; approval?: string }>();
+const geminiSends = new Map<string, { sessionId: string | null; generation: number; text: string; approval?: string; thinking?: string[] }>();
 const GEMINI_ANSWERING = () => t('Gemini is answering…');
 /** The open chat's Gemini sends, in the order they were sent. */
 const geminiSendsHere = () => [...geminiSends].filter(([, send]) => send.sessionId === selectedId && (selectedId !== null || send.generation === selectionGeneration));
@@ -9989,7 +9989,21 @@ function geminiPendingRows(previous: Map<string | undefined, HTMLElement>): HTML
     row.append(text);
     return row;
   });
-  if (!here.length || here.some(([, send]) => send.approval)) return rows;
+  if (!here.length) return rows;
+  const asking = here.find(([, send]) => send.approval);
+  if (asking) return [...rows, geminiApprovalRow(asking[0], asking[1].approval!, previous)];
+  // Gemini's thinking headlines so far, the newest last, above the dots.
+  const thinking = here.at(-1)![1].thinking ?? [];
+  if (thinking.length) {
+    const box = previous.get('gemini:thinking') ?? el('div', 'gemini-thinking gemini-live');
+    box.dataset.inputId = 'gemini:thinking';
+    const key = thinking.join('\n');
+    if (box.dataset.key !== key) {
+      box.dataset.key = key;
+      box.replaceChildren(...thinking.map((line, index) => el('div', index === thinking.length - 1 ? 'gemini-thought is-current' : 'gemini-thought', line)));
+    }
+    rows.push(box);
+  }
   const dots = previous.get('gemini:typing') ?? el('div', 'typing-bubble');
   dots.dataset.inputId = 'gemini:typing';
   ui(dots, 'aria-label', GEMINI_ANSWERING);
@@ -9997,7 +10011,34 @@ function geminiPendingRows(previous: Map<string | undefined, HTMLElement>): HTML
   if (!dots.firstChild) dots.append(el('span', ''), el('span', ''), el('span', ''));
   return [...rows, dots];
 }
-const geminiAsks = (approval: string) => t('Gemini is waiting for your OK in its tab ({0}). Answer it there, or turn on Full access in Settings → Gemini.', [approval]);
+/**
+ * Gemini's tool approval card ("App: Let Gemini use …?"), answered here or in Gemini's tab. As for
+ * ChatGPT's card, only Deny and Allow once are offered; the page presses the button on its next report.
+ */
+function geminiApprovalRow(id: string, approval: string, previous: Map<string | undefined, HTMLElement>): HTMLElement {
+  const key = `gemini:approval:${id}`;
+  const old = previous.get(key);
+  if (old?.dataset.ask === approval) return old;
+  const row = el('div', 'approval-card gemini-live');
+  row.dataset.inputId = key; row.dataset.ask = approval;
+  const cut = approval.indexOf(': ');
+  const words = el('div', 'approval-card-words');
+  words.append(...(cut > 0 ? [el('span', '', approval.slice(0, cut)), el('strong', '', approval.slice(cut + 2))] : [el('strong', '', approval)]));
+  const actions = el('div', 'approval-card-actions');
+  const deny = el('button', 'btn btn-solid', () => t('Deny')) as HTMLButtonElement;
+  const allow = el('button', 'btn btn-solid is-primary', () => t('Allow once')) as HTMLButtonElement;
+  deny.type = allow.type = 'button';
+  const answer = async (choice: 'once' | 'deny'): Promise<void> => {
+    deny.disabled = allow.disabled = true;
+    // Not filed (answered in Gemini meanwhile, or the send ended): the buttons come back until the card goes.
+    if (!(await run(api.answerGeminiApproval(id, choice)))?.ok) deny.disabled = allow.disabled = false;
+  };
+  deny.addEventListener('click', () => void answer('deny'));
+  allow.addEventListener('click', () => void answer('once'));
+  actions.append(deny, allow);
+  row.append(words, actions);
+  return row;
+}
 /**
  * Queues one text message for Gemini web (src/main/gemini.ts sends it at most once through the
  * extension and records the turn). Files, plans and edits are ChatGPT-only, so they are refused.
@@ -10019,10 +10060,6 @@ async function sendComposerToGemini(text: string, extras: boolean, choice: Gemin
   return true;
 }
 function paintGeminiSends(): void {
-  const status = $('composerStatus');
-  const asked = geminiSendsHere().find(([, send]) => send.approval)?.[1].approval;
-  if (asked) { status.textContent = geminiAsks(asked); status.dataset.gemini = 'ask'; }
-  else if (status.dataset.gemini === 'ask') { status.textContent = ''; delete status.dataset.gemini; }
   paintPendingInputs();
   // As paintTimeline does: a new chat's welcome gives way to the message (and comes back if it failed).
   if (selectedId === null) $('timelineEmpty').hidden = $('timeline').childElementCount > 0 || $('inputQueue').childElementCount > 0;
@@ -10031,7 +10068,7 @@ function paintGeminiSends(): void {
 async function geminiSendsChanged(commands: GeminiCommandSummary[]): Promise<void> {
   for (const command of commands) {
     const send = geminiSends.get(command.id);
-    if (send) send.approval = command.approval;
+    if (send) { send.approval = command.approval; send.thinking = command.thinking; }
     if (!send || !['completed', 'failed', 'cancelled', 'unknown'].includes(command.stage)) continue;
     geminiSends.delete(command.id);
     if (command.stage !== 'completed') toast(geminiErrorText(command.error));

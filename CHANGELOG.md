@@ -9,6 +9,24 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.3.2] — See Gemini think, and answer its tool approvals in the app
+
+### Added
+
+- **Gemini's thinking shows in the chat while it works.** The headlines Gemini shows as it thinks
+  ("Calculating …", "Evaluating …") appear under your message as they change, newest last, until
+  the answer arrives. Gemini shows only these headlines, so that is what the app shows.
+- **Gemini's tool approvals can be answered in the app.** Without Full access, a tool Gemini asks
+  to use shows a card in the chat with Deny and Allow once; the Gemini page presses the same
+  button within a couple of seconds. You can still answer in Gemini's tab, and the tab is no longer
+  pulled to the front.
+
+### Fixed
+
+- **Full access now covers the Plugins app.** It pressed Always allow only on Core's cards, so tools
+  from "Chat On Steroids Plugins" still waited for you. It now answers the cards of this app's Core
+  and Plugins apps, under either name Gemini uses, and still never another app's.
+
 ## [2.3.1] — Plugins follow you into Gemini, and no more false "did not show exactly one app"
 
 ### Fixed

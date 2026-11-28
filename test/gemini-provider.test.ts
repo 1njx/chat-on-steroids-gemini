@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultConfig, initConfigPath, saveConfig } from '../src/main/config.js';
 import { flushDurable, initDurableStore, readDurable, resetDurableForTests, writeDurableSoon } from '../src/main/durable.js';
 import {
-  AUTO_FILL_RETRY_MS, AUTO_FILL_TRIES, BUSY_OPEN_MS, FILL_OPEN_FALLBACK_MS, GEMINI_PLUGINS_NAME, followGeminiPluginsAddress, REACH_OK_MS, REACH_RETRY_MS, cancelGeminiCommand, completeGeminiCommand, configureGemini, followGeminiAddress, geminiPagesToOpen, geminiStatus, observeGeminiPage,
+  AUTO_FILL_RETRY_MS, AUTO_FILL_TRIES, answerGeminiApproval, BUSY_OPEN_MS, FILL_OPEN_FALLBACK_MS, GEMINI_PLUGINS_NAME, followGeminiPluginsAddress, REACH_OK_MS, REACH_RETRY_MS, cancelGeminiCommand, completeGeminiCommand, configureGemini, followGeminiAddress, geminiPagesToOpen, geminiStatus, observeGeminiPage,
   queueGeminiFill, queueGeminiSend, requestGeminiModes, resetGeminiForTests, restoreGemini, saveGeminiSettings, sweep,
 } from '../src/main/gemini.js';
 import { geminiUrlFingerprint } from '../src/shared/gemini.js';
@@ -151,6 +151,19 @@ describe('Gemini provider', () => {
     expect(geminiStatus().commands.find(c => c.id === id)).toMatchObject({ stage: 'sent', approval: 'My Core: Let Gemini use exec command?' });
     expect(await completeGeminiCommand({ id, tab: 1, stage: 'approval', approval: '' })).toEqual({ ok: true });
     expect(geminiStatus().commands.find(c => c.id === id)).not.toHaveProperty('approval');
+    // Answered in the app: the page's next report of that card gets the choice, once; a new card starts clean.
+    expect(answerGeminiApproval(id, 'once')).toEqual({ ok: false, error: 'no-approval' });
+    const ask = 'My Core: Let Gemini use read file?';
+    await completeGeminiCommand({ id, tab: 1, stage: 'approval', approval: ask });
+    expect(answerGeminiApproval(id, 'deny')).toEqual({ ok: true });
+    expect(await completeGeminiCommand({ id, tab: 1, stage: 'approval', approval: ask })).toEqual({ ok: true, choice: 'deny' });
+    expect(await completeGeminiCommand({ id, tab: 1, stage: 'approval', approval: ask })).toEqual({ ok: true });
+    answerGeminiApproval(id, 'once');
+    expect(await completeGeminiCommand({ id, tab: 1, stage: 'approval', approval: 'My Core: Let Gemini use other?' })).toEqual({ ok: true });
+    await completeGeminiCommand({ id, tab: 1, stage: 'approval', approval: '' });
+    // Thinking headlines while it works, each once, newest last.
+    for (const thinking of ['Reading the files', 'Reading the files', 'Writing the answer']) await completeGeminiCommand({ id, tab: 1, stage: 'thinking', thinking });
+    expect(geminiStatus().commands.find(c => c.id === id)).toMatchObject({ thinking: ['Reading the files', 'Writing the answer'] });
   });
 
   it('re-hands a claimed send only to its own tab after that tab navigated for it', async () => {

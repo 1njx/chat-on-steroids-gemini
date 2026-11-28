@@ -1066,12 +1066,24 @@ describe('sending to Gemini from the composer', () => {
     expect(field.value).toBe('One more thing');
     field.value = '';
     expect(doc.getElementById('composerStatus')!.textContent).toBe('');
-    // A tool approval Gemini waits on replaces the dots with what to do; the bubble stays.
+    // Gemini's thinking headlines show above the dots while it works, the newest last.
+    await app.gemini(status([command('cmd-1', 'sent', { thinking: ['Reading the request', 'Planning the answer'] })]));
+    expect([...doc.querySelectorAll('#inputQueue .gemini-thought')].map(line => line.textContent)).toEqual(['Reading the request', 'Planning the answer']);
+    expect(doc.querySelector('#inputQueue .gemini-thought.is-current')!.textContent).toBe('Planning the answer');
+    // A tool approval Gemini waits on replaces the dots with its card, answered here; the bubble stays.
+    const answerGeminiApproval = vi.fn(async () => ({ ok: true, data: { ok: true } }));
+    (w as any).api.answerGeminiApproval = answerGeminiApproval;
     await app.gemini(status([command('cmd-1', 'sent', { approval: 'Chat On Steroids Core: Read a file?' })]));
-    expect(doc.getElementById('composerStatus')!.textContent).toContain('Chat On Steroids Core: Read a file?');
+    const card = doc.querySelector<HTMLElement>('#inputQueue .approval-card')!;
+    expect(card.textContent).toContain('Chat On Steroids Core');
+    expect(card.querySelector('strong')!.textContent).toBe('Read a file?');
+    expect(doc.getElementById('composerStatus')!.textContent).toBe('');
     expect(doc.querySelector('#inputQueue .typing-bubble')).toBeNull();
     expect(doc.querySelector('#inputQueue [data-input-id="gemini:cmd-1"]')).not.toBeNull();
+    [...card.querySelectorAll('button')].find(button => button.textContent === 'Allow once')!.click(); await settle();
+    expect(answerGeminiApproval).toHaveBeenCalledWith('cmd-1', 'once');
     await app.gemini(status([command('cmd-1', 'sent')]));
+    expect(doc.querySelector('#inputQueue .approval-card')).toBeNull();
     expect(doc.getElementById('composerStatus')!.textContent).toBe('');
     expect(doc.querySelector('#inputQueue .typing-bubble')).not.toBeNull();
 

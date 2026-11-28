@@ -54,10 +54,13 @@
   // working: it is mentioned when the new name is not offered, and "Add it in Gemini for me" deletes it.
   const CORE = 'Gem Web Code Core', LEGACY_CORE = 'Chat On Steroids Core';
   const sameApp = (a, b) => String(a || '').toLowerCase().replace(/[-_\s]+/g, ' ').trim() === String(b || '').toLowerCase().replace(/[-_\s]+/g, ' ').trim();
+  // Gemini names each app from its server name, so this app's cards carry any of these.
+  const PLUGINS = 'Chat On Steroids Plugins';
+  const ownApp = (app, named) => [named, CORE, LEGACY_CORE, PLUGINS].some(each => sameApp(app, each));
 
   async function waitForAnswer(command, before) {
     const deadline = Date.now() + ANSWER_LIMIT_MS;
-    let quietSince = 0, quietKey = '', askedKey = '';
+    let quietSince = 0, quietKey = '', askedKey = '', askedAt = 0, thought = '';
     const clicks = new WeakMap();
     while (Date.now() < deadline) {
       await sleep(700);
@@ -65,18 +68,23 @@
       const all = dom.turns();
       const last = all[all.length - 1];
       const approval = all.length > before ? last?.approval : null;
+      // Gemini's thinking headline, shown in the app while it works.
+      const thinking = all.length > before ? last?.thinking || '' : '';
+      if (thinking && thinking !== thought) { thought = thinking; void result(command, { stage: 'thinking', thinking }); }
       if (approval) {
-        // Full access: Always allow, only on this app's own card, at most 3 clicks 3 s apart; a card
-        // still waiting after that is left to the person, as without Full access.
+        // Full access: Always allow, only on this app's own cards (Core or Plugins), at most 3 clicks 3 s
+        // apart; a card still waiting after that is left to the person, as without Full access.
         const clicked = clicks.get(approval.card) || { n: 0, at: 0 };
         const recent = Date.now() - clicked.at < 3000;
-        if (command.alwaysAllow && approval.always && sameApp(approval.app, command.alwaysAllow) && (clicked.n < 3 || recent)) {
+        if (command.alwaysAllow && approval.always && ownApp(approval.app, command.alwaysAllow) && (clicked.n < 3 || recent)) {
           if (!recent) { approval.always.click(); clicks.set(approval.card, { n: clicked.n + 1, at: Date.now() }); }
-        } else if (askedKey !== `${approval.app}|${approval.ask}`) {
-          // Otherwise the person answers it in Gemini: say so in the app once, and show them the tab.
-          askedKey = `${approval.app}|${approval.ask}`;
-          await result(command, { stage: 'approval', approval: `${approval.app}: ${approval.ask}`.slice(0, 300) });
-          await message({ type: 'gemini_focus' });
+        } else if (askedKey !== `${approval.app}|${approval.ask}` || Date.now() - askedAt > 1500) {
+          // Otherwise the person answers it, in Gemini or in the app: the app shows the card, and its
+          // reply to this report (repeated while the card waits) carries a choice made there.
+          askedKey = `${approval.app}|${approval.ask}`; askedAt = Date.now();
+          const reply = await result(command, { stage: 'approval', approval: `${approval.app}: ${approval.ask}`.slice(0, 300) });
+          const button = reply?.choice === 'once' ? approval.once : reply?.choice === 'deny' ? approval.deny : null;
+          if (button) button.click();
         }
         quietSince = 0; quietKey = '';
         continue;
