@@ -58,7 +58,7 @@ describe('Settings → Gemini', () => {
     expect(doc.getElementById('geminiWarningText')!.textContent).toContain('usage limit');
     expect(doc.getElementById('geminiCommands')!.textContent).toContain('Outcome unknown');
     expect(doc.getElementById('geminiCommands')!.textContent).toContain('it was not sent again');
-    expect(geminiErrorText('sent; answer-timeout')).toBe('Sent, then: Gemini did not finish answering within 30 minutes.');
+    expect(geminiErrorText('sent; answer-timeout')).toBe('Sent, then: Gemini showed no progress for 30 minutes.');
     expect(geminiErrorText('Some text Gemini showed')).toBe('Some text Gemini showed');
     // A failed model read is shown beside Refresh with when it tries again.
     const at = Date.now() - 60_000;

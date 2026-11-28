@@ -9,6 +9,20 @@ The app and the browser extension in `extension/` are versioned together. **Relo
 extension after updating the app**. If their bridge protocols are incompatible,
 the app refuses the extension and asks you to reload the matching copy.
 
+## [2.3.3] — Long Gemini tasks no longer time out, and a waiting approval no longer swallows your message
+
+### Fixed
+
+- **A message sent while Gemini waits on a tool approval is no longer lost.** Gemini takes no new
+  message while its last answer waits on an approval card, so the message never reached it and the
+  send failed after 30 minutes with `answer-timeout`. The app now answers that card first (Full
+  access presses it for this app's cards; otherwise it shows in the chat with Deny and Allow once),
+  lets Gemini finish that turn, then sends your message once.
+- **Long Gemini tasks are no longer cut off after 30 minutes.** The limit now counts only time
+  without progress (a new turn, more answer text, a new thinking headline or card, or Gemini still
+  generating), with 4 hours in all. The page tells the app every minute that it is still working,
+  and the error now reads "Gemini showed no progress for 30 minutes".
+
 ## [2.3.2] — See Gemini think, and answer its tool approvals in the app
 
 ### Added

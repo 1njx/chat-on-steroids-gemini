@@ -4094,7 +4094,7 @@
   "Gemini did not accept the message. Try sending it again.": "Gemini không nhận tin nhắn. Hãy thử gửi lại.",
   "The message was withdrawn before it was sent.": "Tin nhắn đã được rút lại trước khi gửi.",
   "Gemini was still answering in that chat.": "Gemini vẫn đang trả lời trong cuộc trò chuyện đó.",
-  "Gemini did not finish answering within 30 minutes.": "Gemini không trả lời xong trong 30 phút.",
+  "Gemini showed no progress for 30 minutes.": "Gemini không có tiến triển nào trong 30 phút.",
   "No signed-in, idle Gemini page took the message within 3 minutes.": "Không có trang Gemini nào đã đăng nhập và đang rảnh nhận tin nhắn trong 3 phút.",
   "No Gemini page is connected. Open gemini.google.com, signed in, in your own browser with the Gem Web Code extension (Google does not allow signing in inside the app's built-in browser).": "Không có trang Gemini nào được kết nối. Mở gemini.google.com, đã đăng nhập, trong trình duyệt của bạn có tiện ích Gem Web Code (Google không cho đăng nhập trong trình duyệt tích hợp của ứng dụng).",
   "The Gemini page stopped responding before sending.": "Trang Gemini đã ngừng phản hồi trước khi gửi.",

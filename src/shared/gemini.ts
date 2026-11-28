@@ -110,7 +110,7 @@ export const GEMINI_ERRORS: Record<string, string> = {
   'send-not-accepted': 'Gemini did not accept the message. Try sending it again.',
   'withdrawn': 'The message was withdrawn before it was sent.',
   'busy': 'Gemini was still answering in that chat.',
-  'answer-timeout': 'Gemini did not finish answering within 30 minutes.',
+  'answer-timeout': 'Gemini showed no progress for 30 minutes.',
   'no-ready-gemini-page': 'No signed-in, idle Gemini page took the message within 3 minutes.',
   'gemini-page-not-connected': "No Gemini page is connected. Open gemini.google.com, signed in, in your own browser with the Gem Web Code extension (Google does not allow signing in inside the app's built-in browser).",
   'page-did-not-respond': 'The Gemini page stopped responding before sending.',

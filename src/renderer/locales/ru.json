@@ -4352,7 +4352,7 @@
   "Gemini did not accept the message. Try sending it again.": "Gemini не принял сообщение. Попробуйте отправить его снова.",
   "The message was withdrawn before it was sent.": "Сообщение отозвано до отправки.",
   "Gemini was still answering in that chat.": "Gemini ещё отвечал в этом чате.",
-  "Gemini did not finish answering within 30 minutes.": "Gemini не закончил ответ за 30 минут.",
+  "Gemini showed no progress for 30 minutes.": "Gemini не показывал прогресса 30 минут.",
   "No signed-in, idle Gemini page took the message within 3 minutes.": "Ни одна свободная страница Gemini с выполненным входом не приняла сообщение за 3 минуты.",
   "No Gemini page is connected. Open gemini.google.com, signed in, in your own browser with the Gem Web Code extension (Google does not allow signing in inside the app's built-in browser).": "Ни одна страница Gemini не подключена. Откройте gemini.google.com с выполненным входом в своём браузере с расширением Gem Web Code (Google не разрешает входить во встроенном браузере приложения).",
   "The Gemini page stopped responding before sending.": "Страница Gemini перестала отвечать до отправки.",

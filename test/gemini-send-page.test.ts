@@ -186,3 +186,57 @@ it("Full access leaves another app's approval card to the person", async () => {
   expect(results.map(r => r.stage)).toEqual(['sending', 'sent', 'approval']);
   expect(dom!.window.document.querySelector('remy-confirmation-card-v2')).not.toBeNull();
 }, 30_000);
+
+/** A chat whose last answer still waits on Gemini's approval card when the next message is handed over. */
+async function sendIntoWaitingCard(alwaysAllow: string | null, until: (results: Array<Record<string, unknown>>) => boolean, choice: string | null = null) {
+  dom = new JSDOM(`<a aria-label="Google Account: Pat (pat@example.com)" href="#"></a>
+    <infinite-scroller data-test-id="chat-history-container"><div class="conversation-container" id="turn0"><user-query><div class="query-text">build it</div></user-query>
+    <model-response><message-content><div class="markdown">${CARD}</div></message-content></model-response></div></infinite-scroller>
+    <rich-textarea><div class="ql-editor" contenteditable="true"></div></rich-textarea><button aria-label="Send message">send</button>`,
+  { url: 'https://gemini.google.com/app', runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole: new VirtualConsole() });
+  const { window } = dom;
+  const doc = window.document;
+  doc.documentElement.lang = 'en';
+  Object.defineProperty(window.HTMLElement.prototype, 'getClientRects', { value() { return [{ width: 10, height: 10 }]; } });
+  const events: string[] = [];
+  // Answering the card lets Gemini finish that turn; only then does a message start a new one.
+  const finishTurn = (button: string) => () => { events.push(button); doc.querySelector('#turn0 .markdown')!.innerHTML = '<p>Built it.</p>'; };
+  const buttons = [...doc.querySelectorAll('remy-confirmation-card-v2 button')];
+  buttons.find(b => b.textContent === 'Always allow')!.addEventListener('click', finishTurn('Always allow'));
+  buttons.find(b => b.textContent === 'Allow once')!.addEventListener('click', finishTurn('Allow once'));
+  doc.querySelector('button[aria-label="Send message"]')!.addEventListener('click', () => {
+    events.push(`send ${doc.querySelector('.ql-editor')!.textContent}`);
+    doc.querySelector('.ql-editor')!.textContent = '';
+    doc.querySelector('infinite-scroller')!.insertAdjacentHTML('beforeend', '<div class="conversation-container" id="turn1"><user-query><div class="query-text">continue</div></user-query>' +
+      '<model-response><message-content><div class="markdown"><p>Continued.</p></div></message-content></model-response></div>');
+  });
+  const results: Array<Record<string, unknown>> = [];
+  let handed = false;
+  (window as unknown as { chrome: unknown }).chrome = { runtime: { id: 'test', lastError: undefined, sendMessage(payload: Record<string, unknown>, reply: (value: unknown) => void) {
+    if (payload.type === 'gemini_result') results.push(payload);
+    const commands = payload.type === 'gemini_state' && !handed ? [{ id: 'send-1', kind: 'send', prompt: 'continue', conversationId: null, connector: null, alwaysAllow }] : [];
+    if (commands.length) handed = true;
+    const picked = payload.type === 'gemini_result' && payload.stage === 'approval' && payload.approval ? choice : null;
+    setTimeout(() => reply(payload.type === 'gemini_result' && payload.stage === 'sending' ? { ok: true, authorized: true } : { ok: true, commands, ...(picked ? { choice: picked } : {}) }), 0);
+  } } };
+  window.eval(domSource);
+  window.eval(contentSource);
+  for (const end = Date.now() + 25_000; Date.now() < end && !until(results); ) await new Promise(r => setTimeout(r, 100));
+  return { results, events };
+}
+
+const ended = (r: Array<Record<string, unknown>>) => r.some(x => ['completed', 'failed'].includes(String(x.stage)));
+
+it('answers the card the last answer waits on first (Full access), then sends the message once and takes its answer', async () => {
+  const { results, events } = await sendIntoWaitingCard('Gem Web Code Core', ended);
+  expect(events).toEqual(['Always allow', 'send continue']);
+  expect(results.map(r => r.stage)).toEqual(['sending', 'sent', 'completed']);
+  expect(results.at(-1)).toMatchObject({ answer: 'Continued.' });
+}, 30_000);
+
+it('without Full access shows that waiting card in the app and sends the message after the person answers it there', async () => {
+  const { results, events } = await sendIntoWaitingCard(null, ended, 'once');
+  expect(events).toEqual(['Allow once', 'send continue']);
+  expect(results.filter(r => r.stage === 'approval')[0]).toMatchObject({ approval: 'Gem Web Code Core: Let Gemini use exec command?' });
+  expect(results.at(-1)).toMatchObject({ stage: 'completed', answer: 'Continued.' });
+}, 30_000);

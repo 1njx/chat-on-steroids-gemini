@@ -366,7 +366,9 @@ export async function completeGeminiCommand(body: unknown, now = Date.now()): Pr
     return { ok: true, ...(choice ? { choice } : {}) };
   }
   if (result.stage === 'thinking') {
-    if (command.stage !== 'sent' || !result.thinking) return { ok: false };
+    if (command.stage !== 'sent') return { ok: false };
+    // Without a headline it only says the page is still working: updatedAt above keeps the send alive.
+    if (!result.thinking) return { ok: true };
     const thoughts = command.thoughts ??= [];
     if (thoughts.at(-1) !== result.thinking) {
       thoughts.push(result.thinking);

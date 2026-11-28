@@ -21,7 +21,8 @@
   window.__clfGeminiAlive = () => { try { return !!chrome.runtime?.id; } catch { return false; } };
   const dom = CLF_GEMINI_DOM;
   const REPORT_MS = 4000;
-  const ANSWER_LIMIT_MS = 30 * 60_000;
+  const ANSWER_IDLE_MS = 30 * 60_000;
+  const ANSWER_LIMIT_MS = 4 * 60 * 60_000;
   const running = new Set();
   let reportTimer = null;
   let lastSent = '';
@@ -59,10 +60,12 @@
   const ownApp = (app, named) => [named, CORE, LEGACY_CORE, PLUGINS].some(each => sameApp(app, each));
 
   async function waitForAnswer(command, before) {
-    const deadline = Date.now() + ANSWER_LIMIT_MS;
-    let quietSince = 0, quietKey = '', askedKey = '', askedAt = 0, thought = '';
+    // A long task (many tool calls, each a new turn) may take hours: only ANSWER_IDLE_MS without any
+    // progress ends the wait, and ANSWER_LIMIT_MS in all.
+    const started = Date.now();
+    let quietSince = 0, quietKey = '', askedKey = '', askedAt = 0, thought = '', progressKey = '', progressAt = started, toldAt = started;
     const clicks = new WeakMap();
-    while (Date.now() < deadline) {
+    while (Date.now() - progressAt < ANSWER_IDLE_MS && Date.now() - started < ANSWER_LIMIT_MS) {
       await sleep(700);
       const errors = dom.errors();
       const all = dom.turns();
@@ -70,7 +73,12 @@
       const approval = all.length > before ? last?.approval : null;
       // Gemini's thinking headline, shown in the app while it works.
       const thinking = all.length > before ? last?.thinking || '' : '';
-      if (thinking && thinking !== thought) { thought = thinking; void result(command, { stage: 'thinking', thinking }); }
+      if (thinking && thinking !== thought) { thought = thinking; toldAt = Date.now(); void result(command, { stage: 'thinking', thinking }); }
+      // Progress: a new turn, more answer, a new headline or card, or Gemini still generating.
+      const key = `${all.length}|${last?.id}|${last?.answer.length}|${thinking}|${approval?.ask || ''}`;
+      if (key !== progressKey || dom.generating()) { progressKey = key; progressAt = Date.now(); }
+      // The app expires a send it has not heard of for a while: tell it the page is still working.
+      if (progressAt - toldAt > 60_000) { toldAt = progressAt; void result(command, { stage: 'thinking' }); }
       if (approval) {
         // Full access: Always allow, only on this app's own cards (Core or Plugins), at most 3 clicks 3 s
         // apart; a card still waiting after that is left to the person, as without Full access.
@@ -93,10 +101,10 @@
       // In a covered tab Gemini can keep its busy marker on a finished answer (live 2026-11-25: Stop
       // gone, the text drawn, still busy), so an answer with text counts too, once it held still longer.
       const settled = !dom.generating() && last && all.length > before && (last.final || last.answer);
-      const key = settled ? `${last.id}|${last.answer.length}|${last.final}` : '';
+      const settledKey = settled ? `${last.id}|${last.answer.length}|${last.final}` : '';
       if (settled) {
         // Gemini can flip Stop off a moment before the last tokens render; require a short quiet period.
-        if (key !== quietKey) { quietKey = key; quietSince = Date.now(); }
+        if (settledKey !== quietKey) { quietKey = settledKey; quietSince = Date.now(); }
         if (Date.now() - quietSince >= (last.final ? 1200 : 4000)) {
           // The bridge takes at most 2 MiB per request: keep the text, drop markup that would not fit whole.
           return { stage: 'completed', conversationId: dom.conversationId(), turnId: last.id,
@@ -126,6 +134,17 @@
     // A page that just loaded draws its composer a moment later.
     if (!(await dom.waitFor(dom.composer, 15000))) return result(command, { stage: 'failed', error: 'composer-unavailable' });
     if (dom.generating()) return result(command, { stage: 'failed', error: 'busy' });
+    // Gemini takes no new message while its last answer waits on a tool approval card (live 2026-11-28:
+    // "continue" never reached Gemini and the send waited out its time). That turn is resumed first,
+    // its card answered as any other (Full access, or the person in the app), then the message is sent.
+    const resumed = !!dom.turns().at(-1)?.approval;
+    if (resumed) {
+      const claim = await result(command, { stage: 'sending' });
+      if (!claim?.ok || !claim.authorized) return result(command, { stage: 'failed', error: 'withdrawn' });
+      await result(command, { stage: 'sent', conversationId: dom.conversationId() });
+      const outcome = await waitForAnswer(command, dom.turns().length - 1);
+      if (outcome.stage !== 'completed') return result(command, outcome);
+    }
     if (command.modeId && !(await dom.selectMode(command.modeId))) {
       return result(command, { stage: 'failed', error: 'mode-unavailable', detail: `mode ${dom.modeFailure() || 'unknown'}` });
     }
@@ -146,11 +165,13 @@
     }
     const before = dom.turns().length;
     // Claim the send with the app first: only a command the app still owns may be sent, once.
-    const claim = await result(command, { stage: 'sending' });
-    if (!claim?.ok || !claim.authorized) return result(command, { stage: 'failed', error: 'withdrawn' });
+    if (!resumed) {
+      const claim = await result(command, { stage: 'sending' });
+      if (!claim?.ok || !claim.authorized) return result(command, { stage: 'failed', error: 'withdrawn' });
+    }
     if (!(await dom.send())) return result(command, { stage: 'failed', error: 'send-not-accepted' });
     for (let i = 0; i < 30 && !dom.conversationId(); i += 1) await sleep(200);
-    await result(command, { stage: 'sent', conversationId: dom.conversationId() });
+    if (!resumed) await result(command, { stage: 'sent', conversationId: dom.conversationId() });
     return result(command, await waitForAnswer(command, before));
   }
 

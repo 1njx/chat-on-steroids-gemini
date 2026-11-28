@@ -4094,7 +4094,7 @@
   "Gemini did not accept the message. Try sending it again.": "Gemini がメッセージを受け付けませんでした。もう一度送信してください。",
   "The message was withdrawn before it was sent.": "メッセージは送信前に取り下げられました。",
   "Gemini was still answering in that chat.": "Gemini はそのチャットでまだ回答中でした。",
-  "Gemini did not finish answering within 30 minutes.": "Gemini は 30 分以内に回答を終えませんでした。",
+  "Gemini showed no progress for 30 minutes.": "Gemini は 30 分間まったく進みませんでした。",
   "No signed-in, idle Gemini page took the message within 3 minutes.": "ログイン済みで空いている Gemini ページが 3 分以内にメッセージを受け取りませんでした。",
   "No Gemini page is connected. Open gemini.google.com, signed in, in your own browser with the Gem Web Code extension (Google does not allow signing in inside the app's built-in browser).": "接続されている Gemini ページがありません。Gem Web Code 拡張機能のある自分のブラウザーで、ログインした状態で gemini.google.com を開いてください（Google はアプリ内蔵ブラウザーでのログインを許可していません）。",
   "The Gemini page stopped responding before sending.": "送信前に Gemini ページが応答しなくなりました。",

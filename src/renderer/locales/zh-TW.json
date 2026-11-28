@@ -4094,7 +4094,7 @@
   "Gemini did not accept the message. Try sending it again.": "Gemini 沒有接受這則訊息。請重新傳送。",
   "The message was withdrawn before it was sent.": "訊息在傳送前已撤回。",
   "Gemini was still answering in that chat.": "Gemini 仍在該聊天中回答。",
-  "Gemini did not finish answering within 30 minutes.": "Gemini 未在 30 分鐘內完成回答。",
+  "Gemini showed no progress for 30 minutes.": "Gemini 已有 30 分鐘沒有任何進展。",
   "No signed-in, idle Gemini page took the message within 3 minutes.": "3 分鐘內沒有已登入且閒置的 Gemini 頁面接收這則訊息。",
   "No Gemini page is connected. Open gemini.google.com, signed in, in your own browser with the Gem Web Code extension (Google does not allow signing in inside the app's built-in browser).": "沒有已連線的 Gemini 頁面。請在你自己裝有 Gem Web Code 擴充功能的瀏覽器中開啟並登入 gemini.google.com（Google 不允許在應用程式的內建瀏覽器中登入）。",
   "The Gemini page stopped responding before sending.": "Gemini 頁面在傳送前停止回應。",

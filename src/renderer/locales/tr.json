@@ -4180,7 +4180,7 @@
   "Gemini did not accept the message. Try sending it again.": "Gemini mesajı kabul etmedi. Yeniden göndermeyi deneyin.",
   "The message was withdrawn before it was sent.": "Mesaj gönderilmeden önce geri çekildi.",
   "Gemini was still answering in that chat.": "Gemini o sohbette hâlâ yanıt veriyordu.",
-  "Gemini did not finish answering within 30 minutes.": "Gemini 30 dakika içinde yanıtını bitirmedi.",
+  "Gemini showed no progress for 30 minutes.": "Gemini 30 dakika boyunca ilerleme göstermedi.",
   "No signed-in, idle Gemini page took the message within 3 minutes.": "Oturumu açık, boşta hiçbir Gemini sayfası mesajı 3 dakika içinde almadı.",
   "No Gemini page is connected. Open gemini.google.com, signed in, in your own browser with the Gem Web Code extension (Google does not allow signing in inside the app's built-in browser).": "Hiçbir Gemini sayfası bağlı değil. gemini.google.com'u oturum açık olarak, Gem Web Code uzantısı olan kendi tarayıcınızda açın (Google, uygulamanın yerleşik tarayıcısında oturum açmaya izin vermiyor).",
   "The Gemini page stopped responding before sending.": "Gemini sayfası göndermeden önce yanıt vermeyi bıraktı.",

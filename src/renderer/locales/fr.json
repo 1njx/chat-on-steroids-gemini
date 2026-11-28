@@ -4266,7 +4266,7 @@
   "Gemini did not accept the message. Try sending it again.": "Gemini n’a pas accepté le message. Réessayez de l’envoyer.",
   "The message was withdrawn before it was sent.": "Le message a été retiré avant d’être envoyé.",
   "Gemini was still answering in that chat.": "Gemini répondait encore dans ce chat.",
-  "Gemini did not finish answering within 30 minutes.": "Gemini n’a pas fini de répondre en 30 minutes.",
+  "Gemini showed no progress for 30 minutes.": "Gemini n’a montré aucune progression pendant 30 minutes.",
   "No signed-in, idle Gemini page took the message within 3 minutes.": "Aucune page Gemini connectée et libre n’a pris le message en 3 minutes.",
   "No Gemini page is connected. Open gemini.google.com, signed in, in your own browser with the Gem Web Code extension (Google does not allow signing in inside the app's built-in browser).": "Aucune page Gemini n’est connectée. Ouvrez gemini.google.com, connecté, dans votre propre navigateur avec l’extension Gem Web Code (Google n’autorise pas la connexion dans le navigateur intégré de l’app).",
   "The Gemini page stopped responding before sending.": "La page Gemini a cessé de répondre avant l’envoi.",

@@ -164,6 +164,9 @@ describe('Gemini provider', () => {
     // Thinking headlines while it works, each once, newest last.
     for (const thinking of ['Reading the files', 'Reading the files', 'Writing the answer']) await completeGeminiCommand({ id, tab: 1, stage: 'thinking', thinking });
     expect(geminiStatus().commands.find(c => c.id === id)).toMatchObject({ thinking: ['Reading the files', 'Writing the answer'] });
+    // A headline-less report only says the page still works: accepted, nothing shown changes.
+    expect(await completeGeminiCommand({ id, tab: 1, stage: 'thinking' })).toEqual({ ok: true });
+    expect(geminiStatus().commands.find(c => c.id === id)).toMatchObject({ thinking: ['Reading the files', 'Writing the answer'] });
   });
 
   it('re-hands a claimed send only to its own tab after that tab navigated for it', async () => {
